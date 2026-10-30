@@ -1,0 +1,130 @@
+/* 系统风格 App：页面栈、导航栏、分组列表、表单（设置、相册、日程共用） */
+.page{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--sys-bg);color:var(--sys-ink);transition:transform .34s cubic-bezier(.2,.85,.25,1),filter .34s;will-change:transform}
+.page.enter{transform:translateX(100%)}
+.page.under{transform:translateX(-28%);filter:brightness(.92)}
+.page:not(:first-child){box-shadow:-8px 0 24px rgba(0,0,0,.08)}
+
+.ios-nav{display:grid;grid-template-columns:minmax(80px,1fr) auto minmax(80px,1fr);align-items:center;min-height:calc(var(--top) + 44px);padding:var(--top) 8px 0;background:var(--sys-glass);-webkit-backdrop-filter:blur(20px) saturate(1.8);backdrop-filter:blur(20px) saturate(1.8);border-bottom:.5px solid var(--sys-sep);flex:none;z-index:3;position:relative}
+.ios-nav.flat{background:var(--sys-bg);border-bottom-color:transparent;-webkit-backdrop-filter:none;backdrop-filter:none}
+.ios-nav h2{font-size:17px;font-weight:600;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+.ios-back{justify-self:start;display:flex;align-items:center;gap:0;color:var(--sys-blue);font-size:17px;padding:8px 4px;white-space:nowrap}
+.ios-act{justify-self:end;color:var(--sys-blue);font-size:17px;padding:8px 8px;display:flex;align-items:center}
+.ios-act.bold{font-weight:600}
+.ios-body{flex:1;min-height:0;overflow:auto;padding:0 16px calc(var(--bottom) + 30px);-webkit-overflow-scrolling:touch}
+.ios-large{font-size:34px;font-weight:700;letter-spacing:.3px;padding:4px 4px 10px}
+
+.ios-group{margin-top:22px}
+.ios-group>h3{font-size:13px;font-weight:400;color:var(--sys-ink2);margin:0 16px 7px}
+.ios-card{background:var(--sys-card);border-radius:12px;overflow:hidden}
+.ios-foot{font-size:13px;color:var(--sys-ink2);margin:7px 16px 0;line-height:1.45}
+.ios-row{display:flex;align-items:center;gap:12px;width:100%;min-height:46px;padding:0 16px;position:relative;text-align:left;font-size:17px}
+.ios-row+.ios-row::before,.ios-field+.ios-row::before,.ios-row+.ios-field::before,.ios-field+.ios-field::before{content:"";position:absolute;top:0;right:0;left:16px;height:.5px;background:var(--sys-sep)}
+.ios-card>.ios-row.has-ic+.ios-row.has-ic::before{left:58px}
+.ios-row .lbl{flex:1;min-width:0;padding:11px 0;line-height:1.25}
+.ios-row .lbl small{display:block;font-size:13px;color:var(--sys-ink2);margin-top:2px}
+.ios-row .val{color:var(--sys-ink2);font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%}
+.ios-row .chev{color:var(--sys-ink3);flex:none;margin-right:-4px}
+.ios-row.center{justify-content:center;color:var(--sys-blue)}
+.ios-row.danger{justify-content:center;color:var(--sys-red)}
+.ios-row.blue .lbl{color:var(--sys-blue)}
+.ios-row .check{color:var(--sys-blue);flex:none}
+.ios-ic{width:30px;height:30px;border-radius:7px;display:grid;place-items:center;color:#fff;flex:none}
+.ios-field{display:block;padding:10px 16px;position:relative}
+.ios-field>span{display:block;font-size:13px;color:var(--sys-ink2);margin-bottom:3px}
+.ios-field input:not([type=checkbox]),.ios-field textarea,.ios-field select{width:100%;border:0;background:transparent;font-size:17px;outline:none;line-height:1.45;color:var(--sys-ink)}
+.ios-field textarea{resize:none;display:block;min-height:26px}
+.ios-field select{appearance:none;-webkit-appearance:none;color:var(--sys-blue)}
+.ios-field select option{color:#000}
+.ios-field .with-btn{display:flex;gap:10px;align-items:center}
+.ios-field .with-btn>input{flex:1;min-width:0}
+.mini{font-size:15px;color:var(--sys-blue);white-space:nowrap;flex:none;padding:2px 0}
+.sw{appearance:none;-webkit-appearance:none;width:51px;height:31px;border-radius:16px;background:var(--sys-fill);position:relative;cursor:pointer;transition:background .2s;flex:none}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.15),0 1px 1px rgba(0,0,0,.16);transition:transform .2s}
+.sw:checked{background:var(--sys-green)}
+.sw:checked::after{transform:translateX(20px)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--sys-fill);border-radius:9px;padding:2px;gap:2px}
+.seg button{padding:6px 4px;border-radius:7px;font-size:13px;font-weight:500;text-align:center}
+.seg button[aria-pressed=true]{background:var(--sys-card);box-shadow:0 3px 8px rgba(0,0,0,.12),0 1px 1px rgba(0,0,0,.04);font-weight:600}
+.btn{padding:12px 16px;border-radius:12px;background:var(--sys-fill);font-weight:600;font-size:16px;text-align:center;color:var(--sys-blue)}
+.btn.primary{background:var(--sys-blue);color:#fff}
+.btn.danger{color:var(--sys-red)}
+.btn.wide{width:100%}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap}
+.btnrow>.btn{flex:1}
+.intro{background:var(--sys-card);border-radius:12px;padding:16px;margin-top:8px;line-height:1.55;font-size:15px}
+.intro p{margin-bottom:12px}
+.profile-card{display:flex;align-items:center;gap:14px;padding:12px 16px;width:100%;text-align:left}
+.profile-card img{width:60px;height:60px;border-radius:50%;object-fit:cover;flex:none}
+.profile-card b{display:block;font-size:22px;font-weight:500;line-height:1.2}
+.profile-card small{display:block;font-size:13px;color:var(--sys-ink2);margin-top:3px}
+.pic-row{display:flex;align-items:center;gap:14px;padding:12px 16px;position:relative}
+.pic-row img{width:60px;height:60px;border-radius:50%;object-fit:cover;background:var(--sys-fill);flex:none}
+.pic-row img.sq{border-radius:10px;width:60px;height:80px}
+.pic-row .grow{flex:1;font-size:15px;color:var(--sys-ink2);line-height:1.4}
+.pic-row .acts{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+
+/* 相册 */
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin:0 -16px}
+.photo-grid button{aspect-ratio:1;overflow:hidden;background:var(--sys-fill);display:block}
+.photo-grid img{width:100%;height:100%;object-fit:cover;display:block}
+.pool-item{display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:center;padding:10px 16px;position:relative}
+.pool-item+.pool-item::before{content:"";position:absolute;top:0;right:0;left:92px;height:.5px;background:var(--sys-sep)}
+.pool-item img{width:64px;height:64px;object-fit:cover;border-radius:8px;background:var(--sys-fill);display:block}
+.pool-item input{width:100%;border:0;background:transparent;padding:4px 0;font-size:16px;outline:none;color:var(--sys-ink)}
+.pool-item small{display:block;font-size:12px;color:var(--sys-ink2);margin-top:2px}
+.pool-item .del{color:var(--sys-red);font-size:15px;padding:6px}
+.empty{text-align:center;color:var(--sys-ink2);padding:40px 18px;line-height:1.7;font-size:15px}
+
+/* 日程（像闹钟列表） */
+.alarm{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;padding:10px 16px 12px;position:relative;width:100%;text-align:left;cursor:pointer}
+.alarm+.alarm::before{content:"";position:absolute;top:0;right:0;left:16px;height:.5px;background:var(--sys-sep)}
+.alarm time{display:block;font-size:50px;font-weight:300;letter-spacing:-1px;font-variant-numeric:tabular-nums;line-height:1.05}
+.alarm .lbl{font-size:15px;color:var(--sys-ink)}
+.alarm .lbl small{color:var(--sys-ink2);font-size:15px}
+.alarm.off time,.alarm.off .lbl{color:var(--sys-ink2)}
+.days{display:flex;gap:6px;flex-wrap:wrap;padding-top:4px}
+.days button{width:36px;height:36px;border-radius:50%;background:var(--sys-fill);font-weight:600;font-size:14px;text-align:center}
+.days button[aria-pressed=true]{background:var(--sys-blue);color:#fff}
+
+/* 设置首页的搜索框、没有仿真界面的 App */
+.ios-searchbox{display:flex;align-items:center;gap:6px;height:36px;border-radius:10px;background:var(--sys-fill);color:var(--sys-ink2);padding:0 8px;font-size:17px;margin:0 0 4px}
+.ios-row>.squircle{flex:none}
+.shell-body{display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:80px;gap:14px}
+.shell-body h1{font-size:26px;font-weight:700;margin-top:6px}
+.shell-body p{font-size:15px;color:var(--sys-ink2);line-height:1.6;max-width:290px}
+.shell-body p.hint{font-size:13px;margin-top:20px}
+
+/* 设置 → 墙纸（照 iPhone：锁定屏幕和主屏幕两张预览，下面各一个「自定」） */
+.wp-card{margin-top:14px;padding:18px 14px 8px}
+.wp-pair,.wp-acts{display:grid;grid-template-columns:1fr 1fr;gap:14px;justify-items:center}
+.wp-col{display:block;border-radius:22px}
+.wp-prev{position:relative;width:138px;height:299px;border-radius:22px;overflow:hidden;isolation:isolate;color:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.08),0 6px 18px rgba(0,0,0,.14)}
+.wp-prev .wall{position:absolute;inset:0;z-index:-1}
+.wp-date{position:absolute;top:30px;left:0;right:0;text-align:center;font-size:9px;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,.2)}
+.wp-time{position:absolute;top:41px;left:0;right:0;text-align:center;font-size:44px;font-weight:600;letter-spacing:-1.5px;line-height:1;text-shadow:0 1px 6px rgba(0,0,0,.15)}
+.wp-grid{position:absolute;top:24px;left:11px;right:11px;display:grid;grid-template-columns:repeat(4,22px);justify-content:space-between;grid-auto-rows:22px;row-gap:6px}
+.wp-grid span{border-radius:6px;box-shadow:inset 0 0 0 .5px rgba(255,255,255,.25)}
+.wp-grid .w4{grid-column:span 4;grid-row:span 2;border-radius:8px;background:rgba(40,40,40,.28)}
+.wp-grid .w2{grid-column:span 2;grid-row:span 2;border-radius:8px;background:#fff}
+.wp-dock{position:absolute;left:5px;right:5px;bottom:5px;height:34px;border-radius:13px;display:flex;justify-content:center;align-items:center;gap:6px;background:rgba(255,255,255,.18);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.wp-dock span{width:22px;height:22px;border-radius:6px}
+.wp-acts{padding:12px 0 6px}
+.wp-btn{padding:7px 22px;border-radius:17px;background:var(--sys-fill);font-size:15px;font-weight:600}
+.wp-add{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:14px;padding:13px;border-radius:12px;background:var(--sys-card);color:var(--sys-blue);font-size:17px}
+.wp-cats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0 18px}
+.wp-cats button{display:flex;flex-direction:column;align-items:center;gap:7px;font-size:13px}
+.wp-cat{width:60px;height:60px;border-radius:16px;display:grid;place-items:center;color:#fff}
+.wp-h{font-size:20px;font-weight:700;margin:4px 2px 10px}
+.wp-feat{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 10px}
+.wp-thumb{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:var(--sys-ink2)}
+.wp-thumb .wall{position:relative;inset:auto;z-index:auto;display:block;width:100%;aspect-ratio:9/19.5;border-radius:12px;box-shadow:0 0 0 1px rgba(0,0,0,.06)}
+.wp-thumb.on .wall{box-shadow:0 0 0 2.5px var(--sys-blue)}
+.wp-opts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0}
+.wp-opt{display:flex;flex-direction:column;align-items:center;gap:7px;font-size:13px}
+.wp-sw{position:relative;width:62px;height:62px;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:var(--sys-fill);color:var(--sys-ink2);isolation:isolate}
+.wp-sw .wall{position:absolute;inset:0;z-index:-1}
+.wp-opt[aria-pressed=true] .wp-sw,.wp-colors button[aria-pressed=true]{box-shadow:0 0 0 2.5px var(--sys-card),0 0 0 4.5px var(--sys-blue)}
+.wp-colors{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;justify-items:center;margin:16px 0}
+.wp-colors button{width:56px;height:56px;border-radius:50%}
+.wp-pg{margin-top:12px}
+.sb-wifi-ic{color:var(--sys-blue)}

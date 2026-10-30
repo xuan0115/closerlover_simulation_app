@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1b1846">
+<title>亲密爱人</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/phone.css">
+<link rel="stylesheet" href="css/ios.css">
+<link rel="stylesheet" href="css/wechat.css">
+<link rel="stylesheet" href="css/extra-apps.css">
+<link rel="stylesheet" href="css/call.css">
+<link rel="stylesheet" href="css/overlays.css">
+</head>
+<body>
+<div class="desk">
+  <div class="device" id="device">
+    <div class="phone" id="phone" data-screen="lock">
+      <div class="island"></div>
+      <div class="statusbar" aria-hidden="true">
+        <span class="sb-left"><span id="sbtime">9:41</span><span class="sb-focus" id="sbfocus"></span></span>
+        <span class="sb-right">
+          <svg class="sb-plane" width="17" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 2.5h3V9l8 4.5v2.5l-8-2.5v5l2.5 2V22L12 21l-4 1v-1.5l2.5-2v-5l-8 2.5v-2.5l8-4.5z"/></svg>
+          <svg class="sb-signal" width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx=".8"/><rect x="5" y="5.5" width="3" height="6.5" rx=".8"/><rect x="10" y="3" width="3" height="9" rx=".8"/><rect x="15" y="0" width="3" height="12" rx=".8"/></svg>
+          <span class="sb-5g">5G</span>
+          <svg class="sb-wifi" width="17" height="12" viewBox="0 0 17 12" fill="currentColor"><path d="M8.5 2.2c2.4 0 4.6.9 6.2 2.5l1.2-1.3A10.4 10.4 0 0 0 8.5.4 10.4 10.4 0 0 0 1.1 3.4l1.2 1.3a8.7 8.7 0 0 1 6.2-2.5zm0 3.4c1.5 0 2.8.6 3.8 1.5l1.2-1.3a7.1 7.1 0 0 0-10 0l1.2 1.3c1-.9 2.3-1.5 3.8-1.5zm0 3.4c.6 0 1.1.2 1.5.6L8.5 11.2 7 9.6c.4-.4.9-.6 1.5-.6z"/></svg>
+          <span class="battery" id="sbbattery"><b id="sbbatt">86</b><svg class="sb-bolt" width="7" height="10" viewBox="0 0 7 10" fill="currentColor"><path d="M4.2 0L0 5.6h2.7L2 10l5-6.2H4.2z"/></svg></span>
+        </span>
+      </div>
+
+      <!-- 桌面（一直垫在最下面） -->
+      <section class="scr home on" id="home" aria-label="桌面">
+        <div class="wall" id="homewall"></div>
+        <div class="home-pages" id="homepages"></div>
+        <div class="home-tools" id="hometools"><div class="home-dots" id="homedots"></div><button class="home-search" id="homesearch"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>搜索</button></div>
+        <nav class="dock" id="dock" aria-label="程序坞"></nav>
+        <div class="folder-pop" id="folderpop" aria-hidden="true"><div class="fp-title" id="fptitle"></div><div class="fp-panel" id="fppanel"></div></div>
+      </section>
+
+      <!-- App：内容由 js/ui/ 里的文件生成 -->
+      <section class="scr app" id="app-wx"></section>
+      <section class="scr app" id="app-settings"></section>
+      <section class="scr app" id="app-photos"></section>
+      <section class="scr app" id="app-camera"></section>
+      <section class="scr app" id="app-calendar"></section>
+      <section class="scr app" id="app-notes"></section>
+      <section class="scr app" id="app-calc"></section>
+      <section class="scr app" id="app-clock"></section>
+      <section class="scr app" id="app-shell"></section>
+
+      <!-- 锁屏 -->
+      <section class="scr lock on" id="lock" aria-label="锁屏">
+        <div class="wall" id="lockwall"></div>
+        <div class="lock-head">
+          <svg class="lock-ic" width="15" height="19" viewBox="0 0 14 18" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1.5" y="8" width="11" height="9" rx="2.2"/><path d="M4 8V5.5a3 3 0 0 1 6 0V8"/></svg>
+          <div class="lock-date" id="lockdate"></div>
+          <div class="lock-time" id="locktime"></div>
+        </div>
+        <div class="notes" id="notes"></div>
+        <button class="round-btn left" id="torch" aria-label="手电筒" aria-pressed="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M8 3h8v4l-2 3v11h-4V10L8 7z"/><path d="M12 13v2"/></svg></button>
+        <button class="unlock" id="unlock">向上轻扫以打开</button>
+        <button class="round-btn right" id="lockcam" aria-label="相机"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8h3.5L9 5.5h6L16.5 8H20v11H4z"/><circle cx="12" cy="13.2" r="3.6"/></svg></button>
+      </section>
+
+      <button class="banner" id="banner" aria-live="polite"></button>
+      <div class="sheet" id="sheet"><div class="sheet-back"></div><div class="sheet-panel" role="dialog" aria-modal="true"></div></div>
+      <div class="viewer" id="viewer"><img alt=""></div>
+      <div class="toast" id="toast" role="status"></div>
+      <button class="homebar" id="homebar" aria-label="回到桌面" title="回到桌面：点一下或按住往上拖（也可以按 Esc）"></button>
+    </div>
+  </div>
+  <p class="desk-note">点击或往上拖底部横条回到桌面，按 Esc 返回上一级</p>
+</div>
+<input type="file" id="anyfile" hidden>
+
+<!-- 数据：人设、台词、星座、名字、桌面布局，都在这几个文件里改 -->
+<script src="js/data/ui.js"></script>
+<script src="js/data/persona.js"></script>
+<script src="js/data/zodiac.js"></script>
+<script src="js/data/templates.js"></script>
+<script src="js/data/prompts.js"></script>
+<script src="js/data/providers.js"></script>
+<!-- 程序 -->
+<script src="js/core/util.js"></script>
+<script src="js/core/store.js"></script>
+<script src="js/ai/llm.js"></script>
+<script src="js/ai/templates.js"></script>
+<script src="js/ai/brain.js"></script>
+<script src="js/core/schedule.js"></script>
+<script src="js/ui/icons.js"></script>
+<script src="js/ui/wallpaper.js"></script>
+<script src="js/ui/shell.js"></script>
+<script src="js/ui/wechat.js"></script>
+<script src="js/ui/photos.js"></script>
+<script src="js/ui/plans.js"></script>
+<script src="js/ui/extra-apps.js"></script>
+<script src="js/ui/voice.js"></script>
+<script src="js/ui/settings.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

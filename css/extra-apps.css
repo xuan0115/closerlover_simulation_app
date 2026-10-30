@@ -1,0 +1,100 @@
+/* 日历、相机、备忘录、计算器 */
+
+/* 底部工具栏（备忘录） */
+.ios-toolbar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:8px 14px calc(var(--bottom) + 2px);border-top:.5px solid var(--sys-sep);background:var(--sys-glass);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);font-size:12px;color:var(--sys-ink2);flex:none}
+.ios-toolbar>:first-child{justify-self:start}
+.ios-toolbar>:last-child{justify-self:end}
+
+/* 日历 */
+.cal-month{color:var(--sys-red)}
+.cal-week,.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);text-align:center}
+.cal-week{font-size:13px;color:var(--sys-ink2);padding:2px 0 8px;border-bottom:.5px solid var(--sys-sep);margin:0 -4px}
+.cal-grid{row-gap:6px;padding-top:8px;margin:0 -4px}
+.cal-day{display:flex;flex-direction:column;align-items:center;gap:3px;padding:2px 0;height:52px}
+.cal-day b{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:19px;font-weight:400}
+.cal-day.today b{color:var(--sys-red);font-weight:600}
+.cal-day.sel b{background:var(--sys-ink);color:var(--sys-bg);font-weight:600}
+.cal-day.sel.today b{background:var(--sys-red);color:#fff}
+.cal-dots{display:flex;gap:3px;height:6px}
+.cal-dots i,.cal-legend{width:6px;height:6px;border-radius:50%;display:block;flex:none}
+.cal-legend{width:10px;height:10px}
+.st{background:#0A84FF}.gy{background:#30D158}.ms{background:#FF9F0A}
+
+/* 相机 */
+.page.cam{background:#000;color:#fff}
+.cam-top{height:calc(var(--top) + 44px);flex:none}
+.cam-view{position:relative;flex:1;min-height:0;background:#111;overflow:hidden}
+.cam-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cam-video.mirror{transform:scaleX(-1)}
+.cam-msg{position:absolute;inset:0;display:grid;place-items:center;padding:30px;text-align:center;font-size:15px;line-height:1.6;color:rgba(255,255,255,.8)}
+.cam-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+.cam-flash.go{animation:camflash .35s ease}
+@keyframes camflash{0%{opacity:.9}100%{opacity:0}}
+.cam-mode{display:flex;justify-content:center;gap:22px;font-size:14px;padding:14px 0 8px;letter-spacing:.5px;flex:none}
+.cam-mode span{color:rgba(255,255,255,.7)}
+.cam-mode b{color:#FFD60A;font-weight:600}
+.cam-bar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:8px 34px calc(var(--bottom) + 22px);flex:none}
+.cam-shutter{width:74px;height:74px;border-radius:50%;background:#fff;box-shadow:0 0 0 4px #000,0 0 0 7px #fff}
+.cam-shutter:active{transform:scale(.92)}
+.cam-side{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.14);display:grid;place-items:center;color:#fff;justify-self:end}
+.cam-side.thumb{border-radius:8px;justify-self:start}
+.cam-review{display:block;width:100%;max-height:60vh;object-fit:contain;border-radius:12px;margin:6px 0 4px;background:#000}
+
+/* 备忘录 */
+.note-row{display:block;width:100%;text-align:left;padding:11px 16px;position:relative}
+.note-row+.note-row::before{content:"";position:absolute;top:0;right:0;left:16px;height:.5px;background:var(--sys-sep)}
+.note-row b{display:block;font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.note-row small{display:block;font-size:15px;color:var(--sys-ink2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.note-row small span{color:var(--sys-ink)}
+.note-date{text-align:center;font-size:13px;color:var(--sys-ink2);padding:8px 0 4px;flex:none}
+.note-text{flex:1;min-height:0;border:0;outline:none;resize:none;background:var(--sys-bg);color:var(--sys-ink);font-size:17px;line-height:1.5;padding:6px 20px 20px}
+.note-text::first-line{font-weight:700;font-size:22px}
+
+/* 计算器 */
+.page.calc{background:#000;color:#fff}
+.calc-top{flex:1;display:flex;align-items:flex-end;justify-content:flex-end;padding:0 26px 10px}
+.calc-disp{font-size:84px;font-weight:300;letter-spacing:-2px;line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums}
+.calc-pad{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:0 16px calc(var(--bottom) + 30px);flex:none}
+.calc-key{height:80px;border-radius:40px;font-size:34px;text-align:center;background:#333;color:#fff;transition:filter .1s,background .2s,color .2s}
+.calc-key:active{filter:brightness(1.4)}
+.calc-key.fn{background:#A5A5A5;color:#000;font-size:28px;font-weight:500}
+.calc-key.op{background:#FF9F0A;font-size:38px}
+.calc-key.op.on{background:#fff;color:#FF9F0A}
+.calc-key.zero{grid-column:span 2;text-align:left;padding-left:30px}
+
+/* 计算器 iOS 18：左下角是切换计算器类型的按钮 */
+.calc-key.mode{display:grid;place-items:center}
+/* 相机：顶栏、变焦、更多模式 */
+.cam-top{display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px 8px}
+.cam-tb{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:#fff;background:rgba(255,255,255,.12)}
+span.cam-tb{background:none}
+.cam-zoom{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:8px;padding:4px;border-radius:20px;background:rgba(0,0,0,.25)}
+.cam-zoom button{width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;font-size:12px;font-weight:600}
+.cam-zoom button[aria-pressed=true]{width:40px;height:40px;margin:-3px 0;color:#FFD60A;font-size:13px}
+.cam-mode{gap:18px;font-size:13px;white-space:nowrap;overflow:hidden}
+/* 备忘录：黄色强调色 */
+.notes-app .ios-act,.notes-app .ios-back{color:#E5A100}
+.notes-app .ios-searchbox{margin-bottom:6px}
+/* 时钟 */
+.clock-tabs{display:grid;grid-template-columns:repeat(4,1fr);padding:6px 0 calc(var(--bottom) + 2px);border-top:.5px solid var(--sys-sep);background:var(--sys-glass);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);flex:none}
+.clock-tabs button{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;font-weight:500;color:var(--sys-ink3)}
+.clock-tabs button[aria-current=true]{color:#FF9500}
+.clock-list{margin-top:6px}
+.clock-row{display:flex;align-items:center;justify-content:space-between;padding:12px 2px;border-bottom:.5px solid var(--sys-sep)}
+.clock-row small{display:block;font-size:13px;color:var(--sys-ink2)}
+.clock-row b{display:block;font-size:24px;font-weight:400;margin-top:2px}
+.clock-row time{font-size:54px;font-weight:300;letter-spacing:-1.5px;font-variant-numeric:tabular-nums;line-height:1}
+.clock-row.slim{padding:11px 2px;font-size:16px;font-variant-numeric:tabular-nums}
+.clock-app .alarm time{font-size:50px}
+.sw-disp{font-size:86px;font-weight:200;letter-spacing:-2px;text-align:center;font-variant-numeric:tabular-nums;margin:90px 0 50px}
+.sw-disp.timer{margin-top:120px}
+.round-row{display:flex;justify-content:space-between;padding:0 8px}
+.round{width:82px;height:82px;border-radius:50%;display:grid;place-items:center;text-align:center;font-size:16px;font-weight:500;box-shadow:0 0 0 2px var(--sys-bg),0 0 0 4px currentColor}
+.round.gray{background:var(--sys-fill);color:var(--sys-ink)}
+.round.green{background:rgba(52,199,89,.2);color:#1F9D44}
+.round.red{background:rgba(255,59,48,.18);color:#E5342A}
+.round.orange{background:rgba(255,149,0,.2);color:#D97C00}
+.laps{margin-top:26px}
+.timer-picks{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px}
+.timer-picks button{background:var(--sys-card);border-radius:14px;padding:16px 0;font-size:13px;color:var(--sys-ink2);display:flex;flex-direction:column;align-items:center;gap:2px}
+.timer-picks b{font-size:30px;font-weight:300;color:var(--sys-ink)}

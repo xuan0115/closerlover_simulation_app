@@ -1,0 +1,20 @@
+/* 语音通话 */
+.call.overlay{position:absolute;inset:0;z-index:74;color:#fff;display:flex;flex-direction:column;align-items:center;opacity:0;transform:scale(1.04);transition:opacity .3s,transform .3s}
+.call.overlay.on{opacity:1;transform:none}
+.call-bg{position:absolute;inset:-40px;background-size:cover;background-position:center;filter:blur(36px) brightness(.45);z-index:-1}
+.call-top{display:flex;flex-direction:column;align-items:center;gap:10px;padding-top:calc(var(--top) + 70px)}
+.call-av{width:96px;height:96px;border-radius:12px;object-fit:cover;box-shadow:0 6px 24px rgba(0,0,0,.3)}
+.call-name{font-size:24px;font-weight:600;margin-top:6px}
+.call-status{font-size:15px;opacity:.75;font-variant-numeric:tabular-nums}
+.call-cap{margin:40px 30px 0;min-height:60px;text-align:center;font-size:18px;line-height:1.5;opacity:.95;max-width:320px}
+.call-btns{margin-top:auto;display:flex;justify-content:space-around;width:100%;padding:0 30px calc(var(--bottom) + 40px)}
+.call-btn{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:13px;color:#fff}
+.call-btn span{width:68px;height:68px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.2)}
+.call-btn.hang span{background:#FA5151}
+.call-btn.ok span{background:#07C160}
+.call-btn.talk span{background:rgba(255,255,255,.22)}
+.call-btn.talk.down span{background:#fff;color:#111}
+.call-type{display:flex;gap:8px;width:calc(100% - 40px);margin-bottom:16px}
+.call-type input{flex:1;height:40px;border:0;border-radius:20px;padding:0 14px;font-size:15px;background:rgba(255,255,255,.18);color:#fff;outline:none}
+.call-type input::placeholder{color:rgba(255,255,255,.6)}
+.call-type button{padding:0 16px;border-radius:20px;background:#07C160;color:#fff}

@@ -1,0 +1,197 @@
+/* 手机外壳、状态栏、锁屏、桌面、App 打开动画（尺寸参照 393×852 的 iPhone） */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue","PingFang SC","HarmonyOS Sans SC","Noto Sans SC","Microsoft YaHei",sans-serif;color:var(--sys-ink);background:var(--desk);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;overflow:hidden}
+button,input,textarea,select{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer;text-align:inherit}
+button:disabled{cursor:default}
+:focus-visible{outline:2px solid var(--sys-blue);outline-offset:2px;border-radius:8px}
+[hidden]{display:none!important}
+
+/* 电脑上：一台按比例缩放的手机 */
+.desk{height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px}
+.desk-note{font-size:12px;color:#6E6A88;text-align:center}
+@media (prefers-color-scheme:dark){.desk-note{color:#8b88a6}}
+.device{position:relative;padding:12px;border-radius:68px;flex:none;zoom:var(--z,1);
+  background:linear-gradient(105deg,#c4c5c8,#2a2b2e 5%,#121214 12%,#2f3033 90%,#a9aaad);
+  box-shadow:0 0 0 1px #6b6d70,0 0 0 2px #c0c1c3,0 30px 60px rgba(20,18,46,.3)}
+.device::before{content:"";position:absolute;right:-4px;top:200px;width:4px;height:96px;border-radius:0 3px 3px 0;background:linear-gradient(90deg,#5d5e61,#a9aaad)}
+.device::after{content:"";position:absolute;left:-4px;top:170px;width:4px;height:58px;border-radius:3px 0 0 3px;background:linear-gradient(90deg,#a9aaad,#5d5e61);box-shadow:0 78px 0 #8b8c8f}
+.phone{--top:59px;--bottom:30px;--dock-bottom:12px;--hp-top:80px;position:relative;width:393px;height:852px;border-radius:56px;overflow:hidden;overflow:clip;background:#000;isolation:isolate;user-select:none;-webkit-user-select:none}
+.phone input,.phone textarea{user-select:text;-webkit-user-select:text}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:126px;height:37px;border-radius:23px;background:#000;z-index:60;pointer-events:none}
+.island::after{content:"";position:absolute;right:13px;top:13px;width:11px;height:11px;border-radius:50%;background:#0d1020;box-shadow:inset 0 0 0 2px #161b2f}
+.statusbar{position:absolute;top:0;left:0;right:0;height:59px;display:flex;align-items:center;justify-content:space-between;padding:2px 30px 0 52px;font-weight:600;font-size:17px;letter-spacing:-.4px;z-index:55;pointer-events:none;color:var(--sys-ink);transition:color .2s}
+.sb-right{display:flex;align-items:center;gap:6px}
+.statusbar svg{display:block}
+.phone[data-ink=light] .statusbar{color:#fff}
+.homebar{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:200px;height:26px;z-index:58;display:grid;place-items:center;color:var(--sys-ink);cursor:grab;touch-action:none}
+.homebar::before{content:"";width:139px;height:5px;border-radius:3px;background:currentColor;opacity:.92;transition:transform .15s,opacity .15s}
+.homebar:hover::before{transform:scaleX(1.1);opacity:1}
+.phone[data-ink=light] .homebar{color:#fff}
+@media (prefers-color-scheme:dark){.phone .homebar,.phone .statusbar{color:#fff}}
+
+/* 在真手机上：铺满屏幕，不画假的刘海和状态栏；底部横条保留，轻点或上滑回桌面 */
+@media (max-width:520px),(display-mode:standalone){
+  .desk{padding:0;display:block}
+  .desk-note,.island,.statusbar{display:none}
+  .device{padding:0;border-radius:0;background:none;box-shadow:none;zoom:1}
+  .device::before,.device::after{display:none}
+  .phone{--top:max(env(safe-area-inset-top),14px);--bottom:calc(env(safe-area-inset-bottom,0px) + 24px);--dock-bottom:calc(env(safe-area-inset-bottom,0px) + 10px);width:100vw;height:100dvh;border-radius:0}
+  .homebar{bottom:env(safe-area-inset-bottom,0px)}
+}
+
+/* ---------- 屏幕层次：桌面垫底，App 从图标放大，锁屏盖在最上面 ---------- */
+.scr{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden}
+.home.scr{z-index:1;transition:transform .42s cubic-bezier(.2,.85,.25,1),filter .42s}
+.phone:not([data-screen=home]):not([data-screen=lock]) .home{transform:scale(.92);filter:brightness(.8)}
+.app.scr{z-index:3;visibility:hidden;opacity:0;transform:scale(.12);border-radius:56px;transform-origin:var(--ox,50%) var(--oy,92%);
+  transition:transform .44s cubic-bezier(.22,.9,.24,1),opacity .2s ease .12s,border-radius .44s,visibility 0s .46s}
+.app.scr.on{visibility:visible;opacity:1;transform:none;border-radius:0;z-index:4;
+  transition:transform .44s cubic-bezier(.22,.9,.24,1),opacity .16s ease,border-radius .44s,visibility 0s 0s}
+.app.scr.dragging{transition:none}
+@media (max-width:520px),(display-mode:standalone){.app.scr{border-radius:28px}}
+.lock.scr{z-index:8;transition:transform .42s cubic-bezier(.3,.8,.25,1),visibility 0s .44s;visibility:hidden;transform:translateY(-102%)}
+.lock.scr.on{visibility:visible;transform:none;transition:transform .42s cubic-bezier(.3,.8,.25,1),visibility 0s}
+.wall{position:absolute;inset:-2px;background-size:cover;background-position:center;z-index:-1}
+.wall.photo::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,8,30,.4) 0%,rgba(10,8,30,.04) 35%,rgba(10,8,30,.08) 60%,rgba(10,8,30,.45) 100%)}
+
+/* ---------- 锁屏 ---------- */
+.lock{color:#fff;touch-action:none}
+.lock-head{position:absolute;top:70px;left:0;right:0;text-align:center;pointer-events:none;display:flex;flex-direction:column;align-items:center}
+.lock-ic{opacity:.85;margin-bottom:8px}
+.lock-date{font-size:21px;font-weight:500}
+.lock-time{font-family:"SF Pro Display",-apple-system,"Helvetica Neue",sans-serif;font-size:104px;font-weight:600;line-height:1.05;letter-spacing:-4px;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.94)}
+.notes{position:absolute;left:9px;right:9px;bottom:118px;max-height:calc(100% - 330px);overflow:auto;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;scrollbar-width:none}
+.note{display:grid;grid-template-columns:38px 1fr;gap:10px;align-items:center;text-align:left;padding:12px 14px;border-radius:22px;background:rgba(246,246,246,.66);-webkit-backdrop-filter:blur(26px) saturate(1.7);backdrop-filter:blur(26px) saturate(1.7);color:#111;width:100%;flex:none}
+.note-av{position:relative;width:38px;height:38px}
+.note-av>img{width:38px;height:38px;border-radius:50%;object-fit:cover;display:block}
+.note-av .mini-app{position:absolute;right:-4px;bottom:-3px;box-shadow:0 0 0 1.5px rgba(246,246,246,.9)}
+.note-sys{width:38px;height:38px;border-radius:9px;display:grid;place-items:center}
+.note-top{display:flex;justify-content:space-between;gap:8px;font-size:15px;font-weight:600;line-height:1.25}
+.note-top time{font-weight:400;color:#555;font-size:13px;flex:none}
+.note p{font-size:15px;line-height:1.32;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin-top:1px}
+.more{text-align:center;font-size:13px;color:rgba(255,255,255,.8)}
+.round-btn{position:absolute;bottom:44px;width:50px;height:50px;border-radius:50%;background:rgba(36,36,36,.42);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);display:grid;place-items:center;color:#fff}
+.round-btn.left{left:46px}.round-btn.right{right:46px}
+.round-btn[aria-pressed=true]{background:#fff;color:#1b1846}
+.unlock{position:absolute;bottom:52px;left:50%;transform:translateX(-50%);color:#fff;font-size:14px;font-weight:500;white-space:nowrap;animation:unlock-hint 3s ease-in-out infinite}
+@keyframes unlock-hint{50%{opacity:.45;translate:0 -3px}}
+
+/* ---------- 桌面（照 iOS 26：大图标不显示名字、毛玻璃 Dock 和搜索条、文件夹） ---------- */
+.phone{--ic:74px;--row-gap:19px}
+.phone:not(.big-icons){--ic:62px;--row-gap:12px}
+.home{color:#fff}
+.home-pages{position:absolute;top:var(--hp-top);left:0;right:0;bottom:calc(var(--dock-bottom) + 150px);display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+.home-pages::-webkit-scrollbar{display:none}
+.home-page{flex:0 0 100%;scroll-snap-align:start;display:grid;grid-template-columns:repeat(4,var(--ic));justify-content:space-between;grid-auto-rows:var(--ic);row-gap:var(--row-gap);padding:0 20px;align-content:start}
+.phone:not(.big-icons) .home-page{grid-auto-rows:calc(var(--ic) + 21px);padding:0 24px}
+.app-ic{display:flex;flex-direction:column;align-items:center;gap:5px;position:relative;color:#fff;width:var(--ic);justify-self:center}
+.app-ic .lbl{font-size:12px;font-weight:500;line-height:16px;max-width:calc(var(--ic) + 18px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 4px rgba(0,0,0,.45)}
+.phone.big-icons .app-ic .lbl{display:none}
+.app-ic:active .squircle{filter:brightness(.78)}
+.app-ic .squircle{font-size:var(--ic);box-shadow:0 2px 10px rgba(0,0,0,.16)}
+
+/* 图标：1em 见方，圆角 26%，加一圈 iOS 26 的玻璃反光 */
+.squircle{width:1em;height:1em;font-size:60px;border-radius:.26em;display:block;position:relative;overflow:hidden;flex:none;line-height:0}
+.squircle>svg.art{position:absolute;inset:0;width:100%;height:100%;display:block}
+.squircle::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(165deg,rgba(255,255,255,.3),rgba(255,255,255,0) 40%);
+  box-shadow:inset 0 0 0 .012em rgba(255,255,255,.4),inset 0 .025em .02em -.005em rgba(255,255,255,.6),inset 0 -.02em .03em rgba(0,0,0,.1)}
+.squircle.light::after{background:linear-gradient(165deg,rgba(255,255,255,.6),rgba(255,255,255,0) 40%);box-shadow:inset 0 0 0 .012em rgba(0,0,0,.06),inset 0 -.02em .03em rgba(0,0,0,.06)}
+.squircle.custom::after{display:none}
+.squircle.folder{display:grid;grid-template-columns:repeat(3,1fr);align-content:start;justify-items:center;gap:.055em;padding:.12em;
+  background:rgba(255,255,255,.26)!important;-webkit-backdrop-filter:blur(18px) saturate(1.7);backdrop-filter:blur(18px) saturate(1.7)}
+.app-ic .folder .squircle{font-size:calc(var(--ic) * .2);box-shadow:none}
+.app-ic .folder .squircle::after{display:none}
+.badge{position:absolute;top:-8px;right:-9px;min-width:25px;height:25px;border-radius:13px;background:#FF3B30;color:#fff;font-size:15px;font-weight:500;display:grid;place-items:center;padding:0 7px;z-index:2;line-height:1}
+.phone:not(.big-icons) .badge{top:-7px;right:-8px;min-width:23px;height:23px;font-size:14px}
+
+/* 小组件 */
+.widget{border-radius:24px;padding:15px 16px;color:#fff;text-align:left;display:flex;flex-direction:column;overflow:hidden;
+  background:rgba(30,32,30,.28);-webkit-backdrop-filter:blur(30px) saturate(1.7);backdrop-filter:blur(30px) saturate(1.7);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),inset 0 1px 0 rgba(255,255,255,.3)}
+.widget.medium{grid-column:span 4;grid-row:span 2}
+.widget.small,.widget.cd{grid-column:span 2;grid-row:span 2}
+.widget.small{justify-content:space-between}
+.w-top{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:600}
+.w-top img{width:30px;height:30px;border-radius:50%;object-fit:cover}
+.w-top time{margin-left:auto;font-weight:400;opacity:.75;font-size:13px}
+.w-say{font-size:19px;line-height:1.4;font-weight:500;margin-top:12px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.w-say.quiet{opacity:.75;font-size:15px}
+.w-ic{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.2)}
+.widget.small.done .w-ic{background:#fff;color:#2c4a22}
+.w-big{font-size:17px;font-weight:600;line-height:1.25}
+.w-sub{font-size:13px;opacity:.75;margin-top:2px}
+/* 倒数日 */
+.widget.cd{padding:0;background:#fff;color:#111;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+.cd-head{background:linear-gradient(180deg,#3F8FDD,#2C74C2);color:#fff;font-size:15px;font-weight:700;padding:12px 14px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.2px}
+.cd-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:#fbfbfc linear-gradient(#eceff3 1px,transparent 1px) 0 0/9px 9px,linear-gradient(90deg,#eceff3 1px,transparent 1px) 0 0/9px 9px}
+.cd-num{font-family:"SF Pro Rounded","SF Pro Display",-apple-system,sans-serif;font-size:62px;font-weight:800;line-height:1;letter-spacing:-1px;font-variant-numeric:tabular-nums}
+.cd-date{font-size:13px;color:#6b6b70;margin-top:9px;font-variant-numeric:tabular-nums}
+
+/* 搜索条（左右滑时换成页码点） */
+.home-tools{position:absolute;left:0;right:0;bottom:calc(var(--dock-bottom) + 122px);height:30px;display:grid;place-items:center}
+.home-tools>*{grid-area:1/1;transition:opacity .2s}
+.home-search{display:flex;align-items:center;gap:5px;height:30px;padding:0 14px;border-radius:15px;font-size:13px;font-weight:500;color:#fff;
+  background:rgba(255,255,255,.16);-webkit-backdrop-filter:blur(16px) saturate(1.6);backdrop-filter:blur(16px) saturate(1.6);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.2),inset 0 1px 0 rgba(255,255,255,.35)}
+.home-dots{display:flex;gap:9px;height:30px;align-items:center;padding:0 12px;border-radius:15px;opacity:0;pointer-events:none;
+  background:rgba(255,255,255,.16);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+.home-dots button{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.4);padding:0}
+.home-dots button[aria-current=true]{background:#fff}
+.home-dots:empty{display:none}
+.home-tools.paging .home-search{opacity:0;pointer-events:none}
+.home-tools.paging .home-dots{opacity:1;pointer-events:auto}
+
+/* Dock：一整块毛玻璃，图标居中 */
+.dock{position:absolute;left:11px;right:11px;bottom:var(--dock-bottom);height:108px;border-radius:44px;display:flex;align-items:center;justify-content:center;gap:14px;padding:0 17px;
+  background:linear-gradient(180deg,rgba(255,255,255,.17),rgba(255,255,255,.07));
+  -webkit-backdrop-filter:blur(18px) saturate(1.7);backdrop-filter:blur(18px) saturate(1.7);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.2),inset 0 1.5px 0 rgba(255,255,255,.45),inset 0 -1px 0 rgba(255,255,255,.14),0 10px 30px rgba(0,0,0,.12)}
+.phone:not(.big-icons) .dock{height:96px;border-radius:38px}
+.dock .app-ic .lbl{display:none}
+
+/* 打开的文件夹 */
+.folder-pop{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  background:rgba(0,0,0,.06);-webkit-backdrop-filter:blur(28px) saturate(1.3);backdrop-filter:blur(28px) saturate(1.3);
+  opacity:0;visibility:hidden;transition:opacity .25s,visibility 0s .26s}
+.folder-pop.on{opacity:1;visibility:visible;transition:opacity .25s}
+.fp-title{font-size:34px;font-weight:700;letter-spacing:.3px;color:#fff;text-shadow:0 1px 10px rgba(0,0,0,.18)}
+.fp-panel{width:min(326px,calc(100% - 56px));border-radius:42px;padding:26px 24px;display:grid;grid-template-columns:repeat(3,var(--ic));justify-content:space-between;row-gap:24px;
+  background:rgba(255,255,255,.2);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.28),inset 0 1.5px 0 rgba(255,255,255,.5);transform:scale(.6);transition:transform .32s cubic-bezier(.2,.9,.25,1.05)}
+.folder-pop.on .fp-panel{transform:none}
+.phone:not(.big-icons) .fp-panel{row-gap:18px}
+.wall.blur{filter:blur(26px) saturate(1.2);transform:scale(1.15)}
+
+/* 状态栏：专注模式、5G / 无线局域网、飞行模式、电量格子 */
+.sb-left{display:flex;align-items:center;gap:5px}
+.sb-focus{display:flex}
+.sb-5g{font-size:15px;font-weight:600;letter-spacing:-.3px;line-height:1}
+.sb-plane{display:none!important}
+.phone.airplane .sb-plane{display:block!important}
+.phone.airplane .sb-signal,.phone.airplane .sb-wifi,.phone.airplane .sb-5g{display:none!important}
+.phone.wifi .sb-5g{display:none}
+.phone:not(.wifi) .sb-wifi{display:none}
+.battery{display:inline-flex;align-items:center;justify-content:center;gap:1px;min-width:27px;height:13.5px;padding:0 3px;border-radius:4.5px;background:currentColor;position:relative}
+.battery b{font-size:10.5px;font-weight:700;line-height:1}
+.battery::after{content:"";position:absolute;right:-3px;top:4.5px;width:1.6px;height:4.5px;border-radius:0 1px 1px 0;background:currentColor;opacity:.5}
+.sb-bolt{display:none}
+.phone.charging .sb-bolt{display:block}
+.phone[data-ink=light] .battery b,.phone[data-ink=light] .sb-bolt{color:#111}
+.phone:not([data-ink=light]) .battery b,.phone:not([data-ink=light]) .sb-bolt{color:var(--sys-card)}
+.phone.charging:not(.lowpower) .battery{background:#34C759!important}
+.phone.charging:not(.lowpower) .battery b,.phone.charging:not(.lowpower) .sb-bolt{color:#fff!important}
+.phone.lowpower .battery{background:#FFD60A!important}
+.phone.lowpower .battery b,.phone.lowpower .sb-bolt{color:#111!important}
+
+/* 真手机上：图标按屏幕宽度算 */
+@media (max-width:520px),(display-mode:standalone){
+  .phone{--ic:min(80px,calc((100vw - 97px) / 4));--hp-top:calc(var(--top) + 22px)}
+  .phone:not(.big-icons){--ic:min(66px,calc((100vw - 120px) / 4))}
+  .dock{height:calc(var(--ic) + 34px)}
+}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}

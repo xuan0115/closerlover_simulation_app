@@ -1,0 +1,42 @@
+/* 颜色。想换整体配色，只改这个文件。壁纸在 js/data/ui.js。 */
+:root{
+  /* 系统 App（设置、相册、日程） */
+  --sys-bg:#F2F2F7;
+  --sys-card:#FFFFFF;
+  --sys-ink:#000000;
+  --sys-ink2:rgba(60,60,67,.6);
+  --sys-ink3:rgba(60,60,67,.3);
+  --sys-sep:rgba(60,60,67,.2);
+  --sys-fill:rgba(120,120,128,.12);
+  --sys-blue:#007AFF;
+  --sys-red:#FF3B30;
+  --sys-green:#34C759;
+  --sys-glass:rgba(249,249,249,.86);
+
+  /* 聊天 App */
+  --wx-bg:#EDEDED;
+  --wx-bar:#F7F7F7;
+  --wx-card:#FFFFFF;
+  --wx-ink:#111111;
+  --wx-ink2:#888888;
+  --wx-ink3:#B2B2B2;
+  --wx-sep:#E5E5E5;
+  --wx-green:#07C160;
+  --wx-me:#95EC69;       /* 我的气泡 */
+  --wx-me-ink:#111111;
+  --wx-her:#FFFFFF;      /* 她的气泡 */
+  --wx-link:#576B95;     /* 朋友圈里的名字、链接 */
+  --wx-badge:#FA5151;    /* 未读红点 */
+  --wx-notice:#DADADA;
+
+  --desk:#D9D5E7;        /* 电脑上手机外面的背景 */
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --sys-bg:#000000;--sys-card:#1C1C1E;--sys-ink:#FFFFFF;--sys-ink2:rgba(235,235,245,.6);--sys-ink3:rgba(235,235,245,.3);
+    --sys-sep:rgba(84,84,88,.6);--sys-fill:rgba(120,120,128,.24);--sys-blue:#0A84FF;--sys-red:#FF453A;--sys-green:#30D158;--sys-glass:rgba(22,22,24,.86);
+    --wx-bg:#111111;--wx-bar:#1E1E1E;--wx-card:#191919;--wx-ink:rgba(255,255,255,.86);--wx-ink2:#7F7F7F;--wx-ink3:#5C5C5C;--wx-sep:#2A2A2A;
+    --wx-me:#3EB575;--wx-me-ink:#0B0B0B;--wx-her:#2C2C2C;--wx-link:#7D90A9;--wx-notice:#2C2C2C;
+    --desk:#0E0D1C;
+  }
+}
