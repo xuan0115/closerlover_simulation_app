@@ -1,7 +1,0 @@
-cd ~/Downloads/亲密爱人
-git init
-git add .
-git commit -m "亲密爱人"
-git branch -M main
-git remote add origin https://github.com/xuan0115/closerlover_simulation_app.git
-git push -u origin main
