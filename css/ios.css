@@ -128,3 +128,5 @@
 .wp-colors button{width:56px;height:56px;border-radius:50%}
 .wp-pg{margin-top:12px}
 .sb-wifi-ic{color:var(--sys-blue)}
+.wp-grid .w2.glass{background:rgba(40,40,40,.28)}
+.ios-row .val.locked{display:flex;align-items:center;gap:4px}

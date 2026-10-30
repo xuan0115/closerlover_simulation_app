@@ -121,10 +121,11 @@ function wpPreview(which) {
     box.append(el('div', { class: 'wp-date' }, `${d.getMonth() + 1}月${d.getDate()}日 星期${WD[d.getDay()]}`), el('div', { class: 'wp-time' }, hm(Date.now())));
   } else {
     const grid = el('div', { class: 'wp-grid' });
-    const items = HOME_LAYOUT.pages[0].map(it => it.startsWith('widget:') ? (it === 'widget:countdown' ? 'W2' : 'W4') : it);
+    const items = HOME_LAYOUT.pages[0].map(it => it.startsWith('widget:') ? (it === 'widget:countdown' ? 'W2' : it === 'widget:her' ? 'W2g' : 'W4') : it);
     for (const it of items) {
       if (it === 'W4') grid.append(el('span', { class: 'w4' }));
       else if (it === 'W2') grid.append(el('span', { class: 'w2' }));
+      else if (it === 'W2g') grid.append(el('span', { class: 'w2 glass' }));
       else { const st = APP_STYLE[it.startsWith('folder:') ? 'folder' : it] || {}; grid.append(el('span', { style: `background:${st.bg || 'rgba(255,255,255,.35)'}` })); }
     }
     box.append(grid, el('div', { class: 'wp-dock' }, ...HOME_LAYOUT.dock.map(id => el('span', { style: `background:${(APP_STYLE[id] || {}).bg}` }))));
@@ -177,10 +178,10 @@ function herPhotoPicker(p, re) {
   const ids = allPhotos();
   p.textContent = '';
   p.append(sheetHead(`${herName()}的照片`, el('button', { onclick: () => addWallSheet(re) }, '返回')));
-  const auto = el('button', { class: 'ios-row', onclick: () => { S.look.wall = 'her'; saveS(); closeSheet(); re && re(); renderHome(); toast('墙纸会跟着她最近发的照片换'); } },
-    el('span', { class: 'lbl' }, '总是用她最近发的那张'), S.look.wall === 'her' ? el('span', { class: 'check' }, icon('check', 20, 2.4)) : '');
+  const auto = el('button', { class: 'ios-row', onclick: () => { S.look.wall = 'her'; saveS(); closeSheet(); re && re(); renderHome(); toast(`墙纸会跟着${TA()}最近发的照片换`); } },
+    el('span', { class: 'lbl' }, `总是用${TA()}最近发的那张`), S.look.wall === 'her' ? el('span', { class: 'check' }, icon('check', 20, 2.4)) : '');
   p.append(iosGroup('', [auto]));
-  if (!ids.length) { p.append(el('p', { class: 'empty' }, '她还没发过照片。')); return; }
+  if (!ids.length) { p.append(el('p', { class: 'empty' }, `${TA()}还没发过照片。`)); return; }
   const g = el('div', { class: 'photo-grid wp-pg' });
   for (const ph of ids) {
     const im = el('img', { alt: '' }); setImg(im, ph.id);

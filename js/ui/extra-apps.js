@@ -66,7 +66,7 @@ function camMsg(t) { if (!CAM) return; CAM.msg.textContent = t; CAM.msg.hidden =
 async function startCamera() {
   if (!CAM) return;
   stopCamera();
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { camMsg('这个浏览器用不了相机。点左下角，从相册里选一张发给她。'); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { camMsg(`这个浏览器用不了相机。点左下角，从相册里选一张发给${TA()}。`); return; }
   try {
     const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: camFacing }, audio: false });
     if (cur !== 'camera') { s.getTracks().forEach(t => t.stop()); return; }
@@ -252,7 +252,7 @@ function clockRoot(pg, app) {
       const c = el('input', { type: 'checkbox', class: 'sw', 'aria-label': ev.label }); c.checked = ev.on;
       c.addEventListener('change', () => { ev.on = c.checked; saveS(); render(); });
       return el('label', { class: 'alarm' + (ev.on ? '' : ' off') }, el('div', {}, el('time', {}, ev.time), el('div', { class: 'lbl' }, ev.label, el('small', {}, '，' + daysText(ev.days)))), c);
-    }), `这些就是「设置 → ${zx()} → 她什么时候找你」里的时间。到点时她会发消息或打电话来。`));
+    }), `这些就是「设置 → ${zx()} → ${TA()}什么时候找你」里的时间。到点时${TA()}会发消息或打电话来。`));
   }
   function stopwatch() {
     const fmtSW = ms => `${pad(Math.floor(ms / 60000))}:${pad(Math.floor(ms / 1000) % 60)}.${pad(Math.floor(ms / 10) % 100)}`;

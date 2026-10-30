@@ -17,7 +17,7 @@ function photosRoot(pg, app) {
     body.textContent = '';
     body.append(el('h1', { class: 'ios-large' }, appDef('photos').label));
     const ids = allPhotos();
-    if (!ids.length) { body.append(el('p', { class: 'empty' }, '还没有照片。她发给你的、你拍给她的照片都会出现在这里。')); return; }
+    if (!ids.length) { body.append(el('p', { class: 'empty' }, `还没有照片。${TA()}发给你的、你拍给${TA()}的照片都会出现在这里。`)); return; }
     const g = el('div', { class: 'photo-grid' });
     for (const x of ids) { const im = el('img', { alt: x.d || '照片', loading: 'lazy' }); setImg(im, x.id); g.append(el('button', { 'aria-label': x.d || '照片', onclick: () => openViewer(x.id) }, im)); }
     body.append(g, el('p', { class: 'ios-foot', style: 'text-align:center;margin-top:12px' }, `${ids.length} 张照片`));
@@ -33,7 +33,7 @@ function poolPage(pg, app) {
   function render() {
     body.textContent = '';
     if (!POOL.length) {
-      body.append(el('p', { class: 'empty' }, '照片池是她「手机里的照片」。她要发照片时，会从这里挑一张发给你或发到朋友圈。每张写一句描述，她才知道照片里是什么（AI 模式会用到）。'),
+      body.append(el('p', { class: 'empty' }, `照片池是${TA()}「手机里的照片」。${TA()}要发照片时，会从这里挑一张发给你或发到朋友圈。每张写一句描述，${TA()}才知道照片里是什么（AI 模式会用到）。`),
         el('button', { class: 'btn primary wide', onclick: addPool }, '添加照片'));
       return;
     }

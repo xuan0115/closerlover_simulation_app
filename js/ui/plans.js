@@ -14,7 +14,7 @@ function daysText(ds) {
 
 function plansPage(pg, app) {
   const body = el('div', { class: 'ios-body' });
-  pg.append(iosNav(app, { title: '她什么时候找你', back: appDef('wx').label, right: el('button', { class: 'ios-act', 'aria-label': '添加', onclick: () => editEvent(null) }, icon('plus', 24, 2)) }), body);
+  pg.append(iosNav(app, { title: `${TA()}什么时候找你`, back: appDef('wx').label, right: el('button', { class: 'ios-act', 'aria-label': '添加', onclick: () => editEvent(null) }, icon('plus', 24, 2)) }), body);
   pg.refresh = render; render();
   function render() {
     body.textContent = '';
@@ -30,8 +30,8 @@ function plansPage(pg, app) {
       card.append(el('div', { class: 'alarm' + (ev.on ? '' : ' off'), role: 'button', tabindex: '0', onclick: () => editEvent(ev), onkeydown: e => { if (e.key === 'Enter') editEvent(ev); } },
         el('div', {}, el('time', {}, ev.time), el('div', { class: 'lbl' }, ev.label, el('small', {}, `，${daysText(ev.days)}${where}`))), sw));
     }
-    if (!evs.length) card.append(el('p', { class: 'empty' }, '她现在不会主动找你。点右上角的 + 添加。'));
-    body.append(card, el('p', { class: 'ios-foot' }, '网页开着时，她会在这些时间附近来找你；网页关着时，下次打开会补上最近错过的消息（最多 3 条）。实际时间每天在设定前后随机浮动，更像真人。'));
+    if (!evs.length) card.append(el('p', { class: 'empty' }, `${TA()}现在不会主动找你。点右上角的 + 添加。`));
+    body.append(card, el('p', { class: 'ios-foot' }, `网页开着时，${TA()}会在这些时间附近来找你；网页关着时，下次打开会补上最近错过的消息（最多 3 条）。实际时间每天在设定前后随机浮动，更像真人。`));
   }
 }
 
@@ -71,8 +71,8 @@ function editEvent(ev) {
       iosGroup('', [field('名字', label), field('大概几点', time), field('前后随机浮动（分钟）', jit), el('div', { class: 'ios-field' }, el('span', {}, '哪几天'), days)]),
       iosGroup('', [field('发到哪里', to), el('label', { class: 'ios-row' }, el('span', { class: 'lbl' }, '一定带照片'), ph)]),
       iosGroup('', [field('模板模式：用哪组台词', scene)], '台词在 js/data/templates.js，按场景分组。'),
-      iosGroup('', [field('AI 模式：这次她要做什么', pr)], 'AI 或混合模式下，这段话会告诉她这次该说什么。TA 指你。'),
-      el('div', { class: 'btnrow' }, el('button', { class: 'btn', onclick: () => { const e = commit(); close(); if (e.to === 'chat') { openApp('wx'); openThread(true); } else if (e.to === 'moments') toast('她正在发朋友圈'); enqueue(() => runEvent(e, { at: Date.now(), live: true })); } }, '现在就让她发')),
+      iosGroup('', [field(`AI 模式：这次${TA()}要做什么`, pr)], `AI 或混合模式下，这段话会告诉${TA()}这次该说什么。TA 指你。`),
+      el('div', { class: 'btnrow' }, el('button', { class: 'btn', onclick: () => { const e = commit(); close(); if (e.to === 'chat') { openApp('wx'); openThread(true); } else if (e.to === 'moments') toast(`${TA()}正在发朋友圈`); enqueue(() => runEvent(e, { at: Date.now(), live: true })); } }, `现在就让${TA()}发`)),
       isNew ? '' : el('div', { class: 'btnrow' }, el('button', { class: 'btn danger', onclick: () => { S.events = S.events.filter(x => x !== ev); saveS(); refreshTop(); close(); } }, '删除这条日程')));
   });
 }

@@ -230,3 +230,6 @@
 .mo-cm b{display:inline;font-size:14px}
 .mo-box .mo-likes{display:flex;align-items:center;gap:5px;color:var(--wx-link)}
 .wx-col>.wx-bubble.voice{max-width:none}
+.wx-gender{display:inline-grid;place-items:center;width:18px;height:18px;margin-left:6px;border-radius:50%;font-size:13px;font-weight:700;vertical-align:2px;color:#fff}
+.wx-gender.f{background:#FA5E8C}
+.wx-gender.m{background:#3E8BF0}

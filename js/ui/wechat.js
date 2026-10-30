@@ -11,7 +11,8 @@ let WXT = null;          // 当前打开的聊天页
 let typingOn = false;
 let quoteDraft = null;   // 正在引用的那条消息
 
-const zxName = () => appDef('wx').label;
+/* App 里的标题、「聊我号」用短名字；改过桌面上的名字就跟着改过的 */
+const zxName = () => ((S.home.wx && (S.home.wx.label || '').trim()) || APPS.wx.short || appDef('wx').label);
 const WX_TABS = [['chats', zxName, 'chat'], ['contacts', () => '通讯录', 'contacts'], ['discover', () => '发现', 'compass'], ['me', () => '我', 'person']];
 const EMOJI = ['😀', '😁', '😂', '🤣', '😊', '😍', '🥰', '😘', '😜', '🤪', '😎', '🥹', '😭', '😤', '😡', '🥱', '😴', '🤔', '🙄', '😳', '🫠', '🙃', '😇', '🤗', '👍', '👌', '🙏', '💪', '👏', '❤️', '💔', '🌹', '☕️', '🍜', '🍰', '🌙', '☀️', '🎉', '✨', '🐱'];
 
@@ -511,7 +512,7 @@ function wxProfilePage(pg) {
   function render() {
     body.textContent = '';
     body.append(el('div', { class: 'wx-profile' }, herAv(), el('div', {},
-      el('b', {}, herName()),
+      el('b', {}, herName(), el('span', { class: 'wx-gender ' + (S.her.gender === '男' ? 'm' : 'f'), 'aria-label': S.her.gender || '女' }, S.her.gender === '男' ? '♂' : '♀')),
       el('small', {}, `${zxName()}号：${zxId()}`),
       S.her.region ? el('small', {}, '地区：' + S.her.region) : '')));
     const thumbs = el('span', { class: 'wx-thumbs' });
@@ -671,8 +672,8 @@ function wxSettingsPage(pg) {
   pg.append(wxNav('设置'), el('div', { class: 'wx-scroll' },
     el('div', { class: 'wx-group' }, wxCell({ label: '新消息通知', onclick: () => Nav.push('wx', wxNotifyPage) })),
     el('div', { class: 'wx-group' }, wxCell({ label: '聊天', onclick: () => Nav.push('wx', wxChatSettings) }), wxCell({ label: '通用', onclick: () => Nav.push('wx', wxBlank('通用', '这里什么都没有。')) })),
-    el('div', { class: 'wx-group' }, wxCell({ label: `关于${zxName()}`, value: '版本 8.0', onclick: () => Nav.push('wx', wxBlank(`关于${zxName()}`, `${zxName()}是网页里模拟的聊天 App。${herName()}的消息由程序生成，不是真人。`)) })),
-    el('p', { class: 'wx-hint' }, `${herName()}的人设、日程和回复方式，在手机桌面的「设置 → ${zxName()}」里改。`)));
+    el('div', { class: 'wx-group' }, wxCell({ label: `关于${appDef('wx').label}`, value: '版本 8.0', onclick: () => Nav.push('wx', wxBlank(`关于${appDef('wx').label}`, `${appDef('wx').label}是网页里模拟的聊天 App。${herName()}的消息由程序生成，不是真人。`)) })),
+    el('p', { class: 'wx-hint' }, `${herName()}的人设、日程和回复方式，在手机桌面的「设置 → ${appDef('wx').label}」里改。`)));
 }
 function wxNotifyPage(pg) {
   pg.classList.add('wx');
@@ -684,12 +685,12 @@ function wxNotifyPage(pg) {
 }
 function wxChatSettings(pg) {
   pg.classList.add('wx');
-  const sel = el('select', { 'aria-label': '她发语音的频率' }, el('option', { value: 'never' }, '从不'), el('option', { value: 'sometimes' }, '偶尔'), el('option', { value: 'often' }, '经常'));
+  const sel = el('select', { 'aria-label': `${TA()}发语音的频率` }, el('option', { value: 'never' }, '从不'), el('option', { value: 'sometimes' }, '偶尔'), el('option', { value: 'often' }, '经常'));
   sel.value = S.zx.voice; sel.addEventListener('change', () => { S.zx.voice = sel.value; saveS(); });
   pg.append(wxNav('聊天'), el('div', { class: 'wx-scroll' },
     el('div', { class: 'wx-group' }, wxCell({ label: '聊天背景', onclick: () => Nav.push('wx', wxChatBgPage) })),
     el('div', { class: 'wx-group' }, el('label', { class: 'wx-cell noic' }, el('span', { class: 'lbl' }, `${herName()}发语音`), sel)),
-    el('p', { class: 'wx-hint' }, '她的语音用手机自带的中文朗读声音播放；长按语音可以转文字。')));
+    el('p', { class: 'wx-hint' }, `${TA()}的语音用手机自带的中文朗读声音播放；长按语音可以转文字。`)));
 }
 
 /* ---------- 搜索聊天记录 ---------- */

@@ -10,7 +10,8 @@
 const APP_TITLE = '亲密爱人';   // 浏览器标签页、添加到主屏幕时的名字
 
 const APPS = {
-  wx:         { label: '著信' },
+  /* 这个项目自己做的聊天 App。label 是桌面图标下的名字，short 用在 App 里的标题和「聊我号」 */
+  wx:         { label: 'chatwe聊我', short: '聊我' },
   settings:   { label: '设置' },
   camera:     { label: '相机' },                                       // iPhone 没有能跳转的地址，用仿真相机
   calc:       { label: '计算器' },                                     // 同上
@@ -36,27 +37,42 @@ const APPS = {
   wallet:     { label: '钱包',     ios: 'shoebox://' },
   shortcuts:  { label: '快捷指令', ios: 'shortcuts://' },
   voicememos: { label: '语音备忘录', ios: 'voicememos://' },           // ?
-  stocks:     { label: '股市',     ios: 'stocks://' }
+  stocks:     { label: '股市',     ios: 'stocks://' },
+  /* 第三方 App：手机上装了才能跳过去；没装的话网页会提示，然后打开说明页 */
+  xhs:        { label: '小红书',   ios: 'xhsdiscover://' },
+  meituan:    { label: '美团外卖', ios: 'meituanwaimai://' },
+  netease:    { label: '网易云音乐', ios: 'orpheus://' },
+  douban:     { label: '豆瓣',     ios: 'douban://' },
+  weread:     { label: '微信读书', ios: 'weread://' },
+  duolingo:   { label: '多邻国',   ios: 'duolingo://' },
+  xiaoyuzhou: { label: '小宇宙',   ios: 'cosmos://' },                 // ?
+  wxwork:     { label: '企业微信', ios: 'wxwork://' }
 };
 
 /*
  * 桌面布局：pages 是每一页从左到右、从上到下的内容（一页 4 列 6 行），dock 是最下面一排。
- *   'widget:her'        她最近的消息（4×2）
- *   'widget:countdown'  倒数日（2×2），在「设置 → 著信 → 倒数日」里改
- *   'widget:checkin'    学习、健身打卡（4×2）
+ *   'widget:her'        她最近的消息（2×2）
+ *   'widget:countdown'  倒数日（2×2），在「设置 → chatwe聊我 → 倒数日」里改，或者直接点它
+ *   'widget:checkin'    学习、健身打卡（两个 2×2）
  *   'folder:xxx'        文件夹，里面有什么写在 FOLDERS 里
+ * 第一页照 iPhone 出厂的首页排：上面两个小组件，下面 4×4 系统 App，Dock 是常用的四个。
  */
 const FOLDERS = {
-  tools:   { name: '实用工具', apps: ['calc', 'voicememos', 'wallet', 'shortcuts', 'findmy', 'stocks'] },
-  enjoy:   { name: '娱乐',     apps: ['books', 'podcasts', 'tv', 'appstore'] }
+  tools: { name: '实用工具', apps: ['calc', 'voicememos', 'findmy', 'shortcuts', 'stocks'] }
 };
 const HOME_LAYOUT = {
   pages: [
-    ['widget:her', 'photos', 'calendar', 'camera', 'weather', 'notes', 'reminders', 'clock', 'maps',
-     'mail', 'health', 'widget:countdown', 'safari', 'folder:tools'],
-    ['settings', 'folder:enjoy', 'facetime', 'files', 'widget:checkin']
+    ['widget:her', 'widget:countdown',
+     'facetime', 'calendar', 'photos', 'camera',
+     'mail', 'notes', 'reminders', 'clock',
+     'weather', 'tv', 'files', 'appstore',
+     'maps', 'health', 'wallet', 'settings'],
+    ['xhs', 'meituan', 'netease', 'douban',
+     'weread', 'books', 'podcasts', 'duolingo',
+     'xiaoyuzhou', 'wxwork', 'folder:tools',
+     'widget:checkin']
   ],
-  dock: ['messages', 'wx', 'music']
+  dock: ['wx', 'safari', 'messages', 'music']
 };
 
 /* 精选墙纸：draw 是用代码画的，css 是一段 CSS background。自己的照片在「设置 → 墙纸」里选 */

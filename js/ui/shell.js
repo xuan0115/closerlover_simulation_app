@@ -275,7 +275,7 @@ function renderLock() {
     box.append(el('button', { class: 'note', onclick: () => unlock() },
       el('span', { class: 'note-sys' }, appIcon('settings', 38)),
       el('div', {}, el('div', { class: 'note-top' }, el('span', {}, APPS.settings.label), el('time', {}, '现在')),
-        el('p', {}, '先告诉她是谁、你们是什么关系，然后就能开始收到她的消息。'))));
+        el('p', {}, `先告诉${TA()}是谁、你们是什么关系，然后就能开始收到${TA()}的消息。`))));
     return;
   }
   const un = unreadList();
@@ -351,23 +351,25 @@ function renderHome() {
       if (it.startsWith('folder:')) { pg.append(folderButton(it.slice(7))); continue; }
       const w = it.startsWith('widget:') ? it.slice(7) : null;
       if (!w) { if (APPS[it]) pg.append(appButton(it)); continue; }
+      const cell = (lbl, w) => el('div', { class: 'wcell' }, w, el('span', { class: 'lbl' }, lbl));
       if (w === 'her') {
         const last = [...M].reverse().find(m => m.from === 'her');
         const av = el('img', { alt: '' }); setAvatar(av);
-        pg.append(el('button', { class: 'widget medium her', onclick: () => { if (!ST.started) return unlock(); openApp('wx'); openThread(true); } },
-          el('div', { class: 'w-top' }, av, el('span', {}, herName()), last ? el('time', {}, relTime(last.ts)) : ''),
-          last ? el('div', { class: 'w-say' }, preview(last)) : el('div', { class: 'w-say quiet' }, ST.started ? '还没有消息' : '先去「设置」告诉她你是谁')));
+        pg.append(cell(appDef('wx').label, el('button', { class: 'widget her2', 'aria-label': `${herName()}的消息`, onclick: () => { if (!ST.started) return unlock(); openApp('wx'); openThread(true); } },
+          el('div', { class: 'w-top' }, av, el('span', {}, herName())),
+          last ? el('div', { class: 'w-say' }, preview(last)) : el('div', { class: 'w-say quiet' }, ST.started ? '还没有消息' : '先去「设置」设定人物'),
+          last ? el('time', { class: 'w-time' }, relTime(last.ts)) : '')));
       }
       if (w === 'countdown') {
         const k = countdownInfo();
-        pg.append(el('button', { class: 'widget cd', 'aria-label': `${k.title}${k.past ? '已经' : '还有'} ${k.days} 天`, onclick: () => editCountdown() },
+        pg.append(cell('倒数日', el('button', { class: 'widget cd', 'aria-label': `${k.title}${k.past ? '已经' : '还有'} ${k.days} 天`, onclick: () => editCountdown() },
           el('div', { class: 'cd-head' }, `${k.title} ${k.past ? '已经' : '还有'}`),
-          el('div', { class: 'cd-body' }, el('div', { class: 'cd-num' }, String(k.days)), el('div', { class: 'cd-date' }, `${k.date} 星期${k.wd}`))));
+          el('div', { class: 'cd-body' }, el('div', { class: 'cd-num' }, String(k.days)), el('div', { class: 'cd-date' }, `${k.date} 星期${k.wd}`)))));
       }
       if (w === 'checkin') {
-        const small = (kind, ic, label) => el('button', { class: 'widget small' + (c[kind] ? ' done' : ''), onclick: () => askCheckin(kind) },
+        const small = (kind, ic, label) => cell(`${label}打卡`, el('button', { class: 'widget small' + (c[kind] ? ' done' : ''), onclick: () => askCheckin(kind) },
           el('span', { class: 'w-ic' }, icon(ic, 20, 2)),
-          el('div', {}, el('div', { class: 'w-big' }, c[kind] ? `${label}已打卡` : `今天还没${label}`), el('div', { class: 'w-sub' }, c[kind] ? hm(c[kind]) : '轻点打卡')));
+          el('div', {}, el('div', { class: 'w-big' }, c[kind] ? `${label}已打卡` : `今天还没${label}`), el('div', { class: 'w-sub' }, c[kind] ? hm(c[kind]) : '轻点打卡'))));
         pg.append(small('study', 'book', '学习'), small('gym', 'dumbbell', '健身'));
       }
     }

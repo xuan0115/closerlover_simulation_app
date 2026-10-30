@@ -27,6 +27,15 @@ const PROMPTS = {
     photo: '发照片'
   },
 
+  /* 社会人设：拼进「你是谁」 */
+  social: ({ gender, edu, major, job, siblings }) => [
+    gender && `性别：${gender}`,
+    edu && `学历：${edu}${major ? `，专业是${major}` : ''}`,
+    job && `工作：${job}`,
+    siblings && `家里：${siblings}`
+  ].filter(Boolean).join('\n'),
+  income: tier => `经济状况：${tier}。这是你的生活背景，体现在你平时吃什么、怎么约会、送什么礼物上；不要主动说出收入数字。`,
+
   /* 星座：拼进「你是谁」 */
   zodiac: ({ sign, traits }) => `星座：${sign}${traits ? `（大家印象里${sign}${traits}，你多少有一点，但你首先是你自己）` : ''}。偶尔可以聊到星座，别每次都提。`,
   myZodiac: ({ ta, sign }) => `${ta}是${sign}`,

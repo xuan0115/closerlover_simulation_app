@@ -21,7 +21,12 @@ function buildSystem(at) {
 
   L.push(PROMPTS.intro({ nm, me: myName(), ta }));
   const z = h.zodiac && ZODIAC[h.zodiac];
-  sec(T.identity, [h.identity, h.region && `住在：${h.region}`, h.signature && `个性签名：${h.signature}`, z && PROMPTS.zodiac({ sign: h.zodiac, traits: z.traits })].filter(Boolean).join('\n'));
+  const edu = EDU_LEVELS[h.edu];
+  sec(T.identity, [
+    PROMPTS.social({ gender: h.gender, edu: edu && edu.label, major: edu && edu.major && h.major, job: h.job, siblings: SIBLINGS[h.siblings] }),
+    h.region && `所在地：${h.region}`, h.identity, h.signature && `个性签名：${h.signature}`,
+    PROMPTS.income(INCOME_TIERS[herIncome()]),
+    z && PROMPTS.zodiac({ sign: h.zodiac, traits: z.traits })].filter(Boolean).join('\n'));
   sec(T.personality, h.personality);
   sec(T.style, h.style);
   sec(T.routine, h.routine);
@@ -118,7 +123,7 @@ async function resolvePhoto(p) {
     const min = pool[0].sent || 0;
     item = pick(pool.filter(x => (x.sent || 0) === min));
   }
-  if (!item && gen) return makePhoto(p.scene || `${partOfDay()}随手拍的一张日常自拍，符合她此刻在做的事`);
+  if (!item && gen) return makePhoto(p.scene || `${partOfDay()}随手拍的一张日常自拍，符合${TA()}此刻在做的事`);
   if (!item) return null;
   item.sent = (item.sent || 0) + 1; item.lastSent = Date.now(); savePool();
   return { imageId: item.imageId, desc: (item.desc || '').trim() || '一张照片' };
@@ -211,7 +216,7 @@ async function herTurn({ kind, ev = null, at = Date.now(), live = true, unreplie
       const g = GIFTS.find(x => x.name === o.gift) || GIFTS[0];
       items.push({ type: 'gift', name: g.name, emoji: g.emoji, note: o.by === 'template' ? tplPick('giftNote')[0] : '' });
     }
-    if (!items.length) throw new Error('她这次什么也没说');
+    if (!items.length) throw new Error(`${TA()}这次什么也没说`);
 
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
@@ -223,7 +228,7 @@ async function herTurn({ kind, ev = null, at = Date.now(), live = true, unreplie
       addMsg(Object.assign({ id: uid('m'), from: 'her', ts: live ? Date.now() : at + i * 20000 }, it));
     }
   } catch (e) {
-    addSys((live ? '她的消息没收到：' : `${hm(at)} 那条消息没收到：`) + e.message, retry);
+    addSys((live ? `${TA()}的消息没收到：` : `${hm(at)} 那条消息没收到：`) + e.message, retry);
   } finally {
     if (live) setTyping(false);
   }

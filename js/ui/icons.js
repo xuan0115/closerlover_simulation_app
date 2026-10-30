@@ -66,6 +66,7 @@ const ICONS = {
   alarm: '<circle cx="12" cy="13" r="7.5"/><path d="M12 9v4l2.5 2M4 5l3-2.5M20 5l-3-2.5"/>',
   stopwatch: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M10 2.5h4M18.5 6.5l1.5-1.5"/>',
   timer: '<circle cx="12" cy="12" r="9"/><path d="M12 3v3M12 12l4-4"/>',
+  lock: '<rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   wifi: '<path d="M4 9.5a11.5 11.5 0 0 1 16 0M7 12.5a7.2 7.2 0 0 1 10 0M10 15.5a3 3 0 0 1 4 0"/><circle cx="12" cy="18.5" r=".9" fill="currentColor"/>',
   bluetooth: '<path d="M7 7.5l10 9-5 4.5V3l5 4.5-10 9"/>',
   antenna: '<path d="M12 10v10M8.5 7a5 5 0 0 1 7 0M6 4.5a8.5 8.5 0 0 1 12 0"/><circle cx="12" cy="9.5" r="1.4"/>',
@@ -130,8 +131,8 @@ function calendarArt() {
   return T(50, 31, 17, '#FF3B30', '周' + WD[d.getDay()], 500) + T(50, 81, 52, '#1c1c1e', d.getDate(), 300);
 }
 const APP_ART = {
-  wx:        { bg: 'linear-gradient(180deg,#5EE07F 0%,#12B84E 100%)',
-               svg: '<path d="M50 22c-19 0-34 12-34 27 0 8 4 15 11 20l-3 10 11-6c4 1 9 2 15 2 19 0 34-12 34-26S69 22 50 22z" fill="#fff"/>' + T(50, 59, 28, '#12B84E', '著', 600) },
+  wx:        { bg: 'linear-gradient(180deg,#5EE07F 0%,#12B84E 100%)',   // 一个笑脸泡泡
+               svg: '<path d="M50 19c-19.5 0-35 13-35 29.5 0 9.4 5 17.7 12.8 23.1L24.5 82l12-6.2c4.2 1.4 8.7 2.1 13.5 2.1 19.5 0 35-13 35-29.4S69.5 19 50 19z" fill="#fff"/><circle cx="38.5" cy="44" r="4.6" fill="#12B84E"/><circle cx="61.5" cy="44" r="4.6" fill="#12B84E"/><path d="M37 55.5c3.4 5.2 8 7.8 13 7.8s9.6-2.6 13-7.8" stroke="#12B84E" stroke-width="4.4" fill="none" stroke-linecap="round"/>' },
   messages:  { bg: 'linear-gradient(180deg,#6BF08A 0%,#17C445 100%)',
                svg: '<path d="M50 20c-20 0-36 13-36 29 0 9 5 17 13 22-1 5-4 9-8 12 7 0 13-3 17-6 4 1 9 2 14 2 20 0 36-13 36-30S70 20 50 20z" fill="#fff"/>' },
   photos:    { bg: '#fff', light: true,
@@ -182,6 +183,23 @@ const APP_ART = {
                svg: '<circle cx="34" cy="34" r="13" fill="#5c5c60"/><circle cx="66" cy="34" r="13" fill="#FF9F0A"/><circle cx="34" cy="66" r="13" fill="#5c5c60"/><circle cx="66" cy="66" r="13" fill="#FF9F0A"/><g stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M28 34h12M60 34h12M66 28v12M28 66h12M60 62h12M60 70h12"/></g>' },
   settings:  { bg: 'linear-gradient(180deg,#B8B8BE 0%,#6E6E76 100%)',
                svg: () => `<path d="${gearPath(50, 50, 38, 32, 18, 0)}" fill="#3d3d42"/><circle cx="50" cy="50" r="29" fill="#d9d9de"/><circle cx="50" cy="50" r="24" fill="#8e8e93"/><path d="${gearPath(50, 50, 22, 18, 10, 7)}" fill="#ececef" fill-rule="evenodd"/>` },
+  /* 第三方 App：都是通用图案，不是它们的标志 */
+  xhs:       { bg: 'linear-gradient(180deg,#FF6B7A 0%,#F2334D 100%)',
+               svg: '<rect x="27" y="22" width="46" height="58" rx="7" fill="#fff"/><path d="M36 38h28M36 49h28M36 60h17" stroke="#F2334D" stroke-width="4" stroke-linecap="round"/><path d="M66 58l3.2 6.5 7.2 1-5.2 5 1.2 7.1-6.4-3.4-6.4 3.4 1.2-7.1-5.2-5 7.2-1z" fill="#FFC93C" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>' },
+  meituan:   { bg: 'linear-gradient(180deg,#FFD84D 0%,#FFB800 100%)',
+               svg: '<path d="M22 50h56a28 28 0 0 1-56 0z" fill="#fff"/><path d="M30 46c2-14 38-14 40 0" fill="#fff" opacity=".55"/><path d="M60 22l-10 22M68 24L56 45" stroke="#7A4B00" stroke-width="3.5" stroke-linecap="round"/><path d="M40 60h20" stroke="#FFB800" stroke-width="3.5" stroke-linecap="round"/>' },
+  netease:   { bg: 'linear-gradient(180deg,#F04A4A 0%,#C9161D 100%)',
+               svg: '<circle cx="50" cy="50" r="28" fill="#1d1d1f"/><circle cx="50" cy="50" r="21" fill="none" stroke="#3a3a3e" stroke-width="1.5"/><circle cx="50" cy="50" r="14" fill="none" stroke="#3a3a3e" stroke-width="1.5"/><circle cx="50" cy="50" r="9" fill="#fff"/><circle cx="50" cy="50" r="2.6" fill="#C9161D"/>' },
+  douban:    { bg: 'linear-gradient(180deg,#4CCB6A 0%,#1F9E47 100%)',
+               svg: '<rect x="20" y="30" width="60" height="40" rx="6" fill="#fff"/><path d="M20 40h60M20 60h60" stroke="#1F9E47" stroke-width="2.5"/><g fill="#1F9E47"><rect x="25" y="32.5" width="5" height="5" rx="1"/><rect x="38" y="32.5" width="5" height="5" rx="1"/><rect x="51" y="32.5" width="5" height="5" rx="1"/><rect x="64" y="32.5" width="5" height="5" rx="1"/><rect x="25" y="62.5" width="5" height="5" rx="1"/><rect x="38" y="62.5" width="5" height="5" rx="1"/><rect x="51" y="62.5" width="5" height="5" rx="1"/><rect x="64" y="62.5" width="5" height="5" rx="1"/></g><path d="M46 44l9 6-9 6z" fill="#1F9E47"/>' },
+  weread:    { bg: 'linear-gradient(180deg,#3FA9F5 0%,#1677D9 100%)',
+               svg: '<path d="M50 30c-8-5-19-6-28-4v44c9-2 20-1 28 4 8-5 19-6 28-4V26c-9-2-20-1-28 4z" fill="#fff"/><path d="M50 30v44" stroke="#1677D9" stroke-width="2.5"/><path d="M62 24v18l5-4 5 4V24" fill="#FFC93C"/>' },
+  duolingo:  { bg: 'linear-gradient(180deg,#6BD83A 0%,#3FAE15 100%)',
+               svg: '<rect x="16" y="24" width="40" height="32" rx="8" fill="#fff"/><path d="M26 56l-4 9 11-9z" fill="#fff"/>' + T(36, 48, 20, '#3FAE15', '文', 700) + '<rect x="46" y="44" width="38" height="30" rx="8" fill="#235E0A"/><path d="M74 74l4 8-11-8z" fill="#235E0A"/>' + T(65, 66, 19, '#fff', 'A', 700) },
+  xiaoyuzhou:{ bg: 'linear-gradient(160deg,#2B2F6B 0%,#111432 100%)',
+               svg: '<path d="M30 54a20 20 0 0 1 40 0" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="25" y="52" width="10" height="17" rx="4" fill="#fff"/><rect x="65" y="52" width="10" height="17" rx="4" fill="#fff"/><circle cx="70" cy="27" r="3" fill="#FFD84D"/><circle cx="28" cy="31" r="2" fill="#9fa8ff"/><circle cx="80" cy="44" r="1.6" fill="#fff"/>' },
+  wxwork:    { bg: 'linear-gradient(180deg,#3E8BF0 0%,#1E5FD1 100%)',
+               svg: '<rect x="20" y="36" width="60" height="40" rx="7" fill="#fff"/><path d="M40 36v-6a4 4 0 0 1 4-4h12a4 4 0 0 1 4 4v6" stroke="#fff" stroke-width="4.5" fill="none"/><path d="M20 52h60" stroke="#1E5FD1" stroke-width="3"/><rect x="45" y="48" width="10" height="9" rx="2" fill="#1E5FD1"/>' },
   folder:    { bg: 'rgba(255,255,255,.32)', svg: '' }
 };
 const APP_STYLE = APP_ART; // 旧名字

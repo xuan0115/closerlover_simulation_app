@@ -150,7 +150,7 @@ async function connectCall() {
     talk.addEventListener('pointerup', up); talk.addEventListener('pointerleave', up);
   }
   const typeIn = !SR ? el('form', { class: 'call-type', onsubmit: e => { e.preventDefault(); const v = inp.value.trim(); if (v) { inp.value = ''; herCallTurn(v); } } }) : null;
-  const inp = el('input', { placeholder: '浏览器不能识别语音，打字说给她听', 'aria-label': '说给她听' });
+  const inp = el('input', { placeholder: `浏览器不能识别语音，打字说给${TA()}听`, 'aria-label': `说给${TA()}听` });
   if (typeIn) typeIn.append(inp, el('button', {}, '说'));
   Call.btns.append(...[talk, callBtn('挂断', 'hang', () => endCall('done'))].filter(Boolean));
   if (typeIn) Call.btns.before(typeIn);

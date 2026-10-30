@@ -81,7 +81,7 @@ function settingsRoot(pg, app) {
     body.append(el('h1', { class: 'ios-large' }, APPS.settings.label),
       el('div', { class: 'ios-searchbox' }, icon('search', 17, 2), '搜索'));
     if (!ST.started) body.append(el('div', { class: 'intro' },
-      el('p', {}, `先到下面「App」里的「${zx()}」，设定她是谁、你们是什么关系。回复方式默认是固定模板，不用填任何 Key 就能用。`),
+      el('p', {}, `先到下面「App」里的「${zx()}」，设定${TA()}是谁、你们是什么关系。回复方式默认是固定模板，不用填任何 Key 就能用。`),
       el('button', { class: 'btn primary wide', onclick: start }, '设好了，开始')));
     const av = el('img', { alt: '' }); setMyAvatar(av);
     body.append(el('div', { class: 'ios-card', style: 'margin-top:14px' }, el('button', { class: 'profile-card', onclick: go(settingsMePage) }, av,
@@ -121,14 +121,14 @@ function settingsZxPage(pg, app) {
     const go = fn => () => Nav.push(app, p => fn(p, app));
     const av = el('img', { alt: '' }); setAvatar(av);
     b.append(el('div', { class: 'ios-card', style: 'margin-top:14px' }, el('button', { class: 'profile-card', onclick: go(settingsHerPage) }, av,
-      el('div', { style: 'flex:1;min-width:0' }, el('b', {}, herName()), el('small', {}, [S.her.zodiac, TEMPLATE_TYPES[S.her.type]].filter(Boolean).join('，') + '，人设与外貌')),
+      el('div', { style: 'flex:1;min-width:0' }, el('b', {}, herName()), el('small', {}, [S.her.gender, S.her.zodiac, (S.her.job || '').split(/[，,]/)[0]].filter(Boolean).join(' · ') || '基本人设、社会人设')),
       el('span', { style: 'color:var(--sys-ink3)' }, icon('chevron', 18, 2.2)))));
-    b.append(iosGroup('她', [
-      iosLink({ ic: 'heart', color: '#FF2D55', label: '她的人设', onclick: go(settingsHerPage) }),
+    b.append(iosGroup(`${TA()}`, [
+      iosLink({ ic: 'heart', color: '#FF2D55', label: `${TA()}的人设`, onclick: go(settingsHerPage) }),
       iosLink({ ic: 'link', color: '#FF375F', label: '你们的关系', value: S.her.callMe ? `叫你「${S.her.callMe}」` : '', onclick: go(settingsRelPage) }),
-      iosLink({ ic: 'note', color: '#FF9F0A', label: '她记得的事', value: S.memory.length ? `${S.memory.length} 条` : '', onclick: go(settingsMemoryPage) })]));
+      iosLink({ ic: 'note', color: '#FF9F0A', label: `${TA()}记得的事`, value: S.memory.length ? `${S.memory.length} 条` : '', onclick: go(settingsMemoryPage) })]));
     b.append(iosGroup('互动', [
-      iosLink({ ic: 'clock', color: '#30B0C7', label: '她什么时候找你', value: `${S.events.filter(e => e.on).length} 条`, onclick: go(plansPage) }),
+      iosLink({ ic: 'clock', color: '#30B0C7', label: `${TA()}什么时候找你`, value: `${S.events.filter(e => e.on).length} 条`, onclick: go(plansPage) }),
       iosLink({ ic: 'calendar', color: '#FF3B30', label: '倒数日', value: S.countdown.title, onclick: () => editCountdown(() => Nav.refresh(app)) }),
       iosLink({ ic: 'photo', color: '#FF9500', label: '照片池', value: POOL.length ? `${POOL.length} 张` : '', onclick: go(poolPage) }),
       iosLink({ ic: 'sparkle', color: '#AF52DE', label: '回复方式', value: REPLY_MODES[S.reply.mode].label, onclick: go(settingsReplyPage) }),
@@ -139,28 +139,37 @@ function settingsZxPage(pg, app) {
 
 /* ---------- 她 ---------- */
 function settingsHerPage(pg, app) {
-  subPage(pg, app, '她的人设', (b, re) => {
-    const z = S.her.zodiac && ZODIAC[S.her.zodiac];
-    b.append(iosGroup('', [avatarRow('her', re), fText('her.name', '名字'),
+  subPage(pg, app, `${TA()}的人设`, (b, re) => {
+    const z = S.her.zodiac && ZODIAC[S.her.zodiac], edu = EDU_LEVELS[S.her.edu];
+    const title = () => { const h = pg.querySelector('.ios-nav h2'); if (h) h.textContent = `${TA()}的人设`; };
+    b.append(iosGroup('基本人设', [avatarRow('her', re), fText('her.name', '名字'),
+      fSelect('her.gender', '性别', [['女', '女'], ['男', '男']], () => { title(); re(); }),
       fSelect('her.zodiac', '星座', zodiacOpts(), re),
-      fText('her.region', '地区', { ph: '比如：浙江 杭州' }),
-      fText('her.signature', '个性签名')],
-      z ? `${S.her.zodiac}给人的印象：${z.traits}。AI 模式会参考，模板模式下她偶尔会聊到星座（台词在 js/data/zodiac.js）。` : '星座会出现在她的资料页，也会影响她偶尔说的话。'));
+      fText('her.region', '所在地', { ph: '比如：上海 杨浦' })],
+      z ? `${S.her.zodiac}给人的印象：${z.traits}。AI 模式会参考，模板模式下${TA()}偶尔会聊到星座。` : `星座会出现在${TA()}的资料页，也会影响${TA()}偶尔说的话。`));
+    const social = [fSelect('her.edu', '学历', [['', '不设定'], ...Object.entries(EDU_LEVELS).map(([k, v]) => [k, v.label])], re)];
+    if (edu && edu.major) social.push(fText('her.major', '专业', { ph: '比如：社会学、临床医学' }));
+    social.push(
+      fText('her.job', '工作', { ph: '比如：插画师、在读研究生、公务员' }),
+      fSelect('her.siblings', '家庭情况', [['', '不设定'], ...Object.entries(SIBLINGS)]),
+      el('div', { class: 'ios-row' }, el('span', { class: 'lbl' }, '收入状况'), el('span', { class: 'val locked' }, icon('lock', 15, 2), '系统生成')));
+    b.append(iosGroup('社会人设', social, `AI 模式下，这些会写进${TA()}的设定，影响${TA()}聊的话题和生活细节。收入状况由系统根据学历、工作和所在地生成，你看不到，${TA()}也不会直接说出来。`));
     b.append(iosGroup('性格', [
       fSelect('her.type', '模板模式的语气', Object.entries(TEMPLATE_TYPES), re),
       fArea('her.personality', '性格（AI 用，自由描述）'),
       fArea('her.style', '说话方式（AI 用）', '口头禅、语气、爱不爱用表情')],
       '固定模板模式只认上面的「语气」，三种台词在 js/data/templates.js 里，可以自己改、自己加。'));
-    b.append(iosGroup('她的生活', [
-      fArea('her.identity', '她是谁', '年龄、职业、住在哪、养了什么……'),
-      fArea('her.routine', '她平时的一天', '她每天大概在做什么，聊天时会用上'),
-      fArea('her.looks', '外貌', '只在 AI 生成照片时用')]));
+    b.append(iosGroup(`${TA()}的生活`, [
+      fArea('her.identity', '补充说明', '年龄、一个人住还是和家人住、养了什么……'),
+      fArea('her.routine', `${TA()}平时的一天`, `${TA()}每天大概在做什么，聊天时会用上`),
+      fArea('her.looks', '外貌', '只在 AI 生成照片时用'),
+      fText('her.signature', '个性签名')]));
   });
 }
 function settingsRelPage(pg, app) {
   subPage(pg, app, '你们的关系', b => {
-    b.append(iosGroup('', [fArea('her.relationship', '你们是什么关系', '恋人、暧昧、青梅竹马、学姐……认识多久，怎么相处')], 'AI 模式会按这段话决定她跟你说话的分寸。'),
-      iosGroup('', [fText('her.callMe', '她平时怎么叫你', { ph: '一个短称呼，比如：笨蛋、宝、小炫' })], '模板里的 {称呼} 就是它。'));
+    b.append(iosGroup('', [fArea('her.relationship', '你们是什么关系', '恋人、暧昧、青梅竹马、学姐……认识多久，怎么相处')], `AI 模式会按这段话决定${TA()}跟你说话的分寸。`),
+      iosGroup('', [fText('her.callMe', `${TA()}平时怎么叫你`, { ph: '一个短称呼，比如：笨蛋、宝、小炫' })], '模板里的 {称呼} 就是它。'));
   });
 }
 function settingsMePage(pg, app) {
@@ -168,17 +177,17 @@ function settingsMePage(pg, app) {
     b.append(iosGroup('', [avatarRow('me', re), fText('me.name', '我的名字或昵称'),
       fSelect('me.pronoun', '提到我时用', [['TA', 'TA'], ['他', '他'], ['她', '她']]),
       fSelect('me.zodiac', '我的星座', zodiacOpts())]),
-      iosGroup('', [fArea('me.about', '关于我', '在做什么、最近在忙什么、喜欢什么'), fArea('me.goals', '我的目标', '她会按这个督促你')], 'AI 模式会参考这些；提醒学习和健身的时间在「她什么时候找你」里改。'));
+      iosGroup('', [fArea('me.about', '关于我', '在做什么、最近在忙什么、喜欢什么'), fArea('me.goals', '我的目标', `${TA()}会按这个督促你`)], `AI 模式会参考这些；提醒学习和健身的时间在「${TA()}什么时候找你」里改。`));
   });
 }
 function settingsMemoryPage(pg, app) {
-  subPage(pg, app, '她记得的事', b => {
+  subPage(pg, app, `${TA()}记得的事`, b => {
     const t = el('textarea', { rows: '4', placeholder: '还没有。一行一条，比如：TA 最近在准备雅思' });
     t.value = S.memory.join('\n');
     t.addEventListener('input', () => { S.memory = t.value.split('\n').map(x => x.trim()).filter(Boolean); saveSLater(); grow(t); });
     requestAnimationFrame(() => grow(t));
     b.append(iosGroup('', [el('label', { class: 'ios-field' }, el('span', {}, '一行一条，可以直接改'), t)],
-      S.reply.mode === 'template' ? '固定模板模式用不上这些。换成 AI 或混合模式后，她会参考这里，聊天里你提到的新情况也会自动记下来。' : '聊天里你提到的新情况，她会自动记下来。'));
+      S.reply.mode === 'template' ? `固定模板模式用不上这些。换成 AI 或混合模式后，${TA()}会参考这里，聊天里你提到的新情况也会自动记下来。` : `聊天里你提到的新情况，${TA()}会自动记下来。`));
   });
 }
 
@@ -214,7 +223,7 @@ function settingsReplyPage(pg, app) {
 /* ---------- 照片 ---------- */
 function settingsPhotoPage(pg, app) {
   subPage(pg, app, 'AI 生成照片', (b, re) => {
-    b.append(iosGroup('', [fSelect('photo.mode', '她发照片时', [['pool', '只从照片池里挑'], ['pool_then_gen', '先用照片池，没有了再 AI 生成'], ['gen', '每次都 AI 生成新照片']], re)]));
+    b.append(iosGroup('', [fSelect('photo.mode', `${TA()}发照片时`, [['pool', '只从照片池里挑'], ['pool_then_gen', '先用照片池，没有了再 AI 生成'], ['gen', '每次都 AI 生成新照片']], re)]));
     if (S.photo.mode === 'pool') return;
     const ip = IMAGE_PROVIDERS[S.photo.provider] || IMAGE_PROVIDERS.openai;
     const ref = el('img', { class: 'sq', alt: '' });
@@ -236,14 +245,14 @@ function settingsNotifyPage(pg, app) {
   subPage(pg, app, '通知', b => {
     b.append(iosGroup('', [fToggle('notify.banner', '横幅通知')], `在别的 App 里时，${herName()}的消息从屏幕顶上弹出来。专注模式打开时不弹。`),
       iosGroup('', [fToggle('notify.system', '网页在后台时弹系统通知', onNotifyToggle)], '只在网页还开着（哪怕切到后台）时有效。网页完全关掉后，下次打开会补上错过的消息。'),
-      iosGroup('', [fToggle('notify.relock', '离开 3 分钟后回到锁屏')], '像重新拿起手机，锁屏上能看到她这段时间发来的消息。'));
+      iosGroup('', [fToggle('notify.relock', '离开 3 分钟后回到锁屏')], `像重新拿起手机，锁屏上能看到${TA()}这段时间发来的消息。`));
   });
 }
 function settingsScreenTimePage(pg, app) {
   subPage(pg, app, '屏幕使用时间', b => {
     const mins = Math.round(((ST.usage && ST.usage.active) || 0) / 60000);
     b.append(iosGroup('', [el('div', { class: 'ios-row' }, el('span', { class: 'lbl' }, '这次连续使用'), el('span', { class: 'val' }, `${mins} 分钟`))]),
-      iosGroup('', [fToggle('notify.breakReminder', '连续使用 2 小时提醒休息')], '到时间会弹窗提醒你歇一会儿，并说明她的消息是程序生成的。'));
+      iosGroup('', [fToggle('notify.breakReminder', '连续使用 2 小时提醒休息')], `到时间会弹窗提醒你歇一会儿，并说明${TA()}的消息是程序生成的。`));
   });
 }
 async function onNotifyToggle(on) {
@@ -298,7 +307,7 @@ function settingsHomeAppPage(pg, app, id) {
       o.icon ? miniBtn('恢复默认', () => { o.icon = ''; saveS(); re(); renderHome(); }) : ''));
     const rows = [ic, fText(`home.${id}.label`, '名字', { ph: base.label, oninput: () => renderHome() })];
     if (id !== 'wx' && id !== 'settings') rows.push(fText(`home.${id}.ios`, 'iPhone 上点它跳转到', { ph: base.ios || '留空 = 打开仿真版' }));
-    b.append(iosGroup('', rows, id === 'wx' ? '著信就是这个网页里的聊天 App。' : '跳转地址是 App 的 URL scheme，比如照片是 photos-redirect://。'));
+    b.append(iosGroup('', rows, id === 'wx' ? `${appDef('wx').label}就是这个网页里的聊天 App。` : '跳转地址是 App 的 URL scheme，比如照片是 photos-redirect://。'));
   });
 }
 
@@ -400,7 +409,7 @@ async function importData() {
   WXT = null; show('home'); toast('导入好了');
 }
 async function clearChat() {
-  if (!(await confirmSheet('清空所有聊天记录？', '聊天里的照片和语音也会删掉。朋友圈、照片池、设定和她记得的事都保留。', '清空', true))) return;
+  if (!(await confirmSheet('清空所有聊天记录？', `聊天里的照片和语音也会删掉。朋友圈、照片池、设定和${TA()}记得的事都保留。`, '清空', true))) return;
   const keep = new Set([...POOL.map(x => x.imageId), ...POSTS.flatMap(p => p.imageIds || [])]);
   for (const m of M) { if (m.imageId && !keep.has(m.imageId)) IDB.del(m.imageId).catch(() => {}); if (m.audioId) IDB.del(m.audioId).catch(() => {}); }
   M = []; ST.lastRead = 0; saveM(); saveST();
