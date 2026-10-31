@@ -33,6 +33,7 @@ function dueBetween(from, to) {
 }
 
 async function runEvent(ev, { at, live }) {
+  if (ev.to === 'call' && !FEATURES.voice) ev = Object.assign({}, ev, { to: 'chat' });   // 语音通话待开发：先改成发消息
   if (ev.to === 'call') { // 她打语音电话来
     if (live && !document.hidden && !S.notify.airplane) { startCall('in', ev); return; }
     addMsg({ id: uid('m'), from: 'her', type: 'call', status: 'missed', ts: at });

@@ -169,7 +169,7 @@ async function compose({ kind, ev, at, unreplied, note }) {
 /* 这一轮要不要用语音发 */
 function wantVoice(o) {
   const f = S.zx.voice;
-  if (f === 'never' || !o.messages.length) return false;
+  if (!FEATURES.voice || f === 'never' || !o.messages.length) return false;
   if (o.by === 'ai' && o.voice) return true;
   const len = o.messages.join('').length;
   if (len > 60) return false;

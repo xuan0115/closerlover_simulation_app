@@ -238,7 +238,7 @@ function appendMsg(m, prev) {
       el('footer', {}, `${zxName()}礼物`));
   } else if (m.type === 'call') {
     const txt = m.status === 'done' ? `通话时长 ${fmtDur(m.dur)}` : m.status === 'declined' ? (mine ? '对方已拒绝' : '已拒绝') : m.status === 'cancel' ? '已取消' : (mine ? '对方无应答' : '未接听');
-    b = el('div', { class: 'wx-bubble callrec', role: 'button', tabindex: '0', onclick: () => startCall('out') }, icon('phone', 18, 1.8), txt);
+    b = el('div', { class: 'wx-bubble callrec', role: 'button', tabindex: '0', onclick: () => callOrSoon() }, icon('phone', 18, 1.8), txt);
   } else b = el('div', { class: 'wx-bubble' }, m.text);
   if (!col.contains(b)) col.prepend(b);
   if (m.quote) col.append(el('div', { class: 'wx-quote' }, `${m.quote.who}：${m.quote.text}`));
@@ -413,7 +413,7 @@ function buildCompose() {
     if (mode === 'more') {
       const g = el('div', { class: 'wx-more' });
       const t = (ic, label, fn) => el('button', { onclick: () => { togglePanel(''); fn(); } }, el('span', { class: 'tile' }, icon(ic, 28, 1.6)), label);
-      g.append(t('photo', '相册', pickFromFiles), t('camera', '拍摄', () => openApp('camera')), t('phone', '语音通话', () => startCall('out')),
+      g.append(t('photo', '相册', pickFromFiles), t('camera', '拍摄', () => openApp('camera')), t('phone', FEATURES.voice ? '语音通话' : el('span', { class: 'soon-lbl' }, '语音通话', el('small', {}, '待开发')), callOrSoon),
         t('gift', '礼物', giftSheet), t('book', '学习打卡', () => doCheckin('study')), t('dumbbell', '健身打卡', () => doCheckin('gym')));
       panel.append(g);
     }
@@ -425,7 +425,7 @@ function buildCompose() {
     const has = !!ta.value.trim(); send.hidden = !has; plus.hidden = has;
   }
   function submit() { const t = ta.value.trim(); if (!t) return; ta.value = ''; sync(); sendMine(t); }
-  vk.addEventListener('click', () => { if (mode) togglePanel(mode); setComposeMode(composeMode === 'voice' ? 'text' : 'voice'); if (composeMode === 'text') ta.focus(); });
+  vk.addEventListener('click', () => { if (!FEATURES.voice) { toast('语音消息（待开发）'); return; } if (mode) togglePanel(mode); setComposeMode(composeMode === 'voice' ? 'text' : 'voice'); if (composeMode === 'text') ta.focus(); });
   plus.addEventListener('click', () => togglePanel('more'));
   emo.addEventListener('click', () => togglePanel('emoji'));
   send.addEventListener('click', submit);
@@ -436,6 +436,7 @@ function buildCompose() {
   bindHoldToTalk(hold);
   return box;
 }
+const callOrSoon = () => FEATURES.voice ? startCall('out') : toast('语音通话（待开发）');
 function bindHoldToTalk(hold) {
   let rec = null, starting = false, cancel = false, y0 = 0, hud = null, t0 = 0, tm = null;
   const showHud = () => {
@@ -524,7 +525,7 @@ function wxProfilePage(pg) {
         wxCell({ label: '更多信息', onclick: () => Nav.push('wx', wxMoreInfoPage) })),
       el('div', { class: 'wx-group' },
         el('button', { class: 'wx-cell center', onclick: () => openThread() }, icon('chat', 22, 1.7), '发消息'),
-        el('button', { class: 'wx-cell center', onclick: () => startCall('out') }, icon('phone', 22, 1.7), '语音通话')));
+        el('button', { class: 'wx-cell center', onclick: () => callOrSoon() }, icon('phone', 22, 1.7), FEATURES.voice ? '语音通话' : '语音通话（待开发）')));
   }
 }
 function wxMoreInfoPage(pg) {
@@ -687,6 +688,7 @@ function wxChatSettings(pg) {
   pg.classList.add('wx');
   const sel = el('select', { 'aria-label': `${TA()}发语音的频率` }, el('option', { value: 'never' }, '从不'), el('option', { value: 'sometimes' }, '偶尔'), el('option', { value: 'often' }, '经常'));
   sel.value = S.zx.voice; sel.addEventListener('change', () => { S.zx.voice = sel.value; saveS(); });
+  if (!FEATURES.voice) { sel.disabled = true; sel.replaceChildren(el('option', {}, '待开发')); }
   pg.append(wxNav('聊天'), el('div', { class: 'wx-scroll' },
     el('div', { class: 'wx-group' }, wxCell({ label: '聊天背景', onclick: () => Nav.push('wx', wxChatBgPage) })),
     el('div', { class: 'wx-group' }, el('label', { class: 'wx-cell noic' }, el('span', { class: 'lbl' }, `${herName()}发语音`), sel)),

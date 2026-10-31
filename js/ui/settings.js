@@ -295,7 +295,9 @@ function settingsHomePage(pg, app) {
       return el('button', { class: 'ios-row has-ic', onclick: () => Nav.push(app, p => settingsHomeAppPage(p, app, id)) }, appIcon(id, 30),
         el('span', { class: 'lbl' }, d.label), el('span', { class: 'val' }, id === 'wx' || id === 'settings' ? '本网页' : d.ios ? '跳转' : '仿真'),
         el('span', { class: 'chev' }, icon('chevron', 18, 2.2)));
-    }), '在 iPhone 上点「跳转」的图标，会打开手机里真实的 App（系统可能会先问一句要不要打开）。在电脑上点，打开的是网页里的仿真版。每个图标都可以换名字、换成你自己的图片。桌面怎么排，在 js/data/ui.js 的 HOME_LAYOUT 里改。'));
+    }), '在 iPhone 上点「跳转」的图标，会打开手机里真实的 App（系统可能会先问一句要不要打开）。在电脑上点，打开的是网页里的仿真版。每个图标都可以换名字、换成你自己的图片。'));
+    b.append(iosGroup('', [iosLink({ label: '恢复默认的桌面排布', chevron: false, cls: 'blue', onclick: async () => { if (!(await confirmSheet('恢复默认的桌面排布？', '删掉的 App 会装回来，自己挪过的位置会复原。', '恢复'))) return; S.layout = null; saveS(); renderHome(); toast('已恢复'); } })],
+      '在桌面上长按可以进入编辑：拖动换位置、删掉不要的 App、加回小组件。删掉的 App 可以在 App Store 里重新下载。'));
   });
 }
 function settingsHomeAppPage(pg, app, id) {

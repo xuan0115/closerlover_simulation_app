@@ -130,3 +130,23 @@
 .sb-wifi-ic{color:var(--sys-blue)}
 .wp-grid .w2.glass{background:rgba(40,40,40,.28)}
 .ios-row .val.locked{display:flex;align-items:center;gap:4px}
+
+/* App Store（仿真）：列表、获取按钮、下载进度 */
+.store-search input{flex:1;min-width:0;border:0;background:transparent;font-size:17px;outline:none;color:var(--sys-ink)}
+.store-search input::-webkit-search-cancel-button{display:none}
+.store-h{font-size:22px;font-weight:700;margin:22px 2px 6px}
+.store-list{background:var(--sys-card);border-radius:14px;padding:0 14px}
+.store-row{display:flex;align-items:center;gap:13px;padding:10px 0;position:relative}
+.store-row+.store-row::before{content:"";position:absolute;top:0;left:73px;right:0;height:.5px;background:var(--sys-sep)}
+.store-row .grow{flex:1;min-width:0}
+.store-row b{display:block;font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.store-row small{display:block;font-size:13px;color:var(--sys-ink2);margin-top:2px}
+.store-row .get{min-width:74px;height:30px;border-radius:15px;background:var(--sys-fill);color:var(--sys-blue);font-size:15px;font-weight:700;display:grid;place-items:center;flex:none}
+.store-row .get.busy{background:none}
+.store-row .get.busy i{width:26px;height:26px;border-radius:50%;background:conic-gradient(var(--sys-blue) var(--p,0%),var(--sys-fill) 0);animation:storeprog 1.4s linear forwards;
+  -webkit-mask:radial-gradient(circle,transparent 9px,#000 9.5px);mask:radial-gradient(circle,transparent 9px,#000 9.5px)}
+@property --p{syntax:'<percentage>';inherits:false;initial-value:0%}
+@keyframes storeprog{to{--p:100%}}
+.store-tabs{display:grid;grid-template-columns:repeat(3,1fr);padding:6px 0 calc(var(--bottom) + 2px);border-top:.5px solid var(--sys-sep);background:var(--sys-glass);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);flex:none}
+.store-tabs button{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;font-weight:500;color:var(--sys-ink3)}
+.store-tabs button[aria-current=true]{color:var(--sys-blue)}

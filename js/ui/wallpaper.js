@@ -121,14 +121,14 @@ function wpPreview(which) {
     box.append(el('div', { class: 'wp-date' }, `${d.getMonth() + 1}月${d.getDate()}日 星期${WD[d.getDay()]}`), el('div', { class: 'wp-time' }, hm(Date.now())));
   } else {
     const grid = el('div', { class: 'wp-grid' });
-    const items = HOME_LAYOUT.pages[0].map(it => it.startsWith('widget:') ? (it === 'widget:countdown' ? 'W2' : it === 'widget:her' ? 'W2g' : 'W4') : it);
+    const items = homeLayout().pages[0].map(it => it.startsWith('widget:') ? (it === 'widget:countdown' ? 'W2' : it === 'widget:her' ? 'W2g' : 'W4') : it);
     for (const it of items) {
       if (it === 'W4') grid.append(el('span', { class: 'w4' }));
       else if (it === 'W2') grid.append(el('span', { class: 'w2' }));
       else if (it === 'W2g') grid.append(el('span', { class: 'w2 glass' }));
-      else { const st = APP_STYLE[it.startsWith('folder:') ? 'folder' : it] || {}; grid.append(el('span', { style: `background:${st.bg || 'rgba(255,255,255,.35)'}` })); }
+      else { const st = artOf(it.startsWith('folder:') ? 'folder' : it) || {}; grid.append(el('span', { style: `background:${st.bg || 'rgba(255,255,255,.35)'}` })); }
     }
-    box.append(grid, el('div', { class: 'wp-dock' }, ...HOME_LAYOUT.dock.map(id => el('span', { style: `background:${(APP_STYLE[id] || {}).bg}` }))));
+    box.append(grid, el('div', { class: 'wp-dock' }, ...homeLayout().dock.map(id => el('span', { style: `background:${(artOf(id.startsWith('folder:') ? 'folder' : id) || {}).bg}` }))));
   }
   return box;
 }

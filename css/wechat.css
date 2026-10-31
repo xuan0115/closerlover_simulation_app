@@ -233,3 +233,5 @@
 .wx-gender{display:inline-grid;place-items:center;width:18px;height:18px;margin-left:6px;border-radius:50%;font-size:13px;font-weight:700;vertical-align:2px;color:#fff}
 .wx-gender.f{background:#FA5E8C}
 .wx-gender.m{background:#3E8BF0}
+.soon-lbl small{display:block;font-size:10px;color:var(--wx-ink3,#999);margin-top:1px}
+.wx-more button:has(.soon-lbl) .tile{opacity:.5}

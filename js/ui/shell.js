@@ -89,7 +89,7 @@ function iosLink({ ic, color, label, sub, value, onclick, chevron = true, cls = 
 /* ---------- 切换屏幕 ---------- */
 let cur = 'lock';
 /* 网页里有仿真界面的 App；其余点开是一个说明页 */
-const appRoots = () => ({ wx: wxRoot, settings: settingsRoot, camera: cameraRoot, calc: calcRoot, photos: photosRoot, calendar: calendarRoot, notes: notesRoot, clock: clockRoot });
+const appRoots = () => ({ wx: wxRoot, settings: settingsRoot, camera: cameraRoot, calc: calcRoot, photos: photosRoot, calendar: calendarRoot, notes: notesRoot, clock: clockRoot, appstore: appStoreRoot });
 const secOf = name => appRoots()[name] ? name : 'shell';
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 function show(name) {
@@ -132,7 +132,7 @@ function openApp(name, fromEl, noJump) {
   if (name === 'wx') markRead();
   if (name === 'camera') startCamera();
 }
-function goHome() { if (cur !== 'home') show('home'); else closeFolder(); }
+function goHome() { if (cur !== 'home') show('home'); else if (!closeFolder()) exitEdit(); }
 /* 没有仿真界面的 App（电脑上点开时） */
 function shellPage(pg, id) {
   const d = appDef(id);
@@ -206,7 +206,7 @@ document.addEventListener('keydown', e => {
   if (sheetOpen()) { closeSheet(); return; }
   if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) { a.blur(); return; }
   if (cur === 'lock') { unlock(); return; }
-  if (cur === 'home') { closeFolder(); return; }
+  if (cur === 'home') { if (!closeFolder()) exitEdit(); return; }
   const top = APPS[cur] && Nav.top(cur);
   if (top && top.closeMenu && top.closeMenu()) return;
   if (APPS[cur]) { if (!Nav.pop(cur)) goHome(); }
@@ -296,32 +296,6 @@ $('#homepages').addEventListener('scroll', () => {
   const t = $('#hometools'); t.classList.add('paging');
   clearTimeout(pagingT); pagingT = setTimeout(() => t.classList.remove('paging'), 900);
 });
-function appButton(id) {
-  const d = appDef(id);
-  const b = el('button', { class: 'app-ic', 'data-app': id, 'aria-label': d.label, title: d.label }, appIcon(id), el('span', { class: 'lbl' }, d.label));
-  if (id === 'wx') b.append(el('span', { class: 'badge wxbadge', hidden: true }));
-  if (id === 'settings' && !ST.started) b.append(el('span', { class: 'badge' }, '1'));
-  return b;
-}
-/* 文件夹：桌面上是一块毛玻璃，里面 3×3 小图标；点开是放大的面板 */
-function folderButton(key) {
-  const f = FOLDERS[key]; if (!f) return '';
-  const tile = el('span', { class: 'squircle folder' });
-  for (const id of f.apps.slice(0, 9)) tile.append(appIcon(id));
-  return el('button', { class: 'app-ic', 'data-folder': key, 'aria-label': `文件夹：${f.name}`, title: f.name, onclick: () => openFolder(key) }, tile, el('span', { class: 'lbl' }, f.name));
-}
-function openFolder(key) {
-  const f = FOLDERS[key], pop = $('#folderpop'), panel = $('#fppanel');
-  $('#fptitle').textContent = f.name; panel.textContent = '';
-  for (const id of f.apps) if (APPS[id]) panel.append(appButton(id));
-  pop.classList.add('on'); pop.setAttribute('aria-hidden', 'false');
-}
-function closeFolder() {
-  const pop = $('#folderpop'); if (!pop.classList.contains('on')) return false;
-  pop.classList.remove('on'); pop.setAttribute('aria-hidden', 'true'); return true;
-}
-$('#folderpop').addEventListener('click', e => { if (!e.target.closest('.app-ic')) closeFolder(); });
-
 /* 倒数日 */
 function countdownInfo() {
   const c = S.countdown, t = new Date((c.date || dkey(Date.now())) + 'T00:00:00'), today = new Date(dkey(Date.now()) + 'T00:00:00');
@@ -340,50 +314,6 @@ function editCountdown(after) {
   });
 }
 
-function renderHome() {
-  paintWall($('#homewall'), 'home');
-  syncStatusIcons();
-  const pages = $('#homepages'); const sx = pages.scrollLeft; pages.textContent = '';
-  const c = todayChecks();
-  for (const items of HOME_LAYOUT.pages) {
-    const pg = el('div', { class: 'home-page' });
-    for (const it of items) {
-      if (it.startsWith('folder:')) { pg.append(folderButton(it.slice(7))); continue; }
-      const w = it.startsWith('widget:') ? it.slice(7) : null;
-      if (!w) { if (APPS[it]) pg.append(appButton(it)); continue; }
-      const cell = (lbl, w) => el('div', { class: 'wcell' }, w, el('span', { class: 'lbl' }, lbl));
-      if (w === 'her') {
-        const last = [...M].reverse().find(m => m.from === 'her');
-        const av = el('img', { alt: '' }); setAvatar(av);
-        pg.append(cell(appDef('wx').label, el('button', { class: 'widget her2', 'aria-label': `${herName()}的消息`, onclick: () => { if (!ST.started) return unlock(); openApp('wx'); openThread(true); } },
-          el('div', { class: 'w-top' }, av, el('span', {}, herName())),
-          last ? el('div', { class: 'w-say' }, preview(last)) : el('div', { class: 'w-say quiet' }, ST.started ? '还没有消息' : '先去「设置」设定人物'),
-          last ? el('time', { class: 'w-time' }, relTime(last.ts)) : '')));
-      }
-      if (w === 'countdown') {
-        const k = countdownInfo();
-        pg.append(cell('倒数日', el('button', { class: 'widget cd', 'aria-label': `${k.title}${k.past ? '已经' : '还有'} ${k.days} 天`, onclick: () => editCountdown() },
-          el('div', { class: 'cd-head' }, `${k.title} ${k.past ? '已经' : '还有'}`),
-          el('div', { class: 'cd-body' }, el('div', { class: 'cd-num' }, String(k.days)), el('div', { class: 'cd-date' }, `${k.date} 星期${k.wd}`)))));
-      }
-      if (w === 'checkin') {
-        const small = (kind, ic, label) => cell(`${label}打卡`, el('button', { class: 'widget small' + (c[kind] ? ' done' : ''), onclick: () => askCheckin(kind) },
-          el('span', { class: 'w-ic' }, icon(ic, 20, 2)),
-          el('div', {}, el('div', { class: 'w-big' }, c[kind] ? `${label}已打卡` : `今天还没${label}`), el('div', { class: 'w-sub' }, c[kind] ? hm(c[kind]) : '轻点打卡'))));
-        pg.append(small('study', 'book', '学习'), small('gym', 'dumbbell', '健身'));
-      }
-    }
-    pages.append(pg);
-  }
-  pages.scrollLeft = sx;
-  const dots = $('#homedots'); dots.textContent = '';
-  if (HOME_LAYOUT.pages.length > 1) HOME_LAYOUT.pages.forEach((_, i) => dots.append(el('button', { 'aria-label': `第 ${i + 1} 页`, onclick: () => pages.scrollTo({ left: i * pages.clientWidth, behavior: 'smooth' }) })));
-  syncDots();
-  const d = $('#dock'); d.textContent = '';
-  for (const id of HOME_LAYOUT.dock) if (APPS[id]) d.append(appButton(id));
-  d.style.setProperty('--n', HOME_LAYOUT.dock.length);
-  updateBadges();
-}
 function askCheckin(kind) {
   if (!ST.started) return unlock();
   const label = kind === 'study' ? '学习' : '健身';

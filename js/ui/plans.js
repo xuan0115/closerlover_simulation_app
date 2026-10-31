@@ -48,7 +48,7 @@ function editEvent(ev) {
       bt.addEventListener('click', () => { d.days = d.days.includes(n) ? d.days.filter(x => x !== n) : [...d.days, n]; bt.setAttribute('aria-pressed', String(d.days.includes(n))); });
       days.append(bt);
     });
-    const to = el('select', {}, el('option', { value: 'chat' }, '私聊发给我'), el('option', { value: 'moments' }, '发朋友圈'), el('option', { value: 'call' }, '打语音电话给我'));
+    const to = el('select', {}, el('option', { value: 'chat' }, '私聊发给我'), el('option', { value: 'moments' }, '发朋友圈'), el('option', { value: 'call' }, FEATURES.voice ? '打语音电话给我' : '打语音电话给我（待开发，先改成发消息）'));
     to.value = d.to || 'chat';
     const scene = el('select', {}); for (const [k, v] of Object.entries(SCENES)) scene.append(el('option', { value: k }, v));
     scene.value = d.scene || 'chat';

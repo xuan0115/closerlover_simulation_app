@@ -67,6 +67,7 @@ const ICONS = {
   stopwatch: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M10 2.5h4M18.5 6.5l1.5-1.5"/>',
   timer: '<circle cx="12" cy="12" r="9"/><path d="M12 3v3M12 12l4-4"/>',
   lock: '<rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  minus: '<path d="M6 12h12"/>',
   wifi: '<path d="M4 9.5a11.5 11.5 0 0 1 16 0M7 12.5a7.2 7.2 0 0 1 10 0M10 15.5a3 3 0 0 1 4 0"/><circle cx="12" cy="18.5" r=".9" fill="currentColor"/>',
   bluetooth: '<path d="M7 7.5l10 9-5 4.5V3l5 4.5-10 9"/>',
   antenna: '<path d="M12 10v10M8.5 7a5 5 0 0 1 7 0M6 4.5a8.5 8.5 0 0 1 12 0"/><circle cx="12" cy="9.5" r="1.4"/>',
@@ -204,8 +205,16 @@ const APP_ART = {
 };
 const APP_STYLE = APP_ART; // 旧名字
 /* size 不填时由 CSS 决定大小（桌面图标），填了就是固定像素 */
+/* App Store 里那些壳子：一个渐变底 + ICONS 里的一个图案 */
+function artOf(id) {
+  if (APP_ART[id]) return APP_ART[id];
+  const r = APPS[id] && APPS[id].art;
+  if (!r) return { bg: 'linear-gradient(180deg,#B0B0B8,#77777F)', svg: '' };
+  return APP_ART[id] = { bg: `linear-gradient(180deg,${r[0]} 0%,${r[1]} 100%)`,
+    svg: `<g transform="translate(23 23) scale(2.25)" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICONS[r[2]] || ''}</g>` };
+}
 function appIcon(id, size) {
-  const a = APP_ART[id] || { bg: 'linear-gradient(180deg,#B0B0B8,#77777F)', svg: '' };
+  const a = artOf(id);
   const sq = el('span', { class: 'squircle' + (a.light ? ' light' : '') });
   if (size) sq.style.fontSize = size + 'px';
   const custom = appDef(id).icon;

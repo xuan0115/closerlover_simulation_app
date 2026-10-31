@@ -53,6 +53,7 @@ const DEFAULTS = {
   countdown: { title: '下次见面', date: '' },                          // 桌面上的倒数日小组件
   zx: { voice: 'sometimes', mute: false, pin: true, bg: false },   // 著信：她发语音的频率、免打扰、置顶、聊天背景
   home: {},                                                        // 每个桌面图标的自定义：{ id: { label, icon, ios } }
+  layout: null,                                                    // 桌面排布（编辑过才有）：{ pages, dock, folders }；null = 用 js/data/ui.js 的默认
   events: DEFAULT_EVENTS
 };
 const clone = x => JSON.parse(JSON.stringify(x));

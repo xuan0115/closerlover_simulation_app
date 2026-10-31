@@ -7,7 +7,10 @@
  * 名字、图标图片、跳转地址也可以在网页「设置 → 主屏幕与 App 资源库」里改，那里改的优先。
  * 带 ? 的跳转地址是 iOS 没有公开说明、但一直能用的，万一失效会退回仿真版。
  */
-const APP_TITLE = '亲密爱人';   // 浏览器标签页、添加到主屏幕时的名字
+const APP_TITLE = '知己';   // 浏览器标签页、添加到主屏幕时的名字
+
+/* 还没做好的功能：false = 按钮还在，点了提示「待开发」 */
+const FEATURES = { voice: false };   // 语音消息、语音通话
 
 const APPS = {
   /* 这个项目自己做的聊天 App。label 是桌面图标下的名字，short 用在 App 里的标题和「聊我号」 */
@@ -28,7 +31,7 @@ const APPS = {
   weather:    { label: '天气',     ios: 'weather://' },                // ?
   clock:      { label: '时钟',     ios: 'clock-alarm://' },            // ?
   safari:     { label: 'Safari 浏览器', ios: 'x-web-search://' },
-  appstore:   { label: 'App Store', ios: 'itms-apps://' },
+  appstore:   { label: 'App Store' },                                // 网页里的仿真 App Store：在这里下载、重新下载壳子
   books:      { label: '图书',     ios: 'ibooks://' },
   podcasts:   { label: '播客',     ios: 'podcasts://' },
   tv:         { label: 'TV',       ios: 'videos://' },
@@ -46,7 +49,42 @@ const APPS = {
   weread:     { label: '微信读书', ios: 'weread://' },
   duolingo:   { label: '多邻国',   ios: 'duolingo://' },
   xiaoyuzhou: { label: '小宇宙',   ios: 'cosmos://' },                 // ?
-  wxwork:     { label: '企业微信', ios: 'wxwork://' }
+  wxwork:     { label: '企业微信', ios: 'wxwork://' },
+  /* 只在 App Store 里、默认没装的壳子。art = [渐变起色, 渐变止色, 图案名（js/ui/icons.js 的 ICONS）] */
+  douyin:     { label: '抖音',     ios: 'snssdk1128://',     art: ['#7B5CFF', '#E0408A', 'play'] },
+  taobao:     { label: '淘宝',     ios: 'taobao://',         art: ['#FF9A3D', '#FF5A1F', 'box'] },
+  bilibili:   { label: '哔哩哔哩', ios: 'bilibili://',       art: ['#FF8DB5', '#F25D96', 'chat'] },
+  weibo:      { label: '微博',     ios: 'sinaweibo://',      art: ['#FFB13D', '#F2552C', 'sound'] },
+  zhihu:      { label: '知乎',     ios: 'zhihu://',          art: ['#3FA0FF', '#1767E0', 'search'] },
+  amap:       { label: '高德地图', ios: 'iosamap://',        art: ['#4DA8FF', '#1F6FF0', 'compass'] },
+  eleme:      { label: '饿了么',   ios: 'eleme://',          art: ['#36B6FF', '#0B8CE9', 'gift'] },
+  qqmusic:    { label: 'QQ音乐',   ios: 'qqmusic://',        art: ['#43D17E', '#18A957', 'music'] },
+  jd:         { label: '京东',     ios: 'openapp.jdmobile://', art: ['#F5484A', '#D21F2B', 'tag'] },
+  pdd:        { label: '拼多多',   ios: 'pinduoduo://',      art: ['#FF6B4A', '#E8332B', 'grid'] },
+  keep:       { label: 'Keep',     ios: 'keep://',           art: ['#5E4DB2', '#3A2C85', 'dumbbell'] },
+  didi:       { label: '滴滴出行', ios: 'diditaxi://',       art: ['#FF9F45', '#FF7A1A', 'pin'] },
+  ctrip:      { label: '携程旅行', ios: 'ctrip://',          art: ['#4AA3FF', '#2A6FE8', 'plane'] },
+  dianping:   { label: '大众点评', ios: 'dianping://',       art: ['#FF8A47', '#F2552C', 'star'] },
+  xianyu:     { label: '闲鱼',     ios: 'fleamarket://',     art: ['#FFE14D', '#FFC400', 'flip'] },
+  alipay:     { label: '支付宝',   ios: 'alipay://',         art: ['#3FA9FF', '#1677FF', 'scan'] },
+  weixin:     { label: '微信',     ios: 'weixin://',         art: ['#4FD17A', '#1AAD5C', 'chat'] },
+  qq:         { label: 'QQ',       ios: 'mqq://',            art: ['#45B4FF', '#1C8BF0', 'person'] }
+};
+
+/* 删不掉的 App（和 iPhone 一样，系统自带的几个删不掉；chatwe聊我 也删不掉） */
+const NO_DELETE = ['wx', 'settings', 'appstore', 'camera', 'photos', 'messages', 'safari', 'wallet', 'health', 'findmy'];
+
+/* App Store 里能下载的东西：分类和一句话介绍。没列在这里的 App 不会出现在商店里 */
+const STORE = {
+  xhs: '生活 · 种草笔记', douyin: '娱乐 · 短视频', meituan: '美食 · 外卖', taobao: '购物', netease: '音乐',
+  bilibili: '娱乐 · 视频', weibo: '社交', zhihu: '问答', douban: '书影音', weread: '读书', xiaoyuzhou: '播客',
+  duolingo: '教育 · 学语言', keep: '健康健美', amap: '导航', didi: '出行', ctrip: '旅行', eleme: '美食 · 外卖',
+  dianping: '美食 · 生活', qqmusic: '音乐', jd: '购物', pdd: '购物', xianyu: '购物 · 二手', alipay: '财务',
+  weixin: '社交', qq: '社交', wxwork: '商务',
+  books: 'Apple · 图书', podcasts: 'Apple · 播客', weather: 'Apple · 天气', clock: 'Apple · 时钟', calc: 'Apple · 计算器',
+  calendar: 'Apple · 日历', notes: 'Apple · 备忘录', reminders: 'Apple · 提醒事项', mail: 'Apple · 邮件', maps: 'Apple · 地图',
+  music: 'Apple · 音乐', tv: 'Apple · TV', files: 'Apple · 文件', facetime: 'Apple · FaceTime', voicememos: 'Apple · 语音备忘录',
+  shortcuts: 'Apple · 快捷指令', stocks: 'Apple · 股市'
 };
 
 /*
