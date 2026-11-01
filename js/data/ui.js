@@ -28,8 +28,8 @@ const APPS = {
   messages:   { label: '信息',     ios: 'sms:' },
   health:     { label: '健康',     ios: 'x-apple-health://' },
   files:      { label: '文件',     ios: 'shareddocuments://' },
-  weather:    { label: '天气',     ios: 'weather://' },                // ?
-  clock:      { label: '时钟',     ios: 'clock-alarm://' },            // ?
+  weather:    { label: '天气' },                                     // 网页里的天气：显示 TA 所在地的真实天气
+  clock:      { label: '时钟' },                                     // 网页里的时钟：闹钟、督促提醒
   safari:     { label: 'Safari 浏览器', ios: 'x-web-search://' },
   appstore:   { label: 'App Store' },                                // 网页里的仿真 App Store：在这里下载、重新下载壳子
   books:      { label: '图书',     ios: 'ibooks://' },
@@ -39,36 +39,36 @@ const APPS = {
   findmy:     { label: '查找',     ios: 'findmy://' },
   wallet:     { label: '钱包',     ios: 'shoebox://' },
   shortcuts:  { label: '快捷指令', ios: 'shortcuts://' },
-  voicememos: { label: '语音备忘录', ios: 'voicememos://' },           // ?
+  voicememos: { label: '语音备忘录' },
   stocks:     { label: '股市',     ios: 'stocks://' },
-  /* 第三方 App：手机上装了才能跳过去；没装的话网页会提示，然后打开说明页 */
-  xhs:        { label: '小红书',   ios: 'xhsdiscover://' },
-  meituan:    { label: '美团外卖', ios: 'meituanwaimai://' },
-  netease:    { label: '网易云音乐', ios: 'orpheus://' },
-  douban:     { label: '豆瓣',     ios: 'douban://' },
-  weread:     { label: '微信读书', ios: 'weread://' },
-  duolingo:   { label: '多邻国',   ios: 'duolingo://' },
-  xiaoyuzhou: { label: '小宇宙',   ios: 'cosmos://' },                 // ?
-  wxwork:     { label: '企业微信', ios: 'wxwork://' },
+  /* 第三方 App：点开是网页里的页面；页面上有个按钮能打开手机里真的那个（open 是它的地址，要先装了才行） */
+  xhs:        { label: '小红书',   open: 'xhsdiscover://' },
+  meituan:    { label: '美团外卖', open: 'meituanwaimai://' },
+  netease:    { label: '网易云音乐', open: 'orpheus://' },
+  douban:     { label: '豆瓣',     open: 'douban://' },
+  weread:     { label: '微信读书', open: 'weread://' },
+  duolingo:   { label: '多邻国',   open: 'duolingo://' },
+  xiaoyuzhou: { label: '小宇宙',   open: 'cosmos://' },                 // ?
+  wxwork:     { label: '企业微信', open: 'wxwork://' },
   /* 只在 App Store 里、默认没装的壳子。art = [渐变起色, 渐变止色, 图案名（js/ui/icons.js 的 ICONS）] */
-  douyin:     { label: '抖音',     ios: 'snssdk1128://',     art: ['#7B5CFF', '#E0408A', 'play'] },
-  taobao:     { label: '淘宝',     ios: 'taobao://',         art: ['#FF9A3D', '#FF5A1F', 'box'] },
-  bilibili:   { label: '哔哩哔哩', ios: 'bilibili://',       art: ['#FF8DB5', '#F25D96', 'chat'] },
-  weibo:      { label: '微博',     ios: 'sinaweibo://',      art: ['#FFB13D', '#F2552C', 'sound'] },
-  zhihu:      { label: '知乎',     ios: 'zhihu://',          art: ['#3FA0FF', '#1767E0', 'search'] },
-  amap:       { label: '高德地图', ios: 'iosamap://',        art: ['#4DA8FF', '#1F6FF0', 'compass'] },
-  eleme:      { label: '饿了么',   ios: 'eleme://',          art: ['#36B6FF', '#0B8CE9', 'gift'] },
-  qqmusic:    { label: 'QQ音乐',   ios: 'qqmusic://',        art: ['#43D17E', '#18A957', 'music'] },
-  jd:         { label: '京东',     ios: 'openapp.jdmobile://', art: ['#F5484A', '#D21F2B', 'tag'] },
-  pdd:        { label: '拼多多',   ios: 'pinduoduo://',      art: ['#FF6B4A', '#E8332B', 'grid'] },
-  keep:       { label: 'Keep',     ios: 'keep://',           art: ['#5E4DB2', '#3A2C85', 'dumbbell'] },
-  didi:       { label: '滴滴出行', ios: 'diditaxi://',       art: ['#FF9F45', '#FF7A1A', 'pin'] },
-  ctrip:      { label: '携程旅行', ios: 'ctrip://',          art: ['#4AA3FF', '#2A6FE8', 'plane'] },
-  dianping:   { label: '大众点评', ios: 'dianping://',       art: ['#FF8A47', '#F2552C', 'star'] },
-  xianyu:     { label: '闲鱼',     ios: 'fleamarket://',     art: ['#FFE14D', '#FFC400', 'flip'] },
-  alipay:     { label: '支付宝',   ios: 'alipay://',         art: ['#3FA9FF', '#1677FF', 'scan'] },
-  weixin:     { label: '微信',     ios: 'weixin://',         art: ['#4FD17A', '#1AAD5C', 'chat'] },
-  qq:         { label: 'QQ',       ios: 'mqq://',            art: ['#45B4FF', '#1C8BF0', 'person'] }
+  douyin:     { label: '抖音',     open: 'snssdk1128://',     art: ['#7B5CFF', '#E0408A', 'play'] },
+  taobao:     { label: '淘宝',     open: 'taobao://',         art: ['#FF9A3D', '#FF5A1F', 'box'] },
+  bilibili:   { label: '哔哩哔哩', open: 'bilibili://',       art: ['#FF8DB5', '#F25D96', 'chat'] },
+  weibo:      { label: '微博',     open: 'sinaweibo://',      art: ['#FFB13D', '#F2552C', 'sound'] },
+  zhihu:      { label: '知乎',     open: 'zhihu://',          art: ['#3FA0FF', '#1767E0', 'search'] },
+  amap:       { label: '高德地图', open: 'iosamap://',        art: ['#4DA8FF', '#1F6FF0', 'compass'] },
+  eleme:      { label: '饿了么',   open: 'eleme://',          art: ['#36B6FF', '#0B8CE9', 'gift'] },
+  qqmusic:    { label: 'QQ音乐',   open: 'qqmusic://',        art: ['#43D17E', '#18A957', 'music'] },
+  jd:         { label: '京东',     open: 'openapp.jdmobile://', art: ['#F5484A', '#D21F2B', 'tag'] },
+  pdd:        { label: '拼多多',   open: 'pinduoduo://',      art: ['#FF6B4A', '#E8332B', 'grid'] },
+  keep:       { label: 'Keep',     open: 'keep://',           art: ['#5E4DB2', '#3A2C85', 'dumbbell'] },
+  didi:       { label: '滴滴出行', open: 'diditaxi://',       art: ['#FF9F45', '#FF7A1A', 'pin'] },
+  ctrip:      { label: '携程旅行', open: 'ctrip://',          art: ['#4AA3FF', '#2A6FE8', 'plane'] },
+  dianping:   { label: '大众点评', open: 'dianping://',       art: ['#FF8A47', '#F2552C', 'star'] },
+  xianyu:     { label: '闲鱼',     open: 'fleamarket://',     art: ['#FFE14D', '#FFC400', 'flip'] },
+  alipay:     { label: '支付宝',   open: 'alipay://',         art: ['#3FA9FF', '#1677FF', 'scan'] },
+  weixin:     { label: '微信',     open: 'weixin://',         art: ['#4FD17A', '#1AAD5C', 'chat'] },
+  qq:         { label: 'QQ',       open: 'mqq://',            art: ['#45B4FF', '#1C8BF0', 'person'] }
 };
 
 /* 删不掉的 App（和 iPhone 一样，系统自带的几个删不掉；chatwe聊我 也删不掉） */

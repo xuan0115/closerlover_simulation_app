@@ -85,8 +85,9 @@ function settingsRoot(pg, app) {
       el('button', { class: 'btn primary wide', onclick: start }, '设好了，开始')));
     const av = el('img', { alt: '' }); setMyAvatar(av);
     body.append(el('div', { class: 'ios-card', style: 'margin-top:14px' }, el('button', { class: 'profile-card', onclick: go(settingsMePage) }, av,
-      el('div', { style: 'flex:1;min-width:0' }, el('b', {}, myName() || '我'), el('small', {}, '我的资料、星座与目标')),
+      el('div', { style: 'flex:1;min-width:0' }, el('b', {}, myName() || '我'), el('small', {}, '我的资料、性别与星座')),
       el('span', { style: 'color:var(--sys-ink3)' }, icon('chevron', 18, 2.2)))));
+    body.append(iosGroup('', [iosLink({ ic: 'checklist', color: '#FF9500', label: '督促清单', value: S.tasks.length ? `${S.tasks.length} 项` : '', onclick: go(tasksPage) })]));
     body.append(iosGroup('', [
       fToggle('notify.airplane', '飞行模式', v => { if (!v) setTimeout(tick, 300); return true; }, 'plane', '#FF9500'),
       iosLink({ ic: 'wifi', color: '#007AFF', label: '无线局域网', value: S.look.wifi ? '家' : '关闭', onclick: go(settingsWifiPage) }),
@@ -174,10 +175,12 @@ function settingsRelPage(pg, app) {
 }
 function settingsMePage(pg, app) {
   subPage(pg, app, '我的资料', (b, re) => {
-    b.append(iosGroup('', [avatarRow('me', re), fText('me.name', '我的名字或昵称'),
-      fSelect('me.pronoun', '提到我时用', [['TA', 'TA'], ['他', '他'], ['她', '她']]),
-      fSelect('me.zodiac', '我的星座', zodiacOpts())]),
-      iosGroup('', [fArea('me.about', '关于我', '在做什么、最近在忙什么、喜欢什么'), fArea('me.goals', '我的目标', `${TA()}会按这个督促你`)], `AI 模式会参考这些；提醒学习和健身的时间在「${TA()}什么时候找你」里改。`));
+    const rows = [avatarRow('me', re), fText('me.name', '我的名字或昵称'), fSelect('me.gender', '性别', MY_GENDERS, re)];
+    if (S.me.gender === '自己填写') rows.push(fText('me.genderText', '我的性别', { ph: '写你认同的说法' }));
+    rows.push(fSelect('me.zodiac', '我的星座', zodiacOpts()), fText('me.identity', '身份（选填）', { ph: '比如：研一学生、插画师' }));
+    b.append(iosGroup('', rows, `${herName()}提到你时会用「${pron()}」：女用「她」，男用「他」，其余用「TA」。`),
+      iosGroup('', [fArea('me.about', '关于我', '在做什么、最近在忙什么、喜欢什么')], 'AI 模式会参考这些。'),
+      iosGroup('', [iosLink({ ic: 'checklist', color: '#FF9500', label: '督促清单', value: S.tasks.length ? `${S.tasks.length} 项` : '', onclick: () => Nav.push(app, p => tasksPage(p, app)) })], `想让${herName()}督促你做的事，在这里加。`));
   });
 }
 function settingsMemoryPage(pg, app) {
@@ -203,7 +206,7 @@ function settingsReplyPage(pg, app) {
     b.append(iosGroup('预览模板台词', [
       el('div', { class: 'btnrow', style: 'padding:12px 16px' },
         el('button', { class: 'btn', onclick: () => tryScene('morning') }, '早安'),
-        el('button', { class: 'btn', onclick: () => tryScene('study') }, '提醒学习'),
+        el('button', { class: 'btn', onclick: () => tryScene('task') }, '督促提醒'),
         el('button', { class: 'btn', onclick: () => tryScene('night') }, '晚安'))]), sample);
 
     if (S.reply.mode === 'template') return;

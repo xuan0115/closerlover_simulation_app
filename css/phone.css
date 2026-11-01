@@ -216,15 +216,17 @@ button:disabled{cursor:default}
 
 /* ---------- 编辑主屏幕：抖动、删除角标、拖动 ---------- */
 .home{-webkit-touch-callout:none}
-.home-editbar{position:absolute;top:calc(var(--hp-top) - 34px);left:16px;right:16px;display:none;justify-content:space-between;z-index:4;pointer-events:none}
+.home-editbar{position:absolute;top:calc(var(--top) + 6px);left:14px;right:14px;display:none;justify-content:space-between;z-index:4;pointer-events:none}
+.phone.home-editing{--hp-top:calc(var(--top) + 52px)}
 .home.editing .home-editbar{display:flex}
-.home-editbar button{pointer-events:auto;height:30px;min-width:30px;padding:0 14px;border-radius:15px;font-size:15px;font-weight:600;color:#fff;display:grid;place-items:center;
+.home-editbar button{pointer-events:auto;height:38px;min-width:38px;padding:0 18px;border-radius:19px;font-size:16px;font-weight:600;color:#fff;display:grid;place-items:center;
   background:rgba(255,255,255,.2);-webkit-backdrop-filter:blur(16px) saturate(1.6);backdrop-filter:blur(16px) saturate(1.6);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
-#homeadd{padding:0;width:30px}
-.home.editing .home-pages{top:calc(var(--hp-top) + 6px)}
+#homeadd{padding:0;width:38px}
+.home-editbar button::after{content:"";position:absolute;inset:-8px}
+.home-editbar button{position:relative}
 .home.editing .home-search{opacity:0;pointer-events:none}
 .home.editing .home-dots{opacity:1;pointer-events:auto}
-@keyframes jiggle{0%{transform:rotate(-1.6deg)}100%{transform:rotate(1.6deg)}}
+@keyframes jiggle{0%{rotate:-1.6deg}100%{rotate:1.6deg}}
 .home.editing .home-page>[data-item],.home.editing #dock>[data-item]{animation:jiggle .14s ease-in-out infinite alternate;touch-action:none}
 .home.editing .home-page>[data-item]:nth-child(2n),.home.editing #dock>[data-item]:nth-child(2n){animation-delay:-.07s;animation-direction:alternate-reverse}
 .home.editing .home-page>[data-item]:nth-child(3n){animation-duration:.16s}
@@ -234,6 +236,13 @@ button:disabled{cursor:default}
 .wcell>.del-badge,.wpair>.del-badge{top:-7px;left:-7px}
 .wcell{position:relative}
 .drag-src{opacity:.2}
-.drag-ghost{position:absolute;left:0;top:0;z-index:70;pointer-events:none;margin:0;transform-origin:center;filter:drop-shadow(0 10px 20px rgba(0,0,0,.35))}
+.drag-ghost{position:absolute;left:0;top:0;z-index:70;pointer-events:none;margin:0;transform-origin:center;filter:drop-shadow(0 10px 20px rgba(0,0,0,.35));scale:1.08;transition:scale .15s}
+.drag-ghost.landing{scale:1;filter:none}
 .drag-ghost .del-badge{display:none}
-.drag-ghost.app-ic .squircle{transform:scale(1.12)}
+
+
+/* 打卡小组件：表情图标、加一件事 */
+.w-ic.emoji{font-size:20px;line-height:1}
+.widget.small.add{background:rgba(255,255,255,.12)}
+/* 手机上：网页底色用黑色（在 Safari 里打开时，工具栏后面不会露出一块灰） */
+@media (max-width:520px),(display-mode:standalone){html,body{background:#000}}

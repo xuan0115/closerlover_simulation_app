@@ -39,18 +39,18 @@ function tplPick(key, extra) {
 const tplOut = (messages, more = {}) => Object.assign({ messages, photo: null, voice: false, gift: null, remember: [], done: [] }, more);
 
 /* 她主动发：scene 见 SCENES */
-function tplScene(scene, { photo = false, unreplied = false } = {}) {
-  const c = todayChecks();
-  let key = scene;
-  if (scene === 'gym' && c.gym) key = 'gymDone';
-  if (scene === 'study' && c.study) key = 'studyDone';
-  if (scene === 'night' && c.study && c.gym) key = 'nightGood';
+function tplScene(scene, { photo = false, unreplied = false, task = null, alarm = null } = {}) {
+  const c = todayChecks(), today = tasksOn();
+  let key = scene, extra = {};
+  if (scene === 'task' && task) { key = c[task.id] ? 'taskDone' : 'taskRemind'; extra = { 事项: task.name }; }
+  if (scene === 'alarm' && alarm) { key = 'alarmRemind'; extra = { 内容: alarm.label || '闹钟' }; }
+  if (scene === 'night' && today.length && today.every(t => c[t.id])) key = 'nightGood';
   const messages = [];
   if (unreplied) messages.push(...tplPick('unreplied'));
-  messages.push(...tplPick(key));
+  messages.push(...tplPick(key, extra));
   if (scene === 'morning' && S.her.zodiac && ZODIAC[S.her.zodiac] && Math.random() < .2) messages.push(...pick(ZODIAC[S.her.zodiac].lines));
   const wantsPhoto = photo || scene === 'photo' || scene === 'moments';
-  /* 学习和健身都打卡了，晚安时送你一个小礼物 */
+  /* 今天督促清单上的事都打卡了，晚安时送你一个小礼物 */
   const gift = key === 'nightGood' ? '小星星' : null;
   return tplOut(messages, { photo: wantsPhoto ? { auto: true } : null, gift, noPhoto: 'photoNone' });
 }
@@ -70,9 +70,12 @@ function pendingMine() {
 function tplReply() {
   const mine = pendingMine();
   const text = mine.map(m => m.type === 'voice' ? (m.transcript || '') : (m.from === 'me' ? m.text || '' : '')).join('\n').trim();
-  const rule = REPLY_RULES.find(r => r.match.test(text));
+  let rule = REPLY_RULES.find(r => r.match.test(text));
+  /* 说到督促清单里某一项的名字或关键词：回应一下，并自动打卡 */
+  const task = !(rule && rule.reply === 'crisis') && text && S.tasks.find(t => taskWords(t).some(w => text.includes(w)));
+  if (task) rule = { reply: 'taskAck', done: task.id };
   const has = t => mine.some(m => m.type === t || m.kind === t);
-  let key, extra = {};
+  let key, extra = task ? { 事项: task.name } : {};
   if (rule && rule.reply === 'crisis') key = 'crisis';
   else if (has('gift')) { key = 'gotGift'; extra = { 礼物: (mine.filter(m => m.type === 'gift').pop() || {}).name || '礼物' }; }
   else if (rule) key = rule.reply;
@@ -105,4 +108,4 @@ function tplCall(kind, said) {
 }
 
 /* 设置页里的「预览一句」 */
-function tplPreview(scene = 'morning') { return tplScene(scene).messages; }
+function tplPreview(scene = 'morning') { return tplScene(scene, scene === 'task' ? { task: S.tasks[0] || { id: '_', name: '阅读' } } : {}).messages; }

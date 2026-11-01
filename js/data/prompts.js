@@ -22,10 +22,18 @@ const PROMPTS = {
     relationship: '你们的关系',
     callMe: ta => `你平时怎么叫${ta}`,
     aboutMe: ta => `关于${ta}`,
+    tasks: '督促清单',
     memory: '你记得的事',
     now: '此刻',
     photo: '发照片'
   },
+
+  /* 督促清单：TA 希望你督促 TA 完成的事 */
+  tasks: ({ ta, list }) => `${ta}希望你督促${ta}完成这些事（id：名称，哪几天，目标，提醒时间）：\n` +
+    list.map(t => `- ${t.id}：${t.name}，${t.days}${t.target ? `，目标：${t.target}` : ''}${t.remind ? `，${t.remind} 提醒` : ''}`).join('\n') +
+    `\n督促的时候用你自己的性格：可以撒娇、激将、讲条件、陪着一起，别像闹钟；${ta}做到了就真心夸。`,
+  taskEvent: ({ ta, name, target }) => `提醒${ta}去做「${name}」${target ? `（目标：${target}）` : ''}。如果${ta}今天已经打卡了，就改成夸${ta}、问问感受。用你自己的性格去说，别像闹钟。`,
+  alarmEvent: ({ ta, label }) => `${ta}让你在这个时间提醒${ta}：「${label}」。用你自己的话提醒${ta}，简短一点。`,
 
   /* 社会人设：拼进「你是谁」 */
   social: ({ gender, edu, major, job, siblings }) => [
@@ -61,7 +69,7 @@ const PROMPTS = {
 - voice：想把这次的话用语音发出去就填 true（偶尔用，比如撒娇、说晚安），平时 false。
 - gift：想送${ta}一个小礼物时填礼物名（${GIFTS.map(g => g.name).join('、')}），很少用，平时 null。
 - remember：${ta}这次透露的、值得长期记住的新信息，写成短句；没有就 []。
-- done：${ta}明确说正在学习或学完了，加 "study"；明确说去健身或练完了，加 "gym"；否则 []。`,
+- done：${ta}明确说正在做、或已经做完「督促清单」里的某一项，就把那一项的 id 加进来；否则 []。`,
 
   /* 发照片的说明 */
   photoPoolHead: '你手机相册里可以发的照片（越靠前越久没发过）：',
@@ -72,8 +80,8 @@ const PROMPTS = {
   photoLimit: ta => `照片别发太勤，一天一两张就够，除非${ta}想看。`,
 
   /* 「此刻」这一段 */
-  now: ({ time, ta, study, gym, lastMineAgo }) =>
-    `现在是 ${time}。\n${ta}今天学习打卡：${study || '还没有'}；健身打卡：${gym || '还没有'}。` +
+  now: ({ time, ta, today, lastMineAgo }) =>
+    `现在是 ${time}。\n${today.length ? `${ta}今天要做的：` + today.map(t => `${t.name}（${t.done ? '已打卡 ' + t.done : '还没做'}）`).join('、') : `${ta}今天督促清单上没有要做的事`}。` +
     (lastMineAgo ? `\n${ta}最近一条消息是 ${lastMineAgo}前发的。` : ''),
 
   /* 定时消息、朋友圈、开场白 */

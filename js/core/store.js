@@ -54,7 +54,9 @@ const DEFAULTS = {
   zx: { voice: 'sometimes', mute: false, pin: true, bg: false },   // 著信：她发语音的频率、免打扰、置顶、聊天背景
   home: {},                                                        // 每个桌面图标的自定义：{ id: { label, icon, ios } }
   layout: null,                                                    // 桌面排布（编辑过才有）：{ pages, dock, folders }；null = 用 js/data/ui.js 的默认
-  events: DEFAULT_EVENTS
+  events: DEFAULT_EVENTS,
+  tasks: DEFAULT_TASKS,                                             // 督促清单
+  alarms: DEFAULT_ALARMS                                            // 时钟里的闹钟
 };
 const clone = x => JSON.parse(JSON.stringify(x));
 function merge(def, val) {
@@ -92,6 +94,16 @@ function migrate(raw, s) {
     else s.her.identity = DEFAULT_HER.identity;
   }
   if (s.her.edu && !EDU_LEVELS[s.her.edu]) s.her.edu = '';
+  if (raw && raw.me && raw.me.gender === undefined) {                   // 旧版：「提到我时用」换成性别；目标挪进督促清单
+    s.me.gender = raw.me.pronoun === '他' ? '男' : '女';
+    if (!raw.me.zodiac) s.me.zodiac = DEFAULT_ME.zodiac;
+    const g = String(raw.me.goals || '').trim();
+    if (g && g !== '每天学习至少 3 小时；每周健身 3 次。' && !String(s.me.about).includes(g)) s.me.about = [s.me.about, '目标：' + g].filter(Boolean).join('\n');
+  }
+  delete s.me.pronoun; delete s.me.goals;
+  s.events = s.events.filter(e => e.id !== 'e_study' && e.id !== 'e_gym');   // 学习、健身提醒交给督促清单
+  if (!s.alarms.some(a => a.id === 'love')) s.alarms.unshift(clone(DEFAULT_ALARMS.find(a => a.id === 'love')));
+  for (const a of s.alarms) if (a.id === 'love') Object.assign(a, { time: '20:00', label: DEFAULT_ALARMS[0].label, locked: true, ta: false });
   if (!s.events.some(e => e.id === 'e_call') && RAW && RAW.events) s.events.push(clone(DEFAULT_EVENTS.find(e => e.id === 'e_call')));
   return s;
 }
@@ -115,7 +127,7 @@ const savePool = () => LS.set('pool', POOL);
 const saveNotes = () => LS.set('notes', NOTES);
 const saveFavs = () => LS.set('favs', FAVS);
 
-const pron = () => S.me.pronoun || 'TA';
+const pron = () => S.me.gender === '女' ? '她' : S.me.gender === '男' ? '他' : 'TA';   // 提到「我」时用的字
 const TA = () => S.her.gender === '男' ? '他' : '她';            // 界面上指代人物：她 / 他
 const herName = () => (S.her.name || TA()).trim();
 
@@ -194,6 +206,12 @@ function checkin(kind, ts) {
   saveST();
 }
 const todayChecks = (t = Date.now()) => ST.checkins[dkey(t)] || {};
+/* 督促清单 */
+const taskById = id => S.tasks.find(t => t.id === id);
+const OLD_TASK_NAMES = { study: '学习', gym: '健身' };
+const taskName = id => (taskById(id) || {}).name || OLD_TASK_NAMES[id] || id;
+const tasksOn = (t = Date.now()) => S.tasks.filter(x => (x.days || []).includes(new Date(t).getDay()));
+const taskWords = t => [t.name, ...(t.keywords || [])].map(w => String(w).trim()).filter(Boolean);
 
 /* 桌面图标：data/ui.js 的默认值 + 设置里改过的 */
 function appDef(id) {

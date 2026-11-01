@@ -98,3 +98,66 @@ span.cam-tb{background:none}
 .timer-picks{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px}
 .timer-picks button{background:var(--sys-card);border-radius:14px;padding:16px 0;font-size:13px;color:var(--sys-ink2);display:flex;flex-direction:column;align-items:center;gap:2px}
 .timer-picks b{font-size:30px;font-weight:300;color:var(--sys-ink)}
+
+/* ---------- 时钟 · 闹钟（照 iPhone） ---------- */
+.clock-app .alarm{display:flex;align-items:center;gap:12px}
+.clock-app .alarm .al-main{flex:1;min-width:0}
+.clock-app .alarm .lbl{display:flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.al-del{width:24px;height:24px;border-radius:50%;background:#FF3B30;color:#fff;display:grid;place-items:center;flex:none}
+.al-lock{width:24px;height:24px;display:grid;place-items:center;color:var(--sys-ink3);flex:none}
+.al-pin{color:var(--sys-ink3);display:inline-flex}
+.al-time-wrap{display:flex;justify-content:center;padding:6px 0 12px}
+.al-time{font-size:56px;font-weight:300;font-variant-numeric:tabular-nums;border:0;background:var(--sys-card);border-radius:16px;padding:6px 18px;color:var(--sys-ink);text-align:center;min-width:220px}
+.sheet-head .bold{font-weight:600}
+/* 闹钟响了 */
+.alarm-ring{position:absolute;inset:0;z-index:90;display:flex;flex-direction:column;align-items:center;padding:calc(var(--top) + 40px) 24px calc(var(--bottom) + 30px);color:#fff;
+  background:rgba(20,20,24,.55);-webkit-backdrop-filter:blur(30px) saturate(1.4);backdrop-filter:blur(30px) saturate(1.4);opacity:0;transition:opacity .25s}
+.alarm-ring.on{opacity:1}
+.ar-top{display:flex;align-items:center;gap:6px;font-size:16px;font-weight:600;color:#FF9F0A}
+.ar-time{font-size:96px;font-weight:600;letter-spacing:-3px;font-variant-numeric:tabular-nums;margin-top:10px}
+.ar-label{font-size:22px;font-weight:600;text-align:center;line-height:1.4;margin-top:6px;max-width:320px}
+.ar-btns{margin-top:auto;display:flex;flex-direction:column;gap:14px;width:100%;max-width:330px}
+.ar-btns button{height:58px;border-radius:29px;font-size:19px;font-weight:600}
+.ar-snooze{background:#FF9F0A;color:#000}
+.ar-stop{background:rgba(255,255,255,.22);color:#fff}
+
+/* ---------- 督促清单 ---------- */
+.task-emoji{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-size:20px;background:var(--sys-fill);flex:none}
+.emoji-in{font-size:22px!important}
+
+/* ---------- 天气 ---------- */
+.weather{background:linear-gradient(180deg,#3B82D6 0%,#69A9E9 55%,#9CC9F2 100%);color:#fff}
+.weather.night{background:linear-gradient(180deg,#0E1630 0%,#1F2C55 60%,#36457A 100%)}
+.weather.rainy{background:linear-gradient(180deg,#4A5568 0%,#6B7A90 60%,#8C9AAE 100%)}
+.weather .ios-nav{background:transparent;border:0}
+.wt-body{padding-top:0}
+.wt-head{text-align:center;padding:4px 0 18px;text-shadow:0 1px 6px rgba(0,0,0,.12)}
+.wt-head small{font-size:13px;opacity:.85}
+.wt-head h1{font-size:34px;font-weight:500;margin-top:2px}
+.wt-temp{font-size:96px;font-weight:200;line-height:1;margin-left:24px}
+.wt-cond{font-size:20px;font-weight:500;margin-top:4px}
+.wt-hl{font-size:17px;font-weight:500;margin-top:2px}
+.wt-card{background:rgba(255,255,255,.16);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border-radius:16px;padding:10px 14px 12px;margin-bottom:12px}
+.wt-card h3{font-size:13px;font-weight:500;opacity:.8;padding-bottom:8px;border-bottom:.5px solid rgba(255,255,255,.3)}
+.wt-hours{display:flex;gap:20px;overflow-x:auto;padding-top:10px;scrollbar-width:none}
+.wt-hours>div{display:flex;flex-direction:column;align-items:center;gap:8px;flex:none;font-size:15px}
+.wt-hours small{font-size:14px;opacity:.9}
+.wt-hours span{font-size:22px}
+.wt-day{display:grid;grid-template-columns:44px 34px 36px 1fr 36px;align-items:center;gap:8px;padding:9px 0;font-size:17px;font-weight:500}
+.wt-day+.wt-day{border-top:.5px solid rgba(255,255,255,.25)}
+.wt-day .ic{font-size:20px;text-align:center}
+.wt-day .lo{opacity:.65;text-align:right}
+.wt-day .bar{position:relative;height:5px;border-radius:3px;background:rgba(0,0,0,.18)}
+.wt-day .bar i{position:absolute;top:0;bottom:0;border-radius:3px;background:linear-gradient(90deg,#9BE15D,#FFD43B,#FF922B)}
+.wt-msg{text-align:center;margin-top:40px;opacity:.9;line-height:1.6}
+.wt-src{text-align:center;font-size:12px;opacity:.7;margin:6px 0 10px}
+
+/* ---------- 语音备忘录 ---------- */
+.vm-bar{display:grid;place-items:center;padding:14px 0 calc(var(--bottom) + 6px);border-top:.5px solid var(--sys-sep);background:var(--sys-glass);flex:none}
+.vm-rec{width:66px;height:66px;border-radius:50%;box-shadow:0 0 0 4px var(--sys-card),0 0 0 6px #C7C7CC;display:grid;place-items:center}
+.vm-rec i{width:54px;height:54px;border-radius:50%;background:#FF3B30}
+
+/* 第三方 App 的页面 */
+.tp-cat{font-size:13px!important;margin-top:-8px}
+.shell-body .btn.primary{margin-top:10px;padding:13px 22px}
+.ar-btns button{text-align:center}

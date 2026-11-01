@@ -89,7 +89,7 @@ function iosLink({ ic, color, label, sub, value, onclick, chevron = true, cls = 
 /* ---------- 切换屏幕 ---------- */
 let cur = 'lock';
 /* 网页里有仿真界面的 App；其余点开是一个说明页 */
-const appRoots = () => ({ wx: wxRoot, settings: settingsRoot, camera: cameraRoot, calc: calcRoot, photos: photosRoot, calendar: calendarRoot, notes: notesRoot, clock: clockRoot, appstore: appStoreRoot });
+const appRoots = () => ({ wx: wxRoot, settings: settingsRoot, camera: cameraRoot, calc: calcRoot, photos: photosRoot, calendar: calendarRoot, notes: notesRoot, clock: clockRoot, appstore: appStoreRoot, weather: weatherRoot, voicememos: voiceMemosRoot });
 const secOf = name => appRoots()[name] ? name : 'shell';
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 function show(name) {
@@ -135,6 +135,7 @@ function openApp(name, fromEl, noJump) {
 function goHome() { if (cur !== 'home') show('home'); else if (!closeFolder()) exitEdit(); }
 /* 没有仿真界面的 App（电脑上点开时） */
 function shellPage(pg, id) {
+  if (APPS[id] && APPS[id].open) return thirdPartyPage(pg, id);
   const d = appDef(id);
   pg.append(iosNav('shell', { flat: true }), el('div', { class: 'ios-body shell-body' }, appIcon(id, 84), el('h1', {}, d.label),
     el('p', {}, d.ios ? `在 iPhone 上点这个图标，会直接打开手机里真实的「${d.label}」。这里是电脑上的仿真页面。` : `「${d.label}」是装饰用的图标。`),
@@ -314,13 +315,13 @@ function editCountdown(after) {
   });
 }
 
-function askCheckin(kind) {
+function askCheckin(id) {
   if (!ST.started) return unlock();
-  const label = kind === 'study' ? '学习' : '健身';
-  if (todayChecks()[kind]) { toast(`今天${label}已经打过卡了`); return; }
-  confirmSheet(`现在去${label}？`, `会发一条打卡消息给${herName()}。`, '打卡').then(ok => {
+  const t = taskById(id); if (!t) return;
+  if (todayChecks()[id]) { toast(`今天${t.name}已经打过卡了`); return; }
+  confirmSheet(`现在去${t.name}？`, `会发一条打卡消息给${herName()}。`, '打卡').then(ok => {
     if (!ok) return;
-    openApp('wx'); openThread(true); doCheckin(kind);
+    openApp('wx'); openThread(true); doCheckin(id);
   });
 }
 function updateBadges() {

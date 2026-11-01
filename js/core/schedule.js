@@ -1,5 +1,5 @@
 /*
- * 定时：她什么时候主动找你。
+ * 定时：她什么时候主动找你（她的作息 + 督促清单的提醒 + 要她来提醒的闹钟），以及时钟里只响铃的闹钟（js/ui/clock.js）。
  * 网页开着时每 20 秒检查一次；网页关着错过的，下次打开时补最近 3 条（12 小时内）。
  */
 'use strict';
@@ -19,11 +19,25 @@ function fireTime(ev, day) {
   return t.getTime();
 }
 const firedKey = (ev, t) => ev.id + '@' + dkey(t);
+/* 除了她自己的作息，还有督促清单的提醒、要她来提醒的闹钟，都当成「她来找你」 */
+function allEvents() {
+  const ta = pron();
+  const tasks = S.tasks.filter(t => t.remindOn && t.remind).map(t => ({
+    id: 'task:' + t.id, label: t.name, time: t.remind, jitter: 0, days: t.days, on: true, to: 'chat', photo: false, scene: 'task', task: t,
+    prompt: PROMPTS.taskEvent({ ta, name: t.name, target: t.target })
+  }));
+  const alarms = S.alarms.filter(a => a.on && a.ta).map(a => ({
+    id: 'alarm:' + a.id, label: a.label, time: a.time, jitter: 0, days: a.days.length ? a.days : EVERY_DAY, on: true, to: 'chat', photo: false, scene: 'alarm', alarm: a,
+    prompt: PROMPTS.alarmEvent({ ta, label: a.label || '闹钟' })
+  }));
+  return [...S.events, ...tasks, ...alarms];
+}
 function dueBetween(from, to) {
   const out = [];
   const d = new Date(from); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - 1);
+  const evs = allEvents();
   while (d.getTime() <= to) {
-    for (const ev of S.events) {
+    for (const ev of evs) {
       const t = fireTime(ev, d);
       if (t && t > from && t <= to && !ST.fired[firedKey(ev, t)]) out.push({ ev, t });
     }
@@ -47,12 +61,16 @@ async function runEvent(ev, { at, live }) {
 }
 
 function tick() {
+  alarmTick();                                    // 闹钟：飞行模式下也照样响
   if (!ST.started || S.notify.airplane) return;   // 飞行模式下她联系不上你
   const now = Date.now();
   const from = Math.max(ST.lastTick || now, now - 12 * 3600e3);
   ST.lastTick = now;
   const due = dueBetween(from, now);
-  due.forEach(x => { ST.fired[firedKey(x.ev, x.t)] = 1; });
+  due.forEach(x => {
+    ST.fired[firedKey(x.ev, x.t)] = 1;
+    if (x.ev.alarm && !x.ev.alarm.days.length) { x.ev.alarm.on = false; saveS(); }   // 只响一次的闹钟
+  });
   const cutoff = dkey(now - 3 * 864e5);
   for (const k of Object.keys(ST.fired)) if (k.split('@')[1] < cutoff) delete ST.fired[k];
   saveST();

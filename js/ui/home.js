@@ -104,10 +104,16 @@ function widgetEl(w, c) {
       el('div', { class: 'cd-body' }, el('div', { class: 'cd-num' }, String(k.days)), el('div', { class: 'cd-date' }, `${k.date} 星期${k.wd}`))));
   }
   if (w === 'checkin') {
-    const small = (kind, ic, label) => cell(`${label}打卡`, el('button', { class: 'widget small' + (c[kind] ? ' done' : ''), onclick: () => askCheckin(kind) },
-      el('span', { class: 'w-ic' }, icon(ic, 20, 2)),
-      el('div', {}, el('div', { class: 'w-big' }, c[kind] ? `${label}已打卡` : `今天还没${label}`), el('div', { class: 'w-sub' }, c[kind] ? hm(c[kind]) : '轻点打卡'))));
-    node = el('div', { class: 'wpair' }, small('study', 'book', '学习'), small('gym', 'dumbbell', '健身'));
+    // 按督促清单生成：今天要做、还没做的排前面，取前两项
+    const day = new Date().getDay();
+    const list = [...S.tasks].sort((a, b) => (b.days.includes(day) - a.days.includes(day)) || (!!c[a.id] - !!c[b.id])).slice(0, 2);
+    const small = t => cell(`${t.name}打卡`, el('button', { class: 'widget small' + (c[t.id] ? ' done' : ''), onclick: () => askCheckin(t.id) },
+      el('span', { class: 'w-ic emoji' }, t.emoji || '✅'),
+      el('div', {}, el('div', { class: 'w-big' }, c[t.id] ? `${t.name}已打卡` : (t.days.includes(day) ? `今天还没${t.name}` : `今天不用${t.name}`)),
+        el('div', { class: 'w-sub' }, c[t.id] ? hm(c[t.id]) : t.target || '轻点打卡'))));
+    const addCell = () => cell('督促清单', el('button', { class: 'widget small add', onclick: () => { openApp('settings'); Nav.popToRoot('settings'); Nav.push('settings', p => tasksPage(p, 'settings')); } },
+      el('span', { class: 'w-ic' }, icon('plus', 20, 2.2)), el('div', {}, el('div', { class: 'w-big' }, '加一件事'), el('div', { class: 'w-sub' }, `让${TA()}督促你`))));
+    node = el('div', { class: 'wpair' }, ...list.map(small), ...Array.from({ length: 2 - list.length }, addCell));
   }
   if (!node) return '';
   node.dataset.item = 'widget:' + w;
@@ -137,7 +143,7 @@ function renderHome() {
   const d = $('#dock'); d.textContent = '';
   for (const it of L.dock) d.append(it.startsWith('folder:') ? folderButton(it.slice(7)) : appButton(it));
   const pop = $('#folderpop'); if (pop.classList.contains('on')) openFolder(pop.dataset.key);
-  $('#home').classList.toggle('editing', editing);
+  $('#home').classList.toggle('editing', editing); $('#phone').classList.toggle('home-editing', editing);
   updateBadges();
 }
 const curPage = () => { const p = $('#homepages'); return Math.round(p.scrollLeft / (p.clientWidth || 1)); };
@@ -146,11 +152,14 @@ const curPage = () => { const p = $('#homepages'); return Math.round(p.scrollLef
 function enterEdit() {
   if (editing || cur !== 'home') return;
   editing = true; try { navigator.vibrate && navigator.vibrate(10); } catch (e) {}
-  renderHome();
+  // 不重画：直接在现有图标上加「−」，这样手指不用松开就能接着拖
+  $$('#home [data-item]').forEach(n => { const it = n.dataset.item; if (canDelete(it)) n.append(delBadge(it, it.startsWith('widget:') ? '小组件' : appDef(it).label)); });
+  $('#home').classList.add('editing'); $('#phone').classList.add('home-editing');
 }
 function exitEdit() {
   if (!editing) return false;
-  editing = false; normalizeLayout(); saveS(); renderHome(); return true;
+  editing = false; $('#phone').classList.remove('home-editing');
+  normalizeLayout(); saveS(); renderHome(); return true;
 }
 function askDelete(it, label) {
   const w = it.startsWith('widget:');
@@ -159,7 +168,7 @@ function askDelete(it, label) {
     removeItem(it); saveS(); renderHome();
   });
 }
-const WIDGETS = { her: ['她的消息', '最近一条消息'], countdown: ['倒数日', '离某一天还有几天'], checkin: ['打卡', '学习、健身打卡'] };
+const WIDGETS = { her: ['她的消息', '最近一条消息'], countdown: ['倒数日', '离某一天还有几天'], checkin: ['打卡', '督促清单里的事，轻点打卡'] };
 function addWidgetSheet() {
   const L = homeLayout(), have = new Set(L.pages.flat());
   openSheet((p, close) => {
@@ -183,7 +192,11 @@ const H = $('#home');
 H.addEventListener('pointerdown', e => {
   if (editing || e.button > 0 || e.target.closest('.folder-pop,.home-editbar,.home-tools')) return;
   lpXY = [e.clientX, e.clientY];
-  clearTimeout(lpT); lpT = setTimeout(() => { lpT = null; suppressClick = true; enterEdit(); }, 550);
+  const node = e.target.closest('.home-page>[data-item],#dock>[data-item]');
+  clearTimeout(lpT); lpT = setTimeout(() => {
+    lpT = null; suppressClick = true; enterEdit();
+    if (node) drag = { it: node.dataset.item, node, x0: lpXY[0], y0: lpXY[1], on: false };   // 长按的那个图标可以直接拖走
+  }, 500);
 });
 H.addEventListener('pointermove', e => { if (lpT && Math.hypot(e.clientX - lpXY[0], e.clientY - lpXY[1]) > 8) { clearTimeout(lpT); lpT = null; } });
 ['pointerup', 'pointercancel'].forEach(t => H.addEventListener(t, () => { clearTimeout(lpT); lpT = null; }));
@@ -254,12 +267,33 @@ function hover(x, y) {
     if (!toArr || !pick(toArr, '.home-page>[data-item]')) return;
     if (toArr !== from.arr && toArr.reduce((n, it) => n + cellsOf(it), 0) + cellsOf(drag.it) > PAGE_CELLS) return;   // 那一页满了
   } else return;
-  if (toArr === from.arr && (toIdx === from.i || toIdx === from.i + 1)) return;
+  if (toArr === from.arr && (toIdx === from.i || toIdx === from.i + 1)) { clearTimeout(drag.moveT); drag.want = null; return; }
+  // 在同一个位置停一小会儿才换位，免得图标跟着手指乱跳
+  const want = (parent === dock ? 'd' : 'p') + toIdx + '@' + (parent.dataset.i || [...pages.children].indexOf(parent));
+  if (drag.want === want) return;
+  drag.want = want; clearTimeout(drag.moveT);
+  drag.moveT = setTimeout(() => { if (drag && drag.want === want) moveTo(from, toArr, toIdx, parent); }, 110);
+}
+/* 挪位置：先记下其他图标的位置，挪完再让它们从原位置滑过去（FLIP） */
+function moveTo(from, toArr, toIdx, parent) {
+  const scope = [...new Set([drag.node.parentElement, parent])];
+  const nodes = scope.flatMap(p => [...p.children]).filter(n => n !== drag.node);
+  const before = new Map(nodes.map(n => [n, n.getBoundingClientRect()]));
   from.arr.splice(from.i, 1);
   if (toArr === from.arr && toIdx > from.i) toIdx--;
   toArr.splice(toIdx, 0, drag.it);
   const kids = [...parent.children].filter(n => n !== drag.node);   // DOM 和数组顺序保持一致
   parent.insertBefore(drag.node, kids[toIdx] || null);
+  const k = zoomK();
+  for (const n of nodes) {
+    const a = before.get(n), b = n.getBoundingClientRect();
+    const dx = (a.left - b.left) / k, dy = (a.top - b.top) / k;
+    if (!dx && !dy) continue;
+    n.style.transition = 'none'; n.style.translate = `${dx}px ${dy}px`;
+    n.getBoundingClientRect();
+    n.style.transition = 'translate .28s cubic-bezier(.2,.8,.2,1)'; n.style.translate = '0px 0px';
+  }
+  drag.want = null;
 }
 function flip(dir) {
   if (!drag) return;
@@ -272,13 +306,22 @@ function flip(dir) {
   pages.scrollTo({ left: i * pages.clientWidth, behavior: 'smooth' });
   drag.edge = 0;
 }
-document.addEventListener('pointerup', () => {
+/* 拖动时别让页面跟着滚 */
+document.addEventListener('touchmove', e => { if (drag && drag.on) e.preventDefault(); }, { passive: false });
+function endDrag() {
   if (!drag) return;
-  const d = drag; drag = null; clearTimeout(d.flipT);
+  const d = drag; drag = null; clearTimeout(d.flipT); clearTimeout(d.moveT);
   if (!d.on) return;
-  d.ghost.remove(); suppressClick = true; setTimeout(() => { suppressClick = false; }, 50);
-  normalizeLayout(); saveS(); renderHome();
-});
+  suppressClick = true; setTimeout(() => { suppressClick = false; }, 60);
+  // 松手：图标从手指的位置落回它的新格子
+  const r = d.node.getBoundingClientRect(), pr = $('#phone').getBoundingClientRect(), k = zoomK();
+  d.ghost.style.transition = 'transform .22s cubic-bezier(.2,.8,.2,1)';
+  d.ghost.style.transform = `translate(${(r.left - pr.left) / k}px,${(r.top - pr.top) / k}px)`;
+  d.ghost.classList.add('landing');
+  setTimeout(() => { d.ghost.remove(); d.node.classList.remove('drag-src'); normalizeLayout(); saveS(); renderHome(); }, 230);
+}
+document.addEventListener('pointerup', endDrag);
+document.addEventListener('pointercancel', endDrag);
 
 /* ---------- App Store ---------- */
 let storeQ = '', installing = {};

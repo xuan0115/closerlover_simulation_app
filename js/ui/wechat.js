@@ -343,7 +343,7 @@ function retry(m) {
   const i = M.indexOf(m); if (i >= 0) { M.splice(i, 1); saveM(); }
   renderThread();
   const r = m.retry || {};
-  if (r.kind === 'event') { const ev = S.events.find(e => e.id === r.id); if (ev) enqueue(() => runEvent(ev, { at: Date.now(), live: true })); }
+  if (r.kind === 'event') { const ev = allEvents().find(e => e.id === r.id); if (ev) enqueue(() => runEvent(ev, { at: Date.now(), live: true })); }
   else enqueue(() => herTurn({ kind: 'reply', at: Date.now(), live: true, retry: { kind: 'reply' } }));
 }
 
@@ -364,11 +364,22 @@ function sendMine(text, type = 'text', extra = {}) {
   addMsg(m);
   scheduleReply();
 }
-function doCheckin(kind) {
-  const label = kind === 'study' ? '学习' : '健身';
-  if (todayChecks()[kind]) { toast(`今天${label}已经打过卡了`); return; }
-  checkin(kind, Date.now());
-  sendMine(kind === 'study' ? '📚 开始学习了' : '🏋️ 去健身了', 'checkin');
+/* 打卡：记一笔，再给她发一条消息 */
+function doCheckin(id) {
+  const t = taskById(id); if (!t) return;
+  if (todayChecks()[id]) { toast(`今天${t.name}已经打过卡了`); return; }
+  checkin(id, Date.now());
+  sendMine(`${t.emoji || '✅'} 开始${t.name}了`, 'checkin', { task: id });
+}
+function checkinSheet() {
+  if (!S.tasks.length) { toast('督促清单是空的，去「设置 → 督促清单」加一项'); return; }
+  const c = todayChecks();
+  openSheet((p, close) => {
+    p.append(sheetHead('打卡', el('button', { onclick: close }, '取消')),
+      iosGroup('', S.tasks.map(t => el('button', { class: 'ios-row', disabled: !!c[t.id], onclick: () => { close(); doCheckin(t.id); } },
+        el('span', { class: 'task-emoji' }, t.emoji || '✅'), el('span', { class: 'lbl' }, t.name, t.target ? el('small', {}, t.target) : ''),
+        el('span', { class: 'val' }, c[t.id] ? '已打卡 ' + hm(c[t.id]) : ''))), `打卡后会自动发消息告诉${herName()}。`));
+  });
 }
 function giftSheet() {
   openSheet((p, close) => {
@@ -414,7 +425,7 @@ function buildCompose() {
       const g = el('div', { class: 'wx-more' });
       const t = (ic, label, fn) => el('button', { onclick: () => { togglePanel(''); fn(); } }, el('span', { class: 'tile' }, icon(ic, 28, 1.6)), label);
       g.append(t('photo', '相册', pickFromFiles), t('camera', '拍摄', () => openApp('camera')), t('phone', FEATURES.voice ? '语音通话' : el('span', { class: 'soon-lbl' }, '语音通话', el('small', {}, '待开发')), callOrSoon),
-        t('gift', '礼物', giftSheet), t('book', '学习打卡', () => doCheckin('study')), t('dumbbell', '健身打卡', () => doCheckin('gym')));
+        t('gift', '礼物', giftSheet), t('checklist', '打卡', checkinSheet));
       panel.append(g);
     }
     if (mode) { ta.blur(); if (composeMode === 'voice' && mode === 'emoji') setComposeMode('text'); }

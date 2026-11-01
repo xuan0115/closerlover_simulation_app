@@ -5,6 +5,8 @@
 
 /* ================= 日历 ================= */
 let calView = null, calSel = null;
+const TASK_COLORS = ['#007AFF', '#34C759', '#FF9500', '#AF52DE', '#FF2D55', '#5AC8FA', '#FFCC00'];
+const taskColor = id => { const i = S.tasks.findIndex(t => t.id === id); return i < 0 ? '#8E8E93' : TASK_COLORS[i % TASK_COLORS.length]; };
 function calendarRoot(pg, app) {
   pg.classList.add('cal');
   const body = el('div', { class: 'ios-body' });
@@ -32,15 +34,15 @@ function calendarRoot(pg, app) {
       const isToday = k === dkey(now), isSel = k === calSel;
       grid.append(el('button', { class: 'cal-day' + (isToday ? ' today' : '') + (isSel ? ' sel' : ''), onclick: () => { calSel = k; render(); } },
         el('b', {}, String(d)),
-        el('span', { class: 'cal-dots' }, ck.study ? el('i', { class: 'st' }) : '', ck.gym ? el('i', { class: 'gy' }) : '', msgDays.has(k) ? el('i', { class: 'ms' }) : '')));
+        el('span', { class: 'cal-dots' }, ...Object.keys(ck).slice(0, 3).map(id => el('i', { style: `background:${taskColor(id)}` })), msgDays.has(k) ? el('i', { class: 'ms' }) : '')));
     }
     body.append(head, grid);
     const ck = ST.checkins[calSel] || {};
     const herCount = M.filter(m => m.from === 'her' && dkey(m.ts) === calSel).length;
     const [sy, sm, sd] = calSel.split('-').map(Number);
+    const ids = [...new Set([...S.tasks.map(t => t.id), ...Object.keys(ck)])];
     body.append(iosGroup(`${sm}月${sd}日 星期${WD[new Date(sy, sm - 1, sd).getDay()]}`, [
-      el('div', { class: 'ios-row' }, el('span', { class: 'cal-legend st' }), el('span', { class: 'lbl' }, '学习打卡'), el('span', { class: 'val' }, ck.study ? hm(ck.study) : '没有')),
-      el('div', { class: 'ios-row' }, el('span', { class: 'cal-legend gy' }), el('span', { class: 'lbl' }, '健身打卡'), el('span', { class: 'val' }, ck.gym ? hm(ck.gym) : '没有')),
+      ...ids.map(id => el('div', { class: 'ios-row' }, el('span', { class: 'cal-legend', style: `background:${taskColor(id)}` }), el('span', { class: 'lbl' }, `${taskName(id)}打卡`), el('span', { class: 'val' }, ck[id] ? hm(ck[id]) : '没有'))),
       el('div', { class: 'ios-row' }, el('span', { class: 'cal-legend ms' }), el('span', { class: 'lbl' }, `${herName()}发来的消息`), el('span', { class: 'val' }, herCount ? `${herCount} 条` : '没有'))]));
   }
 }
@@ -208,78 +210,3 @@ function calcRoot(pg) {
 document.addEventListener('keydown', e => {
   if (cur === 'calc' && Nav.top('calc') && Nav.top('calc').onkey && !e.metaKey && !e.ctrlKey && e.key !== 'Escape') Nav.top('calc').onkey(e);
 });
-
-/* ---------- 时钟：世界时钟、闹钟（就是她找你的时间）、秒表、计时器 ---------- */
-const CITIES = [['上海', 'Asia/Shanghai'], ['东京', 'Asia/Tokyo'], ['伦敦', 'Europe/London'], ['纽约', 'America/New_York']];
-let clockTab = 'world', SW = { t0: 0, acc: 0, laps: [], run: false }, TM = { end: 0, left: 0, run: false, total: 0 };
-function clockRoot(pg, app) {
-  pg.classList.add('clock-app');
-  const body = el('div', { class: 'ios-body' });
-  const tabs = el('nav', { class: 'clock-tabs' });
-  const T_ = [['world', '世界时钟', 'globe'], ['alarm', '闹钟', 'alarm'], ['stopwatch', '秒表', 'stopwatch'], ['timer', '计时器', 'timer']];
-  for (const [k, label, ic] of T_) tabs.append(el('button', { 'aria-current': String(k === clockTab), onclick: () => { clockTab = k; render(); } }, icon(ic, 24, 1.9), el('span', {}, label)));
-  pg.append(iosNav(app, { flat: true }), body, tabs);
-  let iv;
-  pg.refresh = render; pg.onclose = () => clearInterval(iv);
-  render();
-  function render() {
-    clearInterval(iv);
-    $$('button', tabs).forEach((b, i) => b.setAttribute('aria-current', String(T_[i][0] === clockTab)));
-    body.textContent = '';
-    if (clockTab === 'world') world(); else if (clockTab === 'alarm') alarms(); else if (clockTab === 'stopwatch') stopwatch(); else timer();
-  }
-  function world() {
-    body.append(el('h1', { class: 'ios-large' }, '世界时钟'));
-    const list = el('div', { class: 'clock-list' }); body.append(list);
-    const draw = () => {
-      list.textContent = '';
-      const here = new Date();
-      for (const [name, tz] of CITIES) {
-        const f = new Intl.DateTimeFormat('zh-CN', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false, year: 'numeric', month: 'numeric', day: 'numeric' });
-        const parts = Object.fromEntries(f.formatToParts(here).map(p => [p.type, p.value]));
-        const there = new Date(`${parts.year}-${pad(parts.month)}-${pad(parts.day)}T${parts.hour}:${parts.minute}:00`);
-        const diff = Math.round((there - new Date(dkey(here) + 'T' + hm(here) + ':00')) / 36e5);
-        const day = dkey(there) === dkey(here) ? '今天' : there > here ? '明天' : '昨天';
-        list.append(el('div', { class: 'clock-row' }, el('div', {}, el('small', {}, `${day}，${diff >= 0 ? '+' : ''}${diff}小时`), el('b', {}, name)), el('time', {}, `${parts.hour}:${parts.minute}`)));
-      }
-    };
-    draw(); iv = setInterval(draw, 15000);
-  }
-  function alarms() {
-    body.append(el('h1', { class: 'ios-large' }, '闹钟'));
-    const evs = [...S.events].sort((a, b) => a.time.localeCompare(b.time));
-    body.append(iosGroup(`${herName()}来找你的时间`, evs.map(ev => {
-      const c = el('input', { type: 'checkbox', class: 'sw', 'aria-label': ev.label }); c.checked = ev.on;
-      c.addEventListener('change', () => { ev.on = c.checked; saveS(); render(); });
-      return el('label', { class: 'alarm' + (ev.on ? '' : ' off') }, el('div', {}, el('time', {}, ev.time), el('div', { class: 'lbl' }, ev.label, el('small', {}, '，' + daysText(ev.days)))), c);
-    }), `这些就是「设置 → ${zx()} → ${TA()}什么时候找你」里的时间。到点时${TA()}会发消息或打电话来。`));
-  }
-  function stopwatch() {
-    const fmtSW = ms => `${pad(Math.floor(ms / 60000))}:${pad(Math.floor(ms / 1000) % 60)}.${pad(Math.floor(ms / 10) % 100)}`;
-    const cur = () => SW.acc + (SW.run ? Date.now() - SW.t0 : 0);
-    const disp = el('div', { class: 'sw-disp' }, fmtSW(cur()));
-    const left = el('button', { class: 'round gray', onclick: () => { if (SW.run) { SW.laps.unshift(cur()); render(); } else { SW.acc = 0; SW.laps = []; render(); } } }, SW.run ? '计次' : '复位');
-    const right = el('button', { class: 'round ' + (SW.run ? 'red' : 'green'), onclick: () => { if (SW.run) { SW.acc = cur(); SW.run = false; } else { SW.t0 = Date.now(); SW.run = true; } render(); } }, SW.run ? '停止' : '启动');
-    body.append(disp, el('div', { class: 'round-row' }, left, right),
-      el('div', { class: 'clock-list laps' }, ...SW.laps.map((t, i) => el('div', { class: 'clock-row slim' }, el('span', {}, `计次 ${SW.laps.length - i}`), el('span', {}, fmtSW(i < SW.laps.length - 1 ? t - SW.laps[i + 1] : t))))));
-    if (SW.run) iv = setInterval(() => { disp.textContent = fmtSW(cur()); }, 33);
-  }
-  function timer() {
-    const left = () => TM.run ? Math.max(0, TM.end - Date.now()) : TM.left;
-    const f = ms => { const s = Math.ceil(ms / 1000); return `${pad(Math.floor(s / 60))}:${pad(s % 60)}`; };
-    if (!TM.total) {
-      body.append(el('h1', { class: 'ios-large' }, '计时器'), el('div', { class: 'timer-picks' }, ...[1, 5, 10, 25, 45, 60].map(m =>
-        el('button', { onclick: () => { TM.total = TM.left = m * 60000; TM.end = Date.now() + TM.left; TM.run = true; render(); } }, el('b', {}, m), '分钟'))),
-        el('p', { class: 'ios-foot' }, '选一个时长就开始。比如学习前开个 25 分钟。'));
-      return;
-    }
-    const disp = el('div', { class: 'sw-disp timer' }, f(left()));
-    body.append(disp, el('div', { class: 'round-row' },
-      el('button', { class: 'round gray', onclick: () => { TM = { end: 0, left: 0, run: false, total: 0 }; render(); } }, '取消'),
-      el('button', { class: 'round ' + (TM.run ? 'orange' : 'green'), onclick: () => { if (TM.run) { TM.left = left(); TM.run = false; } else { TM.end = Date.now() + TM.left; TM.run = true; } render(); } }, TM.run ? '暂停' : '继续')));
-    if (TM.run) iv = setInterval(() => {
-      const l = left(); disp.textContent = f(l);
-      if (l <= 0) { clearInterval(iv); TM = { end: 0, left: 0, run: false, total: 0 }; toast('计时结束'); try { navigator.vibrate && navigator.vibrate(300); } catch (e) {} render(); }
-    }, 250);
-  }
-}

@@ -32,12 +32,13 @@ function buildSystem(at) {
   sec(T.routine, h.routine);
   sec(T.relationship, h.relationship);
   sec(T.callMe(ta), h.callMe && `「${h.callMe}」`);
-  sec(T.aboutMe(ta), [myName() && `名字/昵称：${myName()}`, me.zodiac && PROMPTS.myZodiac({ ta, sign: me.zodiac }), me.about, me.goals && `${ta}给自己定的目标：${me.goals}`].filter(Boolean).join('\n'));
+  const myGender = me.gender === '自己填写' ? (me.genderText || '').trim() : me.gender;
+  sec(T.aboutMe(ta), [myName() && `名字/昵称：${myName()}`, myGender && `性别：${myGender}`, me.identity && `身份：${me.identity}`, me.zodiac && PROMPTS.myZodiac({ ta, sign: me.zodiac }), me.about].filter(Boolean).join('\n'));
+  if (S.tasks.length) sec(T.tasks, PROMPTS.tasks({ ta, list: S.tasks.map(t => ({ id: t.id, name: t.name, days: daysText(t.days), target: t.target, remind: t.remindOn && t.remind })) }));
   if (S.memory.length) sec(T.memory, S.memory.map(x => '- ' + x).join('\n'));
   sec(T.now, PROMPTS.now({
     time: fmtFull(at), ta,
-    study: today.study && `已完成（${hm(today.study)}）`,
-    gym: today.gym && `已完成（${hm(today.gym)}）`,
+    today: tasksOn(at).map(t => ({ name: t.name, done: today[t.id] && hm(today[t.id]) })),
     lastMineAgo: lastMine && ago(at - lastMine.ts)
   }));
 
@@ -144,7 +145,7 @@ const usesAI = kind => S.reply.mode === 'ai' || (S.reply.mode === 'hybrid' && ki
 function templateFor({ kind, ev, unreplied }) {
   if (kind === 'reply') return tplReply();
   if (kind === 'opening') return tplScene('opening');
-  return tplScene(ev.scene || 'chat', { photo: !!ev.photo, unreplied });
+  return tplScene(ev.scene || 'chat', { photo: !!ev.photo, unreplied, task: ev.task, alarm: ev.alarm });
 }
 
 async function compose({ kind, ev, at, unreplied, note }) {
@@ -189,7 +190,10 @@ async function herTurn({ kind, ev = null, at = Date.now(), live = true, unreplie
 
     for (const r of o.remember) { const s = r.slice(0, 80); if (!S.memory.includes(s)) S.memory.push(s); }
     if (S.memory.length > 80) S.memory = S.memory.slice(-80);
-    for (const d of o.done) if ((d === 'study' || d === 'gym') && !todayChecks()[d]) checkin(d, Date.now());
+    for (const d of o.done) {   // 模型可能给 id，也可能给名称
+      const t = taskById(d) || S.tasks.find(x => x.name === d);
+      if (t && !todayChecks()[t.id]) checkin(t.id, Date.now());
+    }
     saveS(); saveST();
 
     let photo = null;
