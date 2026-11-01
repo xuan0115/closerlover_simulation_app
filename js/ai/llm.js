@@ -28,10 +28,15 @@ function imgConf() {
 }
 
 const netError = e => new Error('连不上接口（' + e.message + '）。检查网络或代理；如果用的是其他兼容接口，它可能不允许浏览器直接访问。');
-async function post(url, body, headers) {
-  try { return await fetch(url, { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, headers), body: JSON.stringify(body) }); }
-  catch (e) { throw netError(e); }
+/* 等太久就放弃（默认 90 秒），免得一直显示「对方正在输入」 */
+async function post(url, body, headers, ms = 90e3) {
+  const ac = typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = ac && setTimeout(() => ac.abort(), ms);
+  try { return await fetch(url, { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, headers), body: JSON.stringify(body), signal: ac ? ac.signal : undefined }); }
+  catch (e) { throw ac && ac.signal.aborted ? new Error(`等了 ${Math.round(ms / 1000)} 秒还没回复，可能网络慢或模型太忙，稍后再试`) : netError(e); }
+  finally { if (timer) clearTimeout(timer); }
 }
+const isDeepSeek = c => /(^|\.)deepseek\.com/i.test((String(c.base).match(/^https?:\/\/([^/]+)/i) || [])[1] || '');
 async function getJSON(url, headers) {
   let r;
   try { r = await fetch(url, { headers }); } catch (e) { throw netError(e); }
@@ -69,20 +74,30 @@ async function callLLM(system, msgs) {
   }
 
   // OpenAI 及兼容接口
-  const body = { model: c.model, messages: [{ role: 'system', content: system }, ...msgs.map(m => ({ role: m.role, content: m.text }))] };
+  const chat = msgs.map(m => ({ role: m.role, content: m.text }));
+  if (chat[0] && chat[0].role === 'assistant') chat.unshift({ role: 'user', content: '【系统提示】聊天开始。' }); // 有的接口要求第一条是用户说的
+  const body = { model: c.model, messages: [{ role: 'system', content: system }, ...chat] };
   if (c.json) body.response_format = { type: 'json_object' };
   if (c.provider === 'openai' && /^gpt-5/.test(c.model)) body.reasoning_effort = 'minimal'; // 聊天不需要长思考，回得更快
+  if (isDeepSeek(c)) body.thinking = { type: 'disabled' };  // DeepSeek 默认先深度思考：又慢，在 JSON 模式下还容易返回空白
   const h = { Authorization: 'Bearer ' + c.key };
-  let r = await post(c.base + '/chat/completions', body, h);
-  if (r.status === 400 && (body.response_format || body.reasoning_effort)) { // 有的接口不认这两个参数，去掉再试一次
-    delete body.response_format; delete body.reasoning_effort;
-    r = await post(c.base + '/chat/completions', body, h);
+  const url = c.base + '/chat/completions';
+  let r = await post(url, body, h);
+  if (r.status === 400 && (body.response_format || body.reasoning_effort || body.thinking)) { // 有的接口不认这几个参数，去掉再试一次
+    delete body.response_format; delete body.reasoning_effort; delete body.thinking;
+    r = await post(url, body, h);
   }
   if (!r.ok) throw await apiError(r);
-  const j = await r.json();
-  const text = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
-  if (!text) throw new Error('模型没有返回内容');
-  return text;
+  const read = j => { const ch = j.choices && j.choices[0]; return { text: String((ch && ch.message && ch.message.content) || ''), why: ch && ch.finish_reason }; };
+  let out = read(await r.json());
+  if (!out.text.trim() && body.response_format) { // JSON 模式偶尔会返回一串空格：不要求 JSON 再要一次
+    delete body.response_format;
+    r = await post(url, body, h);
+    if (!r.ok) throw await apiError(r);
+    out = read(await r.json());
+  }
+  if (!out.text.trim()) throw new Error('模型返回了空白内容' + (out.why ? '（' + out.why + '）' : '') + '，再发一条试试');
+  return out.text;
 }
 
 /* 生成一张照片，返回 data URL（或图片地址） */

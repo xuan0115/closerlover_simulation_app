@@ -71,7 +71,7 @@ function editEvent(ev) {
       iosGroup('', [field('名字', label), field('大概几点', time), field('前后随机浮动（分钟）', jit), el('div', { class: 'ios-field' }, el('span', {}, '哪几天'), days)]),
       iosGroup('', [field('发到哪里', to), el('label', { class: 'ios-row' }, el('span', { class: 'lbl' }, '一定带照片'), ph)]),
       iosGroup('', [field('模板模式：用哪组台词', scene)], '台词在 js/data/templates.js，按场景分组。'),
-      iosGroup('', [field(`AI 模式：这次${TA()}要做什么`, pr)], `AI 或混合模式下，这段话会告诉${TA()}这次该说什么。TA 指你。`),
+      iosGroup('', [field(`AI 模式：这次${TA()}要做什么`, pr)], `AI 模式下，这段话会告诉${TA()}这次该说什么。TA 指你。`),
       el('div', { class: 'btnrow' }, el('button', { class: 'btn', onclick: () => { const e = commit(); close(); if (e.to === 'chat') { openApp('wx'); openThread(true); } else if (e.to === 'moments') toast(`${TA()}正在发朋友圈`); enqueue(() => runEvent(e, { at: Date.now(), live: true })); } }, `现在就让${TA()}发`)),
       isNew ? '' : el('div', { class: 'btnrow' }, el('button', { class: 'btn danger', onclick: () => { S.events = S.events.filter(x => x !== ev); saveS(); refreshTop(); close(); } }, '删除这条日程')));
   });

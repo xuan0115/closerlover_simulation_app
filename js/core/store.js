@@ -44,7 +44,8 @@ const DEFAULTS = {
   her: DEFAULT_HER,
   me: DEFAULT_ME,
   memory: [],
-  reply: { mode: 'template', fallback: true },
+  ver: 2,                                                          // 设定的版本号，迁移旧数据用
+  reply: { mode: 'template', fallback: true, aiOk: false },          // aiOk：看过「AI 会把聊天发给哪里」的说明
   api: { provider: 'openai', base: '', key: '', model: '', json: true },
   photo: { mode: 'pool_then_gen', provider: 'openai', key: '', base: '', model: '' },
   notify: { system: false, banner: true, relock: true, breakReminder: true, focus: false, focusMode: 'personal', airplane: false },
@@ -105,6 +106,19 @@ function migrate(raw, s) {
   if (!s.alarms.some(a => a.id === 'love')) s.alarms.unshift(clone(DEFAULT_ALARMS.find(a => a.id === 'love')));
   for (const a of s.alarms) if (a.id === 'love') Object.assign(a, { time: '20:00', label: DEFAULT_ALARMS[0].label, locked: true, ta: false });
   if (!s.events.some(e => e.id === 'e_call') && RAW && RAW.events) s.events.push(clone(DEFAULT_EVENTS.find(e => e.id === 'e_call')));
+  if (!REPLY_MODES[s.reply.mode]) s.reply.mode = 'ai';                    // 「混合」取消了，并进 AI
+  if (raw && raw.reply && raw.reply.mode && raw.reply.mode !== 'template' && raw.reply.aiOk === undefined) s.reply.aiOk = true;  // 已经在用 AI 的，不再弹说明
+  if (raw && !(raw.ver >= 2)) {                                           // v2：默认值改了的，没自己改过就跟着换
+    if (raw.me && raw.me.zodiac === '摩羯座') s.me.zodiac = DEFAULT_ME.zodiac;
+    if (raw.her && raw.her.callMe === '笨蛋') s.her.callMe = DEFAULT_HER.callMe;
+  }
+  s.ver = DEFAULTS.ver;
+  if (s.layout) {                                                         // 去掉已经没有的 App（比如 Safari）
+    const keep = it => !it || it.startsWith('widget:') || it.startsWith('folder:') || APPS[it];
+    if (Array.isArray(s.layout.pages)) s.layout.pages = s.layout.pages.map(p => p.filter(keep));
+    if (Array.isArray(s.layout.dock)) s.layout.dock = s.layout.dock.filter(keep);
+    for (const f of Object.values(s.layout.folders || {})) if (Array.isArray(f.apps)) f.apps = f.apps.filter(keep);
+  }
   return s;
 }
 
@@ -217,7 +231,7 @@ const taskWords = t => [t.name, ...(t.keywords || [])].map(w => String(w).trim()
 function appDef(id) {
   const base = APPS[id] || { label: id };
   const o = (S.home || {})[id] || {};
-  return { id, label: (o.label || '').trim() || base.label, icon: o.icon || '', ios: o.ios != null && o.ios !== '' ? o.ios : (base.ios || '') };
+  return { id, label: (o.label || '').trim() || base.label, icon: o.icon || '', ios: o.ios != null && String(o.ios).trim() !== '' ? String(o.ios).trim() : (base.ios || base.open || '') };
 }
 const zxId = () => 'zx_' + (Math.abs([...herName()].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7)) % 1e8).toString(36);
 const myZxId = () => 'zx_' + (Math.abs([...(myName() || 'me')].reduce((h, c) => (h * 37 + c.charCodeAt(0)) | 0, 11)) % 1e8).toString(36);

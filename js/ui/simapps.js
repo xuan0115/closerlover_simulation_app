@@ -2,7 +2,7 @@
  * 不跳转、在网页里自己做的几个 App：
  *   天气      显示 TA 所在地的真实天气（Open-Meteo 的免费接口，不用 Key）
  *   语音备忘录 样子（录音待开发）
- *   第三方 App 一张自己的页面，上面有按钮可以打开手机里真的那个
+ *   第三方 App 一张自己的页面（电脑上、或手机里没装时显示），上面有按钮可以打开手机里真的那个
  */
 'use strict';
 
@@ -72,10 +72,10 @@ function voiceMemosRoot(pg, app) {
 
 /* ---------- 第三方 App：自己的页面 ---------- */
 function thirdPartyPage(pg, id) {
-  const d = appDef(id), open = (S.home[id] && S.home[id].ios) || APPS[id].open;
+  const d = appDef(id), open = d.ios;
   pg.append(iosNav('shell', { flat: true }), el('div', { class: 'ios-body shell-body' }, appIcon(id, 92), el('h1', {}, d.label),
     STORE[id] ? el('p', { class: 'tp-cat' }, STORE[id]) : '',
-    el('p', {}, '这是「知己」里的模拟 App。'),
+    el('p', {}, open ? `在 iPhone 上点桌面上的这个图标，会直接打开手机里真的「${d.label}」。` : '这是「知己」里的模拟 App。'),
     open ? el('button', { class: 'btn primary', onclick: () => isIOS() ? (location.href = open) : toast('只能在 iPhone 上打开') }, `打开手机里的「${d.label}」`) : '',
-    open ? el('p', { class: 'hint' }, '要手机上装了这个 App 才能打开；没装的话 Safari 会提示「网址无效」。') : ''));
+    open ? el('p', { class: 'hint' }, '要手机上装了这个 App 才能打开；没装的话会提示「网址无效」。知己只是让 iPhone 打开一个地址，不会附带你的任何信息。') : ''));
 }

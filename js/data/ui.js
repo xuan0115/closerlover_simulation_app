@@ -1,11 +1,13 @@
 /*
  * 手机里有哪些 App、桌面怎么排、壁纸。
  *
- * 只有「著信」是这个项目自己做的聊天 App，其余都是壳子：
- *   ios  在 iPhone 上点图标，跳到这个地址（打开真实的 App）；留空就打开网页里的仿真版
- *   在电脑上点，一律打开网页里的仿真版
+ * 只有「chatwe聊我」是这个项目自己做的聊天 App，其余都是壳子：
+ *   系统 App（第一页那些）点开都是网页里的仿真版，不跳转
+ *   ios   在 iPhone 上点图标，直接打开手机里真的那个（现在只有图书、播客）
+ *   open  第三方 App 的地址：在 iPhone 上点图标直接打开真的那个；没装就回到网页里它的页面
+ *   在电脑上点，一律打开网页里的页面
  * 名字、图标图片、跳转地址也可以在网页「设置 → 主屏幕与 App 资源库」里改，那里改的优先。
- * 带 ? 的跳转地址是 iOS 没有公开说明、但一直能用的，万一失效会退回仿真版。
+ * 带 ? 的跳转地址是 iOS 没有公开说明、但一直能用的，万一失效会退回网页里的页面。
  */
 const APP_TITLE = '知己';   // 浏览器标签页、添加到主屏幕时的名字
 
@@ -18,30 +20,29 @@ const APPS = {
   settings:   { label: '设置' },
   camera:     { label: '相机' },                                       // iPhone 没有能跳转的地址，用仿真相机
   calc:       { label: '计算器' },                                     // 同上
-  photos:     { label: '照片',     ios: 'photos-redirect://' },
-  calendar:   { label: '日历',     ios: 'calshow://' },
-  notes:      { label: '备忘录',   ios: 'mobilenotes://' },
-  reminders:  { label: '提醒事项', ios: 'x-apple-reminderkit://' },
-  music:      { label: '音乐',     ios: 'music://' },
-  maps:       { label: '地图',     ios: 'maps://' },
-  mail:       { label: '邮件',     ios: 'message://' },
-  messages:   { label: '信息',     ios: 'sms:' },
-  health:     { label: '健康',     ios: 'x-apple-health://' },
-  files:      { label: '文件',     ios: 'shareddocuments://' },
+  photos:     { label: '照片' },
+  calendar:   { label: '日历' },
+  notes:      { label: '备忘录' },
+  reminders:  { label: '提醒事项' },
+  music:      { label: '音乐' },
+  maps:       { label: '地图' },
+  mail:       { label: '邮件' },
+  messages:   { label: '信息' },
+  health:     { label: '健康' },
+  files:      { label: '文件' },
   weather:    { label: '天气' },                                     // 网页里的天气：显示 TA 所在地的真实天气
   clock:      { label: '时钟' },                                     // 网页里的时钟：闹钟、督促提醒
-  safari:     { label: 'Safari 浏览器', ios: 'x-web-search://' },
   appstore:   { label: 'App Store' },                                // 网页里的仿真 App Store：在这里下载、重新下载壳子
-  books:      { label: '图书',     ios: 'ibooks://' },
+  books:      { label: '图书',     ios: 'ibooks://' },                 // 图书、播客用手机里真的那个
   podcasts:   { label: '播客',     ios: 'podcasts://' },
-  tv:         { label: 'TV',       ios: 'videos://' },
-  facetime:   { label: 'FaceTime 通话', ios: 'facetime://' },
-  findmy:     { label: '查找',     ios: 'findmy://' },
-  wallet:     { label: '钱包',     ios: 'shoebox://' },
-  shortcuts:  { label: '快捷指令', ios: 'shortcuts://' },
+  tv:         { label: 'TV' },
+  facetime:   { label: 'FaceTime 通话' },
+  findmy:     { label: '查找' },
+  wallet:     { label: '钱包' },
+  shortcuts:  { label: '快捷指令' },
   voicememos: { label: '语音备忘录' },
-  stocks:     { label: '股市',     ios: 'stocks://' },
-  /* 第三方 App：点开是网页里的页面；页面上有个按钮能打开手机里真的那个（open 是它的地址，要先装了才行） */
+  stocks:     { label: '股市' },
+  /* 第三方 App：在 iPhone 上点图标直接打开手机里真的那个（open 是它的地址，要先装了才行）；没装就显示网页里它的页面 */
   xhs:        { label: '小红书',   open: 'xhsdiscover://' },
   meituan:    { label: '美团外卖', open: 'meituanwaimai://' },
   netease:    { label: '网易云音乐', open: 'orpheus://' },
@@ -72,7 +73,7 @@ const APPS = {
 };
 
 /* 删不掉的 App（和 iPhone 一样，系统自带的几个删不掉；chatwe聊我 也删不掉） */
-const NO_DELETE = ['wx', 'settings', 'appstore', 'camera', 'photos', 'messages', 'safari', 'wallet', 'health', 'findmy'];
+const NO_DELETE = ['wx', 'settings', 'appstore', 'camera', 'photos', 'messages', 'wallet', 'health', 'findmy'];
 
 /* App Store 里能下载的东西：分类和一句话介绍。没列在这里的 App 不会出现在商店里 */
 const STORE = {
@@ -93,7 +94,7 @@ const STORE = {
  *   'widget:countdown'  倒数日（2×2），在「设置 → chatwe聊我 → 倒数日」里改，或者直接点它
  *   'widget:checkin'    学习、健身打卡（两个 2×2）
  *   'folder:xxx'        文件夹，里面有什么写在 FOLDERS 里
- * 第一页照 iPhone 出厂的首页排：上面两个小组件，下面 4×4 系统 App，Dock 是常用的四个。
+ * 第一页照 iPhone 出厂的首页排：上面两个小组件，下面 4×4 系统 App；Dock 是常用的几个（最多 4 个）。
  */
 const FOLDERS = {
   tools: { name: '实用工具', apps: ['calc', 'voicememos', 'findmy', 'shortcuts', 'stocks'] }
@@ -110,7 +111,7 @@ const HOME_LAYOUT = {
      'xiaoyuzhou', 'wxwork', 'folder:tools',
      'widget:checkin']
   ],
-  dock: ['wx', 'safari', 'messages', 'music']
+  dock: ['wx', 'messages', 'music']
 };
 
 /* 精选墙纸：draw 是用代码画的，css 是一段 CSS background。自己的照片在「设置 → 墙纸」里选 */

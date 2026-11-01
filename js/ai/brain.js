@@ -140,7 +140,7 @@ async function makePhoto(scene) {
 
 /* ---------- 这一轮她说什么 ---------- */
 /* kind：'reply' 回你 / 'event' 定时消息 / 'opening' 开场 */
-const usesAI = kind => S.reply.mode === 'ai' || (S.reply.mode === 'hybrid' && kind === 'reply');
+const usesAI = () => S.reply.mode === 'ai';
 
 function templateFor({ kind, ev, unreplied }) {
   if (kind === 'reply') return tplReply();
@@ -149,7 +149,7 @@ function templateFor({ kind, ev, unreplied }) {
 }
 
 async function compose({ kind, ev, at, unreplied, note }) {
-  if (!usesAI(kind)) return Object.assign(templateFor({ kind, ev, unreplied }), { by: 'template' });
+  if (!usesAI()) return Object.assign(templateFor({ kind, ev, unreplied }), { by: 'template' });
   let instruction = '';
   if (kind === 'opening') instruction = PROMPTS.opening({ time: fmtFull(at), ta: pron() });
   if (kind === 'event') instruction = ev.to === 'moments'
@@ -158,11 +158,13 @@ async function compose({ kind, ev, at, unreplied, note }) {
   try {
     const o = parseReply(await callLLM(buildSystem(at), buildHistory(instruction)));
     if (ev && ev.photo && !o.photo) o.photo = { auto: true };
-    if (!o.messages.length) throw new Error('模型返回为空');
+    if (!o.messages.length) throw new Error('模型的回复里没有能发的话（格式不对），再发一条试试');
+    if (ST.aiErr) { delete ST.aiErr; saveST(); }
     return Object.assign(o, { by: 'ai', noPhoto: kind === 'reply' ? 'noPhoto' : 'photoNone' });
   } catch (e) {
+    ST.aiErr = { at: Date.now(), msg: e.message }; saveST();   // 记下来，「设置 → 回复方式」里能看到
     if (!S.reply.fallback) throw e;
-    toast('AI 没连上，这次用了模板：' + e.message, 5000);
+    toast('AI 没连上，这次用了模板：' + e.message, 9000);
     return Object.assign(templateFor({ kind, ev, unreplied }), { by: 'template' });
   }
 }

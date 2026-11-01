@@ -107,11 +107,11 @@ function show(name) {
   if (prev === 'camera' && name !== 'camera') stopCamera();
   syncInk();
 }
-/* 在 iPhone 上：有跳转地址的 App 直接打开真实的那个 */
+/* 在 iPhone 上：有跳转地址的 App（第二页的第三方 App、图书、播客）直接打开手机里真的那个 */
 function launchReal(d) {
   const t0 = Date.now();
   location.href = d.ios;
-  setTimeout(() => { if (!document.hidden && Date.now() - t0 < 4000) { toast(`没能打开「${d.label}」，先看网页里的仿真版`); openApp(d.id, null, true); } }, 1800);
+  setTimeout(() => { if (!document.hidden && Date.now() - t0 < 4000) { toast(`没能打开「${d.label}」，手机里可能没装`); openApp(d.id, null, true); } }, 1800);
 }
 /* 打开 App：从图标的位置放大出来 */
 function openApp(name, fromEl, noJump) {
@@ -138,7 +138,7 @@ function shellPage(pg, id) {
   if (APPS[id] && APPS[id].open) return thirdPartyPage(pg, id);
   const d = appDef(id);
   pg.append(iosNav('shell', { flat: true }), el('div', { class: 'ios-body shell-body' }, appIcon(id, 84), el('h1', {}, d.label),
-    el('p', {}, d.ios ? `在 iPhone 上点这个图标，会直接打开手机里真实的「${d.label}」。这里是电脑上的仿真页面。` : `「${d.label}」是装饰用的图标。`),
+    el('p', {}, d.ios ? `在 iPhone 上点这个图标，会直接打开手机里真的「${d.label}」。` : `这是「知己」里模拟的「${d.label}」，不会打开、也读不到你手机里真的那个。`),
     el('p', { class: 'hint' }, '点底部横条或按 Esc 回到桌面')));
 }
 function unlock(then) {

@@ -81,13 +81,15 @@ function settingsRoot(pg, app) {
     body.append(el('h1', { class: 'ios-large' }, APPS.settings.label),
       el('div', { class: 'ios-searchbox' }, icon('search', 17, 2), '搜索'));
     if (!ST.started) body.append(el('div', { class: 'intro' },
-      el('p', {}, `先到下面「App」里的「${zx()}」，设定${TA()}是谁、你们是什么关系。回复方式默认是固定模板，不用填任何 Key 就能用。`),
+      el('p', {}, `先到下面的「${zx()}」里，设定${TA()}是谁、你们是什么关系。回复方式默认是固定模板，不用填任何 Key 就能用。`),
       el('button', { class: 'btn primary wide', onclick: start }, '设好了，开始')));
     const av = el('img', { alt: '' }); setMyAvatar(av);
     body.append(el('div', { class: 'ios-card', style: 'margin-top:14px' }, el('button', { class: 'profile-card', onclick: go(settingsMePage) }, av,
       el('div', { style: 'flex:1;min-width:0' }, el('b', {}, myName() || '我'), el('small', {}, '我的资料、性别与星座')),
       el('span', { style: 'color:var(--sys-ink3)' }, icon('chevron', 18, 2.2)))));
-    body.append(iosGroup('', [iosLink({ ic: 'checklist', color: '#FF9500', label: '督促清单', value: S.tasks.length ? `${S.tasks.length} 项` : '', onclick: go(tasksPage) })]));
+    body.append(iosGroup('', [iosLink({ ic: 'checklist', color: '#FF9500', label: '督促清单', value: S.tasks.length ? `${S.tasks.length} 项` : '', onclick: go(tasksPage) }),
+      el('button', { class: 'ios-row has-ic', onclick: go(settingsZxPage) }, appIcon('wx', 30), el('span', { class: 'lbl' }, zx()),
+        el('span', { class: 'val' }, herName()), el('span', { class: 'chev' }, icon('chevron', 18, 2.2)))]));
     body.append(iosGroup('', [
       fToggle('notify.airplane', '飞行模式', v => { if (!v) setTimeout(tick, 300); return true; }, 'plane', '#FF9500'),
       iosLink({ ic: 'wifi', color: '#007AFF', label: '无线局域网', value: S.look.wifi ? '家' : '关闭', onclick: go(settingsWifiPage) }),
@@ -109,10 +111,7 @@ function settingsRoot(pg, app) {
       iosLink({ ic: 'wall', color: '#32ADE6', label: '墙纸', onclick: go(settingsWallPage) })]));
     body.append(iosGroup('', [
       iosLink({ ic: 'battery', color: '#34C759', label: '电池', onclick: go(settingsBatteryPage) }),
-      iosLink({ ic: 'hand', color: '#007AFF', label: '隐私与安全性', onclick: go(decoPage('隐私与安全性', [['定位服务', '关闭'], ['跟踪', '关闭']], '这个网页不收集任何数据，所有内容只存在当前浏览器里。')) })]));
-    body.append(el('section', { class: 'ios-group' }, el('h3', {}, 'App'), el('div', { class: 'ios-card' },
-      el('button', { class: 'ios-row has-ic', onclick: go(settingsZxPage) }, appIcon('wx', 30), el('span', { class: 'lbl' }, zx()),
-        el('span', { class: 'val' }, herName()), el('span', { class: 'chev' }, icon('chevron', 18, 2.2))))));
+      iosLink({ ic: 'hand', color: '#007AFF', label: '隐私与安全性', onclick: go(settingsPrivacyPage) })]));
   }
 }
 
@@ -132,7 +131,7 @@ function settingsZxPage(pg, app) {
       iosLink({ ic: 'clock', color: '#30B0C7', label: `${TA()}什么时候找你`, value: `${S.events.filter(e => e.on).length} 条`, onclick: go(plansPage) }),
       iosLink({ ic: 'calendar', color: '#FF3B30', label: '倒数日', value: S.countdown.title, onclick: () => editCountdown(() => Nav.refresh(app)) }),
       iosLink({ ic: 'photo', color: '#FF9500', label: '照片池', value: POOL.length ? `${POOL.length} 张` : '', onclick: go(poolPage) }),
-      iosLink({ ic: 'sparkle', color: '#AF52DE', label: '回复方式', value: REPLY_MODES[S.reply.mode].label, onclick: go(settingsReplyPage) }),
+      iosLink({ ic: 'sparkle', color: '#AF52DE', label: '回复方式', value: (REPLY_MODES[S.reply.mode] || REPLY_MODES.template).label, onclick: go(settingsReplyPage) }),
       iosLink({ ic: 'camera', color: '#8E8E93', label: 'AI 生成照片', value: { pool: '关闭', pool_then_gen: '照片池用完时', gen: '每次' }[S.photo.mode], onclick: go(settingsPhotoPage) })]));
     b.append(iosGroup('', [iosLink({ ic: 'box', color: '#8E8E93', label: '数据与备份', onclick: go(settingsDataPage) })]));
   }, APPS.settings.label);
@@ -170,7 +169,7 @@ function settingsHerPage(pg, app) {
 function settingsRelPage(pg, app) {
   subPage(pg, app, '你们的关系', b => {
     b.append(iosGroup('', [fArea('her.relationship', '你们是什么关系', '恋人、暧昧、青梅竹马、学姐……认识多久，怎么相处')], `AI 模式会按这段话决定${TA()}跟你说话的分寸。`),
-      iosGroup('', [fText('her.callMe', `${TA()}平时怎么叫你`, { ph: '一个短称呼，比如：笨蛋、宝、小炫' })], '模板里的 {称呼} 就是它。'));
+      iosGroup('', [fText('her.callMe', `${TA()}平时怎么叫你`, { ph: '一个短称呼，比如：宝贝、宝、亲爱的' })], '模板里的 {称呼} 就是它。'));
   });
 }
 function settingsMePage(pg, app) {
@@ -179,8 +178,7 @@ function settingsMePage(pg, app) {
     if (S.me.gender === '自己填写') rows.push(fText('me.genderText', '我的性别', { ph: '写你认同的说法' }));
     rows.push(fSelect('me.zodiac', '我的星座', zodiacOpts()), fText('me.identity', '身份（选填）', { ph: '比如：研一学生、插画师' }));
     b.append(iosGroup('', rows, `${herName()}提到你时会用「${pron()}」：女用「她」，男用「他」，其余用「TA」。`),
-      iosGroup('', [fArea('me.about', '关于我', '在做什么、最近在忙什么、喜欢什么')], 'AI 模式会参考这些。'),
-      iosGroup('', [iosLink({ ic: 'checklist', color: '#FF9500', label: '督促清单', value: S.tasks.length ? `${S.tasks.length} 项` : '', onclick: () => Nav.push(app, p => tasksPage(p, app)) })], `想让${herName()}督促你做的事，在这里加。`));
+      iosGroup('', [fArea('me.about', '关于我', '在做什么、最近在忙什么、喜欢什么')], `AI 模式会参考这些。想让${herName()}督促你做的事，在「设置 → 督促清单」里加。`));
   });
 }
 function settingsMemoryPage(pg, app) {
@@ -190,7 +188,39 @@ function settingsMemoryPage(pg, app) {
     t.addEventListener('input', () => { S.memory = t.value.split('\n').map(x => x.trim()).filter(Boolean); saveSLater(); grow(t); });
     requestAnimationFrame(() => grow(t));
     b.append(iosGroup('', [el('label', { class: 'ios-field' }, el('span', {}, '一行一条，可以直接改'), t)],
-      S.reply.mode === 'template' ? `固定模板模式用不上这些。换成 AI 或混合模式后，${TA()}会参考这里，聊天里你提到的新情况也会自动记下来。` : `聊天里你提到的新情况，${TA()}会自动记下来。`));
+      S.reply.mode === 'template' ? `固定模板模式用不上这些。换成 AI 模式后，${TA()}会参考这里，聊天里你提到的新情况也会自动记下来。` : `聊天里你提到的新情况，${TA()}会自动记下来。`));
+  });
+}
+
+/* ---------- 隐私与安全性：用大白话说清楚数据存在哪、什么时候联网、点 App 时发生了什么 ---------- */
+const AI_NOTICE = () => `开启后，${herName()}的每句话都由你选的 AI 服务来写。为此，最近的聊天记录、${TA()}的人设、你填的资料和督促清单、${TA()}记得的事，会发给那个服务（比如 DeepSeek）。知己没有自己的服务器，这些不经过开发者。详细说明在「设置 → 隐私与安全性」。`;
+function settingsPrivacyPage(pg, app) {
+  subPage(pg, app, '隐私与安全性', b => {
+    const go = fn => () => Nav.push(app, p => fn(p, app));
+    const row = (label, value) => el('div', { class: 'ios-row' }, el('span', { class: 'lbl' }, label), el('span', { class: 'val' }, value));
+    const text = (...ps) => el('div', { class: 'pv-text' }, ...ps.map(t => el('p', {}, t)));
+    const ai = S.reply.mode === 'ai', pv = (CHAT_PROVIDERS[S.api.provider] || {}).label || 'AI 服务';
+    const photoAI = S.photo.mode !== 'pool';
+    b.append(el('div', { class: 'pv-hero' }, el('span', { class: 'pv-ic' }, icon('hand', 30, 2)), el('h2', {}, '知己和你的隐私'),
+      el('p', {}, '知己没有服务器，也没有账号。下面说明你的数据存在哪、什么时候会联网，以及点 App 图标时发生了什么。')));
+    b.append(iosGroup('数据存在哪', [text(
+      `人设、聊天记录、照片、打卡这些，都只存在这台手机的这个浏览器里，开发者看不到。`,
+      `删掉主屏幕上的知己，或者清除 Safari 的网站数据，这些会一起消失。记得常去「数据与备份」导出一份。`),
+      iosLink({ label: '数据与备份', onclick: go(settingsDataPage) })]));
+    b.append(iosGroup('什么时候会联网', [
+      row('回复方式', ai ? `AI · 发给 ${pv}` : '固定模板 · 不发送'),
+      row('AI 生成照片', photoAI && imgConf().key ? '开启' : '不使用'),
+      row('天气', '只发送城市名'),
+      text(`用 AI 回复时：最近的聊天记录、${TA()}的人设、你填的资料和督促清单、${TA()}记得的事，会发给你自己选的 AI 服务，由它写出${TA()}的回复。API Key 只存在这台手机上，导出备份也不含 Key。`,
+        `AI 生成照片时：照片描述和参考形象图会发给生成照片的服务。`,
+        `看天气时：只把${TA()}所在城市的名字发给 Open-Meteo，不用你的定位。`)]));
+    b.append(iosGroup('App 壳子和跳转', [text(
+      `第二页的小红书、美团这些第三方 App，还有「图书」「播客」，在 iPhone 上点了会打开你手机里真的那个。知己只是让 iPhone 打开一个地址（比如小红书是 xhsdiscover://），和点一个链接一样，不附带你的任何信息；跳过去以后你在那边做什么，知己看不到。`,
+      `知己会看一下有没有跳过去，只用来决定要不要显示它的模拟页面，不记录、不上传。`,
+      `照片、日历、备忘录这些系统 App 都是知己里的模拟页面，读不到你手机里真的照片和日历。`)]));
+    b.append(iosGroup('权限', [row('定位', '不使用'), row('相机', '只在打开「相机」时使用'), row('照片', '只读取你自己选的'),
+      row('麦克风', '暂不使用'), row('通知', '你打开后才会问')],
+      '知己的网页文件放在 GitHub Pages 上。和所有网站一样，托管方能看到访问记录（比如 IP 地址），看不到你在知己里的内容。'));
   });
 }
 
@@ -198,8 +228,14 @@ function settingsMemoryPage(pg, app) {
 function settingsReplyPage(pg, app) {
   subPage(pg, app, '回复方式', (b, re) => {
     const seg = el('div', { class: 'seg', role: 'group', style: 'margin-top:14px' });
-    for (const [k, v] of Object.entries(REPLY_MODES)) seg.append(el('button', { 'aria-pressed': String(S.reply.mode === k), onclick: () => { S.reply.mode = k; saveS(); re(); if (WXT) renderThread(); } }, v.label));
-    b.append(seg, el('p', { class: 'ios-foot' }, REPLY_MODES[S.reply.mode].desc));
+    for (const [k, v] of Object.entries(REPLY_MODES)) seg.append(el('button', { 'aria-pressed': String(S.reply.mode === k), onclick: async () => {
+      if (k === 'ai' && S.reply.mode !== 'ai' && !S.reply.aiOk) {   // 第一次开 AI：先说清楚聊天会发去哪里
+        if (!(await confirmSheet('开启 AI 回复？', AI_NOTICE(), '知道了，开启'))) return;
+        S.reply.aiOk = true;
+      }
+      S.reply.mode = k; saveS(); re(); if (WXT) renderThread();
+    } }, v.label));
+    b.append(seg, el('p', { class: 'ios-foot' }, (REPLY_MODES[S.reply.mode] || REPLY_MODES.template).desc.replace(/TA/g, TA())));
 
     const sample = el('p', { class: 'ios-foot', style: 'min-height:20px' });
     const tryScene = sc => { sample.textContent = tplPreview(sc).join(' / '); };
@@ -213,13 +249,14 @@ function settingsReplyPage(pg, app) {
     const pv = S.api.provider, def = CHAT_PROVIDERS[pv] || {};
     b.append(iosGroup('AI 接口', [
       fSelect('api.provider', '服务', Object.entries(CHAT_PROVIDERS).map(([k, v]) => [k, v.label]), re),
-      fText('api.base', '接口地址', { ph: def.base || '比如 https://api.deepseek.com/v1' }),
+      fText('api.base', '接口地址', { ph: def.base || '比如 https://api.example.com/v1' }),
       fText('api.key', 'API Key', { type: 'password', ph: '只存在这个浏览器里' }),
-      fText('api.model', '模型', { ph: def.model || '比如 deepseek-chat', btn: miniBtn('看看有哪些', btn => listModels('chat', btn)) }),
+      fText('api.model', '模型', { ph: def.model || '填模型名', btn: miniBtn('看看有哪些', btn => listModels('chat', btn)) }),
       fToggle('api.json', '要求模型按 JSON 回复'),
       fToggle('reply.fallback', 'AI 连不上时用模板顶上')],
-      'Key 只存在这个浏览器里，不会写进网页文件，导出备份也不含 Key。'),
+      `${def.base ? '接口地址和模型留空就用灰字里的默认值。' : ''}Key 只存在这个浏览器里，不会写进网页文件，导出备份也不含 Key。`),
       el('div', { class: 'btnrow', style: 'margin-top:14px' }, el('button', { class: 'btn', onclick: e => testApi(e.currentTarget) }, '测试连接')));
+    if (ST.aiErr) b.append(el('p', { class: 'ios-foot ai-err' }, `最近一次聊天时出错（${fmtFull(ST.aiErr.at)}）：${ST.aiErr.msg}`));
   });
 }
 
@@ -298,7 +335,7 @@ function settingsHomePage(pg, app) {
       return el('button', { class: 'ios-row has-ic', onclick: () => Nav.push(app, p => settingsHomeAppPage(p, app, id)) }, appIcon(id, 30),
         el('span', { class: 'lbl' }, d.label), el('span', { class: 'val' }, id === 'wx' || id === 'settings' ? '本网页' : d.ios ? '跳转' : '仿真'),
         el('span', { class: 'chev' }, icon('chevron', 18, 2.2)));
-    }), '在 iPhone 上点「跳转」的图标，会打开手机里真实的 App（系统可能会先问一句要不要打开）。在电脑上点，打开的是网页里的仿真版。每个图标都可以换名字、换成你自己的图片。'));
+    }), '在 iPhone 上点「跳转」的图标，会打开手机里真的那个 App（系统可能会先问一句要不要打开）；「仿真」的是知己里自己做的页面。每个图标都可以换名字、换成你自己的图片。'));
     b.append(iosGroup('', [iosLink({ label: '恢复默认的桌面排布', chevron: false, cls: 'blue', onclick: async () => { if (!(await confirmSheet('恢复默认的桌面排布？', '删掉的 App 会装回来，自己挪过的位置会复原。', '恢复'))) return; S.layout = null; saveS(); renderHome(); toast('已恢复'); } })],
       '在桌面上长按可以进入编辑：拖动换位置、删掉不要的 App、加回小组件。删掉的 App 可以在 App Store 里重新下载。'));
   });
@@ -311,8 +348,8 @@ function settingsHomeAppPage(pg, app, id) {
       miniBtn('换成图片', async () => { const [f] = await pickFile('image/*'); if (!f) return; o.icon = await compress(await fileToDataURL(f), 180, .9, true); saveS(); re(); renderHome(); }),
       o.icon ? miniBtn('恢复默认', () => { o.icon = ''; saveS(); re(); renderHome(); }) : ''));
     const rows = [ic, fText(`home.${id}.label`, '名字', { ph: base.label, oninput: () => renderHome() })];
-    if (id !== 'wx' && id !== 'settings') rows.push(fText(`home.${id}.ios`, 'iPhone 上点它跳转到', { ph: base.ios || '留空 = 打开仿真版' }));
-    b.append(iosGroup('', rows, id === 'wx' ? `${appDef('wx').label}就是这个网页里的聊天 App。` : '跳转地址是 App 的 URL scheme，比如照片是 photos-redirect://。'));
+    if (id !== 'wx' && id !== 'settings') rows.push(fText(`home.${id}.ios`, 'iPhone 上点它跳转到', { ph: base.ios || base.open || '留空 = 打开仿真版' }));
+    b.append(iosGroup('', rows, id === 'wx' ? `${appDef('wx').label}就是这个网页里的聊天 App。` : '跳转地址是 App 的 URL scheme（App 在 iPhone 里登记的「门牌号」），比如小红书是 xhsdiscover://。'));
   });
 }
 
@@ -362,9 +399,11 @@ function settingsDataPage(pg, app) {
 async function testApi(btn) {
   const old = btn.textContent; btn.disabled = true; btn.textContent = '连接中…';
   try {
-    const raw = await callLLM('这是一次连通性测试。只输出 JSON：{"messages":["一句不超过 10 个字的问候"]}', [{ role: 'user', text: '测试一下' }]);
-    const o = parseReply(raw);
-    toast('连上了：' + (o.messages[0] || String(raw).slice(0, 40)), 3500);
+    // 用和真正聊天一样的设定来测，测通了聊天也就能用
+    const o = parseReply(await callLLM(buildSystem(Date.now()), [{ role: 'user', text: '（这是一次连接测试）随便回我一句' }]));
+    if (!o.messages.length) throw new Error('连上了，但模型的回复格式不对，聊天时可能用不了');
+    if (ST.aiErr) { delete ST.aiErr; saveST(); }
+    toast('连上了：' + o.messages[0], 3500);
   } catch (e) { toast(e.message, 7000); }
   finally { btn.disabled = false; btn.textContent = old; }
 }
