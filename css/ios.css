@@ -150,3 +150,12 @@
 .store-tabs{display:grid;grid-template-columns:repeat(3,1fr);padding:6px 0 calc(var(--bottom) + 2px);border-top:.5px solid var(--sys-sep);background:var(--sys-glass);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);flex:none}
 .store-tabs button{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;font-weight:500;color:var(--sys-ink3)}
 .store-tabs button[aria-current=true]{color:var(--sys-blue)}
+.ios-foot.ai-err{color:#FF3B30}
+/* 隐私与安全性 */
+.pv-hero{text-align:center;padding:18px 22px 4px}
+.pv-hero .pv-ic{display:inline-grid;place-items:center;width:58px;height:58px;border-radius:15px;background:#007AFF;color:#fff}
+.pv-hero h2{font-size:22px;margin:12px 0 6px}
+.pv-hero p{font-size:14px;color:var(--sys-ink2);line-height:1.5;margin:0}
+.pv-text{padding:12px 16px 4px;position:relative}
+.pv-text p{margin:0 0 9px;font-size:15px;line-height:1.55}
+.pv-text+.ios-row::before,.ios-row+.pv-text::before{content:"";position:absolute;top:0;right:0;left:16px;height:.5px;background:var(--sys-sep)}
