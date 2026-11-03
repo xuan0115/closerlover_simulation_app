@@ -79,14 +79,12 @@ async function callLLM(system, msgs) {
   const body = { model: c.model, messages: [{ role: 'system', content: system }, ...chat] };
   if (c.json) body.response_format = { type: 'json_object' };
   if (c.provider === 'openai' && /^gpt-5/.test(c.model)) body.reasoning_effort = 'minimal'; // 聊天不需要长思考，回得更快
-  if (isDeepSeek(c)) body.thinking = { type: 'disabled' };  // DeepSeek 默认先深度思考：又慢，在 JSON 模式下还容易返回空白
+  if (isDeepSeek(c)) body.reasoning_effort = 'low';  // DeepSeek：低强度深度思考，想的时间藏在回复节奏的等待里（规范 Q8）
   const h = { Authorization: 'Bearer ' + c.key };
   const url = c.base + '/chat/completions';
   let r = await post(url, body, h);
-  if (r.status === 400 && (body.response_format || body.reasoning_effort || body.thinking)) { // 有的接口不认这几个参数，去掉再试一次
-    delete body.response_format; delete body.reasoning_effort; delete body.thinking;
-    r = await post(url, body, h);
-  }
+  if (r.status === 400 && body.response_format) { delete body.response_format; r = await post(url, body, h); }   // 有的接口不认这些参数：一个个去掉再试
+  if (r.status === 400 && body.reasoning_effort) { delete body.reasoning_effort; r = await post(url, body, h); }
   if (!r.ok) throw await apiError(r);
   const read = j => { const ch = j.choices && j.choices[0]; return { text: String((ch && ch.message && ch.message.content) || ''), why: ch && ch.finish_reason }; };
   let out = read(await r.json());

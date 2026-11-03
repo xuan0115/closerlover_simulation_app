@@ -12,8 +12,9 @@ let typingOn = false;
 let quoteDraft = null;   // 正在引用的那条消息
 
 /* App 里的标题、「聊我号」用短名字；改过桌面上的名字就跟着改过的 */
-const zxName = () => ((S.home.wx && (S.home.wx.label || '').trim()) || APPS.wx.short || appDef('wx').label);
-const WX_TABS = [['chats', zxName, 'chat'], ['contacts', () => '通讯录', 'contacts'], ['discover', () => '发现', 'compass'], ['me', () => '我', 'person']];
+const zxName = () => ((S.home.wx && (S.home.wx.label || '').trim()) || (isEN() ? 'chatwe' : APPS.wx.short) || appDef('wx').label);
+const meName = () => myName() || L('我', 'Me');
+const WX_TABS = [['chats', zxName, 'chat'], ['contacts', () => L('通讯录', 'Contacts'), 'contacts'], ['discover', () => L('发现', 'Discover'), 'compass'], ['me', () => L('我', 'Me'), 'person']];
 const EMOJI = ['😀', '😁', '😂', '🤣', '😊', '😍', '🥰', '😘', '😜', '🤪', '😎', '🥹', '😭', '😤', '😡', '🥱', '😴', '🤔', '🙄', '😳', '🫠', '🙃', '😇', '🤗', '👍', '👌', '🙏', '💪', '👏', '❤️', '💔', '🌹', '☕️', '🍜', '🍰', '🌙', '☀️', '🎉', '✨', '🐱'];
 
 const threadVisible = () => cur === 'wx' && !!WXT && Nav.top('wx') === WXT.pg;
@@ -32,7 +33,7 @@ function openThread(instant) {
 }
 
 /* ---------- 小部件 ---------- */
-const wxBack = app => el('button', { class: 'wx-back', 'aria-label': '返回', onclick: () => Nav.pop(app) }, icon('back', 24, 2));
+const wxBack = app => el('button', { class: 'wx-back', 'aria-label': L('返回', 'Back'), onclick: () => Nav.pop(app) }, icon('back', 24, 2));
 function wxNav(title, right, cls = '') { return el('header', { class: 'wx-nav ' + cls }, wxBack('wx'), el('h1', { class: 'wx-title' }, title), right || el('span')); }
 function wxCell({ ic, color, label, value, onclick, chev = true, cls = '', right }) {
   const v = value == null || value === '' ? '' : value instanceof Node ? value : el('span', { class: 'val' }, value);
@@ -48,13 +49,13 @@ function wxToggle(label, get, set) {
 const herAv = () => { const i = el('img', { alt: '' }); setAvatar(i); return i; };
 const myAv = () => { const i = el('img', { alt: '' }); setMyAvatar(i); return i; };
 /* 还没做的入口：一个空白页 */
-const wxBlank = (title, text) => pg => { pg.classList.add('wx'); pg.append(wxNav(title), el('div', { class: 'wx-scroll' }, el('p', { class: 'mo-empty' }, text || '暂无内容'))); };
+const wxBlank = (title, text) => pg => { pg.classList.add('wx'); pg.append(wxNav(title), el('div', { class: 'wx-scroll' }, el('p', { class: 'mo-empty' }, text || L('暂无内容', 'Nothing here yet')))); };
 
 /* ---------- 首页：四个 tab ---------- */
 function wxRoot(pg) {
   pg.classList.add('wx');
   const title = el('h1', { class: 'wx-title' });
-  const plusBtn = el('button', { class: 'wx-navbtn r', 'aria-label': '更多', onclick: () => toggleMenu() }, icon('plusCircle', 25, 1.6));
+  const plusBtn = el('button', { class: 'wx-navbtn r', 'aria-label': L('更多', 'More'), onclick: () => toggleMenu() }, icon('plusCircle', 25, 1.6));
   const nav = el('header', { class: 'wx-nav' }, el('span'), title, plusBtn);
   const body = el('div', { class: 'wx-scroll' });
   const tabs = el('nav', { class: 'wx-tabs' });
@@ -64,9 +65,9 @@ function wxRoot(pg) {
     if (menu || force === false) { if (menu) menu.remove(); menu = null; return; }
     const item = (ic, label, fn) => el('button', { onclick: () => { toggleMenu(false); fn(); } }, icon(ic, 21, 1.7), label);
     menu = el('div', { class: 'wx-menu', role: 'menu' },
-      item('chat', '发起群聊', () => Nav.push('wx', wxBlank('发起群聊', '你只有一个朋友，还建不了群。'))),
-      item('personAdd', '添加朋友', () => Nav.push('wx', wxAddFriend)),
-      item('scan', '扫一扫', () => openApp('camera')));
+      item('chat', L('发起群聊', 'New group chat'), () => Nav.push('wx', wxBlank(L('发起群聊', 'New group chat'), L('你只有一个朋友，还建不了群。', 'You only have one friend, so no group yet.')))),
+      item('personAdd', L('添加朋友', 'Add friends'), () => Nav.push('wx', wxAddFriend)),
+      item('scan', L('扫一扫', 'Scan'), () => openApp('camera')));
     pg.append(menu);
   }
   pg.closeMenu = () => { if (menu) { toggleMenu(false); return true; } return false; };
@@ -88,7 +89,7 @@ function wxRoot(pg) {
     $$('.wx-tab', tabs).forEach(b => b.classList.toggle('on', b.dataset.tab === wxTab));
     nav.hidden = wxTab === 'me';
     plusBtn.style.visibility = wxTab === 'chats' ? '' : 'hidden';
-    title.textContent = { chats: zxName(), contacts: '通讯录', discover: '发现' }[wxTab] || '';
+    title.textContent = { chats: zxName(), contacts: L('通讯录', 'Contacts'), discover: L('发现', 'Discover') }[wxTab] || '';
     body.textContent = ''; body.scrollTop = 0;
     ({ chats: wxChats, contacts: wxContacts, discover: wxDiscover, me: wxMe })[wxTab](body);
     pg.updateBadges();
@@ -96,75 +97,75 @@ function wxRoot(pg) {
   pg.refresh = render; render();
 }
 function wxChats(body) {
-  body.append(el('button', { class: 'wx-search', onclick: () => Nav.push('wx', wxSearchPage) }, icon('search', 17, 2), '搜索'));
+  body.append(el('button', { class: 'wx-search', onclick: () => Nav.push('wx', wxSearchPage) }, icon('search', 17, 2), L('搜索', 'Search')));
   const last = [...M].reverse().find(m => m.from !== 'sys');
   const n = unreadList().length;
-  let pv = last ? previewOf(last) : '打个招呼吧';
-  if (n > 1) pv = `[${n}条] ${pv}`;
+  let pv = last ? previewOf(last) : L('打个招呼吧', 'Say hi');
+  if (n > 1) pv = L(`[${n}条] `, `[${n}] `) + pv;
   const dot = !n ? '' : S.zx.mute ? el('i', { class: 'wx-dot tiny' }) : el('i', { class: 'wx-dot' }, n > 99 ? '99+' : String(n));
   body.append(el('div', { class: 'wx-group' }, el('button', { class: 'wx-row' + (S.zx.pin ? ' pinned' : ''), onclick: () => openThread() },
     el('span', { class: 'wx-av' }, herAv(), dot),
     el('div', { class: 'wx-row-main' },
-      el('div', { class: 'wx-row-top' }, el('b', {}, herName()), el('time', {}, last ? listTime(last.ts) : '')),
+      el('div', { class: 'wx-row-top' }, el('b', {}, herName()), el('time', {}, last ? listTime(last.ts, isEN()) : '')),
       el('div', { class: 'wx-row-sub' }, el('p', {}, pv), S.zx.mute ? el('span', { class: 'wx-mute' }, icon('bellOff', 15, 1.8)) : '')))));
 }
 function wxContacts(body) {
   const top = (ic, color, label, page) => wxCell({ ic, color, label, chev: false, onclick: () => Nav.push('wx', page) });
   body.append(el('div', { class: 'wx-group' },
-    top('personAdd', '#FA9D3B', '新的朋友', wxBlank('新的朋友', '没有新的朋友')),
-    top('person', '#FA9D3B', '仅聊天的朋友', wxBlank('仅聊天的朋友', '没有仅聊天的朋友')),
-    top('contacts', '#07C160', '群聊', wxBlank('群聊', '你还没有保存群聊')),
-    top('tag', '#2782D7', '标签', wxBlank('标签', '暂无标签')),
-    top('star', '#2782D7', '公众号', wxBlank('公众号', '还没有关注公众号'))),
-    el('div', { class: 'wx-section' }, '星标朋友'),
+    top('personAdd', '#FA9D3B', L('新的朋友', 'New friends'), wxBlank(L('新的朋友', 'New friends'), L('没有新的朋友', 'No new friends'))),
+    top('person', '#FA9D3B', L('仅聊天的朋友', 'Chats only'), wxBlank(L('仅聊天的朋友', 'Chats only'), L('没有仅聊天的朋友', 'Nobody here'))),
+    top('contacts', '#07C160', L('群聊', 'Group chats'), wxBlank(L('群聊', 'Group chats'), L('你还没有保存群聊', 'No saved group chats'))),
+    top('tag', '#2782D7', L('标签', 'Tags'), wxBlank(L('标签', 'Tags'), L('暂无标签', 'No tags'))),
+    top('star', '#2782D7', L('公众号', 'Official accounts'), wxBlank(L('公众号', 'Official accounts'), L('还没有关注公众号', 'Not following any accounts')))),
+    el('div', { class: 'wx-section' }, L('星标朋友', 'Starred friends')),
     el('div', { class: 'wx-group' }, el('button', { class: 'wx-row slim', onclick: () => Nav.push('wx', wxProfilePage) },
       el('span', { class: 'wx-av' }, herAv()), el('div', { class: 'wx-row-main' }, el('div', { class: 'wx-row-top' }, el('b', {}, herName()))))),
-    el('p', { class: 'wx-hint', style: 'text-align:center;padding-top:18px' }, '1 个朋友'));
+    el('p', { class: 'wx-hint', style: 'text-align:center;padding-top:18px' }, L('1 个朋友', '1 friend')));
 }
 function wxDiscover(body) {
   const np = newPostsCount();
   const thumb = POSTS.length ? el('span', { class: 'thumb' }, herAv(), np ? el('i', { class: 'wx-dot tiny' }) : '') : '';
   const blank = (ic, color, label) => wxCell({ ic, color, label, onclick: () => Nav.push('wx', wxBlank(label)) });
   body.append(
-    el('div', { class: 'wx-group' }, wxCell({ ic: 'aperture', color: '#E8673D', label: '朋友圈', value: thumb, onclick: () => Nav.push('wx', wxMomentsPage) })),
-    el('div', { class: 'wx-group' }, blank('play', '#FA9D3B', '视频号'), blank('live', '#FA5151', '直播')),
-    el('div', { class: 'wx-group' }, wxCell({ ic: 'scan', color: '#2782D7', label: '扫一扫', onclick: () => openApp('camera') })),
-    el('div', { class: 'wx-group' }, blank('music', '#FA5151', '听一听'), blank('eye', '#F7C443', '看一看'), blank('search', '#FA5151', '搜一搜')),
-    el('div', { class: 'wx-group' }, blank('grid', '#7D53D1', '小程序')));
+    el('div', { class: 'wx-group' }, wxCell({ ic: 'aperture', color: '#E8673D', label: L('朋友圈', 'Moments'), value: thumb, onclick: () => Nav.push('wx', wxMomentsPage) })),
+    el('div', { class: 'wx-group' }, blank('play', '#FA9D3B', L('视频号', 'Channels')), blank('live', '#FA5151', L('直播', 'Live'))),
+    el('div', { class: 'wx-group' }, wxCell({ ic: 'scan', color: '#2782D7', label: L('扫一扫', 'Scan'), onclick: () => openApp('camera') })),
+    el('div', { class: 'wx-group' }, blank('music', '#FA5151', L('听一听', 'Listen')), blank('eye', '#F7C443', L('看一看', 'Top stories')), blank('search', '#FA5151', L('搜一搜', 'Search'))),
+    el('div', { class: 'wx-group' }, blank('grid', '#7D53D1', L('小程序', 'Mini programs'))));
 }
 function wxMe(body) {
   body.append(el('div', { class: 'wx-me-head' }, myAv(),
-    el('div', { style: 'flex:1;min-width:0' }, el('b', {}, myName() || '我'), el('small', {}, `${zxName()}号：${myZxId()}`),
-      el('span', { class: 'wx-status' }, '+ 状态'))));
+    el('div', { style: 'flex:1;min-width:0' }, el('b', {}, meName()), el('small', {}, L(`${zxName()}号：`, `${zxName()} ID: `) + myZxId()),
+      el('span', { class: 'wx-status' }, L('+ 状态', '+ Status')))));
   body.append(
-    el('div', { class: 'wx-group' }, wxCell({ ic: 'service', color: '#07C160', label: '服务', onclick: () => Nav.push('wx', wxBlank('服务', '这里什么都没有。')) })),
+    el('div', { class: 'wx-group' }, wxCell({ ic: 'service', color: '#07C160', label: L('服务', 'Services'), onclick: () => Nav.push('wx', wxBlank(L('服务', 'Services'), L('这里什么都没有。', 'Nothing here.'))) })),
     el('div', { class: 'wx-group' },
-      wxCell({ ic: 'box', color: '#FA9D3B', label: '收藏', onclick: () => Nav.push('wx', wxFavsPage) }),
-      wxCell({ ic: 'aperture', color: '#2782D7', label: '朋友圈', onclick: () => Nav.push('wx', wxMomentsPage) }),
-      wxCell({ ic: 'smile', color: '#F7C443', label: '表情', onclick: () => Nav.push('wx', wxBlank('表情', '暂时只有系统自带的表情。')) })),
-    el('div', { class: 'wx-group' }, wxCell({ ic: 'gear', color: '#2782D7', label: '设置', onclick: () => Nav.push('wx', wxSettingsPage) })));
+      wxCell({ ic: 'box', color: '#FA9D3B', label: L('收藏', 'Favorites'), onclick: () => Nav.push('wx', wxFavsPage) }),
+      wxCell({ ic: 'aperture', color: '#2782D7', label: L('朋友圈', 'Moments'), onclick: () => Nav.push('wx', wxMomentsPage) }),
+      wxCell({ ic: 'smile', color: '#F7C443', label: L('表情', 'Stickers'), onclick: () => Nav.push('wx', wxBlank(L('表情', 'Stickers'), L('暂时只有系统自带的表情。', 'Only the built-in emoji for now.'))) })),
+    el('div', { class: 'wx-group' }, wxCell({ ic: 'gear', color: '#2782D7', label: L('设置', 'Settings'), onclick: () => Nav.push('wx', wxSettingsPage) })));
 }
 function wxAddFriend(pg) {
   pg.classList.add('wx');
-  pg.append(wxNav('添加朋友'), el('div', { class: 'wx-scroll' },
-    el('div', { class: 'wx-search', style: 'justify-content:flex-start;padding-left:14px' }, icon('search', 17, 2), `${zxName()}号/手机号`),
-    el('p', { class: 'wx-hint', style: 'text-align:center' }, `我的${zxName()}号：${myZxId()}`),
+  pg.append(wxNav(L('添加朋友', 'Add friends')), el('div', { class: 'wx-scroll' },
+    el('div', { class: 'wx-search', style: 'justify-content:flex-start;padding-left:14px' }, icon('search', 17, 2), L(`${zxName()}号/手机号`, `${zxName()} ID / phone`)),
+    el('p', { class: 'wx-hint', style: 'text-align:center' }, L(`我的${zxName()}号：`, `My ${zxName()} ID: `) + myZxId()),
     el('div', { class: 'wx-group' },
-      wxCell({ ic: 'scan', color: '#2782D7', label: '扫一扫', onclick: () => openApp('camera') }),
-      wxCell({ ic: 'contacts', color: '#07C160', label: '手机联系人', onclick: () => Nav.push('wx', wxBlank('手机联系人', '没有可以添加的联系人')) }))));
+      wxCell({ ic: 'scan', color: '#2782D7', label: L('扫一扫', 'Scan'), onclick: () => openApp('camera') }),
+      wxCell({ ic: 'contacts', color: '#07C160', label: L('手机联系人', 'Phone contacts'), onclick: () => Nav.push('wx', wxBlank(L('手机联系人', 'Phone contacts'), L('没有可以添加的联系人', 'No contacts to add'))) }))));
 }
 
 /* ---------- 聊天 ---------- */
 const aiNotice = () => S.reply.mode === 'template'
-  ? `${herName()}的消息由预设模板自动生成，不是真人。`
-  : `${herName()}的消息由 AI 生成，不是真人。`;
+  ? L(`${herName()}的消息由预设模板自动生成，不是真人。`, `${herName()}'s messages come from preset templates. Not a real person.`)
+  : L(`${herName()}的消息由 AI 生成，不是真人。`, `${herName()}'s messages are written by AI. Not a real person.`);
 function previewOf(m) {
   if (m.from === 'tip') return m.text;
   switch (m.type) {
-    case 'image': return '[图片]';
-    case 'voice': return `[语音] ${m.dur}"`;
-    case 'gift': return `[礼物] ${m.name}`;
-    case 'call': return '[语音通话]';
+    case 'image': return L('[图片]', '[Photo]');
+    case 'voice': return L('[语音] ', '[Voice] ') + `${m.dur}"`;
+    case 'gift': return L('[礼物] ', '[Gift] ') + giftName(m.name);
+    case 'call': return L('[语音通话]', '[Voice call]');
     default: return m.text;
   }
 }
@@ -173,7 +174,7 @@ function wxThreadPage(pg) {
   pg.classList.add('wx', 'thread');
   const title = el('h1', { class: 'wx-title' }, herName());
   const nav = el('header', { class: 'wx-nav line' }, wxBack('wx'), title,
-    el('button', { class: 'wx-navbtn r', 'aria-label': '聊天信息', onclick: () => Nav.push('wx', wxChatInfoPage) }, icon('more', 24)));
+    el('button', { class: 'wx-navbtn r', 'aria-label': L('聊天信息', 'Chat info'), onclick: () => Nav.push('wx', wxChatInfoPage) }, icon('more', 24)));
   const list = el('div', { class: 'wx-list' });
   const scroller = el('div', { class: 'wx-msgs' }, list);
   const compose = buildCompose();
@@ -183,7 +184,7 @@ function wxThreadPage(pg) {
   scroller.addEventListener('scroll', closeMsgMenu);
   pg.addEventListener('pointerdown', e => { if (!e.target.closest('.wx-pop')) closeMsgMenu(); });
   pg.onclose = () => { if (WXT && WXT.pg === pg) WXT = null; };
-  pg.refresh = () => { title.textContent = typingOn ? '对方正在输入...' : herName(); renderThread(); markRead(); };
+  pg.refresh = () => { title.textContent = typingOn ? L('对方正在输入...', 'typing...') : herName(); renderThread(); markRead(); };
   pg.closeMenu = () => { if ($('.wx-pop', pg)) { closeMsgMenu(); return true; } return false; };
   renderThread();
 }
@@ -203,15 +204,15 @@ function renderThread() {
 function appendMsg(m, prev) {
   if (!WXT) return;
   const { list } = WXT;
-  if (!prev || m.ts - prev.ts > 5 * 60e3) list.append(el('div', { class: 'wx-time' }, stampText(m.ts)));
+  if (!prev || m.ts - prev.ts > 5 * 60e3) list.append(el('div', { class: 'wx-time' }, stampText(m.ts, isEN())));
   if (m.from === 'sys') {
     const row = el('div', { class: 'wx-sys' }, m.text);
-    if (m.retry) row.append(el('button', { onclick: () => retry(m) }, '重试'));
+    if (m.retry) row.append(el('button', { onclick: () => retry(m) }, L('重试', 'Retry')));
     list.append(row); return;
   }
   if (m.from === 'tip') {
     const row = el('div', { class: 'wx-tip', 'data-id': m.id }, m.text);
-    if (m.edit) row.append(el('button', { onclick: () => { const ta = $('.wx-input', WXT.compose); setComposeMode('text'); ta.value = m.edit; ta.dispatchEvent(new Event('input')); ta.focus(); } }, '重新编辑'));
+    if (m.edit) row.append(el('button', { onclick: () => { const ta = $('.wx-input', WXT.compose); setComposeMode('text'); ta.value = m.edit; ta.dispatchEvent(new Event('input')); ta.focus(); } }, L('重新编辑', 'Re-edit')));
     list.append(row); return;
   }
   const mine = m.from === 'me';
@@ -220,24 +221,24 @@ function appendMsg(m, prev) {
   const col = el('div', { class: 'wx-col' });
   let b;
   if (m.type === 'image') {
-    b = el('button', { class: 'wx-pic', 'aria-label': '查看图片' });
-    const im = el('img', { alt: m.desc || '图片' });
+    b = el('button', { class: 'wx-pic', 'aria-label': L('查看图片', 'View photo') });
+    const im = el('img', { alt: m.desc || L('图片', 'Photo') });
     im.addEventListener('load', () => scrollBottom());
     setImg(im, m.imageId); b.append(im);
     b.addEventListener('click', () => openViewer(m.imageId));
   } else if (m.type === 'voice') {
     const w = Math.min(210, 74 + (m.dur || 1) * 5);
-    b = el('button', { class: 'wx-bubble voice', style: `width:${w}px`, 'aria-label': `语音 ${m.dur} 秒` }, el('span', { class: 'wave' }, icon('wave', 20, 2)), el('span', {}, `${m.dur}"`));
+    b = el('button', { class: 'wx-bubble voice', style: `width:${w}px`, 'aria-label': L(`语音 ${m.dur} 秒`, `Voice ${m.dur}s`) }, el('span', { class: 'wave' }, icon('wave', 20, 2)), el('span', {}, `${m.dur}"`));
     b.addEventListener('click', () => playVoice(m, b));
     col.append(b);
     if (!mine && !m.played) col.append(el('i', { class: 'wx-unplayed' }));
-    if (m.showText) col.append(el('div', { class: 'wx-vtext' }, mine ? (m.transcript || '没有识别出文字') : m.text));
+    if (m.showText) col.append(el('div', { class: 'wx-vtext' }, mine ? (m.transcript || L('没有识别出文字', 'No text recognized')) : m.text));
   } else if (m.type === 'gift') {
     b = el('div', { class: 'wx-gift' }, el('span', { class: 'em' }, m.emoji || '🎁'),
-      el('div', {}, el('b', {}, m.note || (mine ? `送你${m.name}` : `给你的${m.name}`)), el('small', {}, `${m.name}`)),
-      el('footer', {}, `${zxName()}礼物`));
+      el('div', {}, el('b', {}, m.note || (mine ? L(`送你${m.name}`, `A gift for you: ${giftName(m.name)}`) : L(`给你的${m.name}`, `For you: ${giftName(m.name)}`))), el('small', {}, giftName(m.name))),
+      el('footer', {}, L(`${zxName()}礼物`, `${zxName()} gift`)));
   } else if (m.type === 'call') {
-    const txt = m.status === 'done' ? `通话时长 ${fmtDur(m.dur)}` : m.status === 'declined' ? (mine ? '对方已拒绝' : '已拒绝') : m.status === 'cancel' ? '已取消' : (mine ? '对方无应答' : '未接听');
+    const txt = m.status === 'done' ? L('通话时长 ', 'Duration ') + fmtDur(m.dur) : m.status === 'declined' ? L(mine ? '对方已拒绝' : '已拒绝', 'Declined') : m.status === 'cancel' ? L('已取消', 'Canceled') : (mine ? L('对方无应答', 'No answer') : L('未接听', 'Missed'));
     b = el('div', { class: 'wx-bubble callrec', role: 'button', tabindex: '0', onclick: () => callOrSoon() }, icon('phone', 18, 1.8), txt);
   } else b = el('div', { class: 'wx-bubble' }, m.text);
   if (!col.contains(b)) col.prepend(b);
@@ -252,7 +253,7 @@ function scrollBottom(force) {
 }
 function setTyping(on) {
   typingOn = on;
-  if (WXT) { WXT.title.textContent = on ? '对方正在输入...' : herName(); if (on) scrollBottom(); }
+  if (WXT) { WXT.title.textContent = on ? L('对方正在输入...', 'typing...') : herName(); if (on) scrollBottom(); }
 }
 
 /* 她的头像：点一下看资料，连点两下拍一拍 */
@@ -264,9 +265,9 @@ function bindAvatarTaps(av) {
   });
 }
 function patHer() {
-  addMsg({ id: uid('t'), from: 'tip', who: 'me', kind: 'pat', text: `我拍了拍「${herName()}」`, ts: Date.now() });
+  addMsg({ id: uid('t'), from: 'tip', who: 'me', kind: 'pat', text: L(`我拍了拍「${herName()}」`, `You nudged ${herName()}`), ts: Date.now() });
   const row = WXT && WXT.list.lastElementChild; if (row) row.classList.add('shake');
-  scheduleReply();
+  queueReply();
 }
 
 /* ---------- 长按 / 右键菜单 ---------- */
@@ -289,12 +290,12 @@ function showMsgMenu(node, m) {
   closeMsgMenu();
   const mine = m.from === 'me', items = [];
   const text = m.type === 'voice' ? (mine ? m.transcript : m.text) : m.text;
-  if ((m.type === 'text' || m.type === 'checkin') && text) items.push(['copy', '复制', () => { copyText(text); }]);
-  if (m.type === 'voice') items.push(['textT', m.showText ? '取消转文字' : '转文字', () => { m.showText = !m.showText; saveM(); renderThread(); }]);
-  if (['text', 'image', 'voice', 'checkin'].includes(m.type)) items.push(['quote', '引用', () => setQuote(m)]);
-  if (['text', 'image', 'voice'].includes(m.type)) items.push(['box', '收藏', () => { FAVS.push({ id: uid('f'), from: m.from, type: m.type, text: text || '', imageId: m.imageId || '', ts: Date.now(), src: m.ts }); saveFavs(); toast('已收藏'); }]);
-  if (mine && Date.now() - m.ts < 2 * 60e3 && m.type !== 'call') items.push(['recall', '撤回', () => recallMsg(m)]);
-  items.push(['trash', '删除', () => { const i = M.indexOf(m); if (i >= 0) { M.splice(i, 1); saveM(); renderThread(); } }]);
+  if ((m.type === 'text' || m.type === 'checkin') && text) items.push(['copy', L('复制', 'Copy'), () => { copyText(text); }]);
+  if (m.type === 'voice') items.push(['textT', m.showText ? L('取消转文字', 'Hide text') : L('转文字', 'To text'), () => { m.showText = !m.showText; saveM(); renderThread(); }]);
+  if (['text', 'image', 'voice', 'checkin'].includes(m.type)) items.push(['quote', L('引用', 'Quote'), () => setQuote(m)]);
+  if (['text', 'image', 'voice'].includes(m.type)) items.push(['box', L('收藏', 'Save'), () => { FAVS.push({ id: uid('f'), from: m.from, type: m.type, text: text || '', imageId: m.imageId || '', ts: Date.now(), src: m.ts }); saveFavs(); toast(L('已收藏', 'Saved to Favorites')); }]);
+  if (mine && Date.now() - m.ts < 2 * 60e3 && m.type !== 'call') items.push(['recall', L('撤回', 'Recall'), () => recallMsg(m)]);
+  items.push(['trash', L('删除', 'Delete'), () => { const i = M.indexOf(m); if (i >= 0) { M.splice(i, 1); saveM(); renderThread(); } }]);
   const pop = el('div', { class: 'wx-pop', role: 'menu' });
   for (const [ic, label, fn] of items) pop.append(el('button', { role: 'menuitem', onclick: () => { closeMsgMenu(); fn(); } }, icon(ic, 22, 1.7), label));
   WXT.pg.append(pop);
@@ -309,20 +310,20 @@ function showMsgMenu(node, m) {
   pop.style.setProperty('--ax', (((r.left + r.width / 2 - pr.left) / k) - left) + 'px');
 }
 function copyText(t) {
-  const done = () => toast('已复制');
+  const done = () => toast(L('已复制', 'Copied'));
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, () => fallback());
   else fallback();
   function fallback() { const ta = el('textarea', { style: 'position:fixed;opacity:0' }); ta.value = t; document.body.append(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) {} ta.remove(); }
 }
 function recallMsg(m) {
   const i = M.indexOf(m); if (i < 0) return;
-  M[i] = { id: m.id, from: 'tip', who: 'me', kind: 'recall', text: '你撤回了一条消息', edit: m.type === 'text' ? m.text : null, ts: m.ts };
+  M[i] = { id: m.id, from: 'tip', who: 'me', kind: 'recall', text: L('你撤回了一条消息', 'You recalled a message'), edit: m.type === 'text' ? m.text : null, ts: m.ts };
   saveM(); renderThread();
-  if (Math.random() < .4) scheduleReply();
+  if (Math.random() < .4) queueReply();
 }
 function setQuote(m) {
-  const who = m.from === 'me' ? (myName() || '我') : herName();
-  const text = m.type === 'image' ? '[图片]' : m.type === 'voice' ? (m.from === 'me' ? (m.transcript || '[语音]') : m.text) : m.text;
+  const who = m.from === 'me' ? meName() : herName();
+  const text = m.type === 'image' ? L('[图片]', '[Photo]') : m.type === 'voice' ? (m.from === 'me' ? (m.transcript || L('[语音]', '[Voice]')) : m.text) : m.text;
   quoteDraft = { who, text: String(text || '').slice(0, 60) };
   if (WXT) { const bar = $('.wx-quote-bar', WXT.compose); bar.hidden = false; $('span', bar).textContent = `${quoteDraft.who}：${quoteDraft.text}`; setComposeMode('text'); $('.wx-input', WXT.compose).focus(); }
 }
@@ -347,52 +348,43 @@ function retry(m) {
   else enqueue(() => herTurn({ kind: 'reply', at: Date.now(), live: true, retry: { kind: 'reply' } }));
 }
 
-/* 我发消息：停 2 秒再让她回，连发几条会一起回 */
-let replyT = null, replyQueued = false;
-function scheduleReply() {
-  clearTimeout(replyT);
-  replyT = setTimeout(() => {
-    if (replyQueued || S.notify.airplane) return;
-    replyQueued = true;
-    enqueue(async () => { replyQueued = false; await herTurn({ kind: 'reply', at: Date.now(), live: true, retry: { kind: 'reply' } }); });
-  }, 2000);
-}
+/* 我发消息：她过多久回、回几条，见 js/core/rhythm.js；连发几条会一起回 */
 function sendMine(text, type = 'text', extra = {}) {
   if (!ST.started) { ST.started = true; ST.lastTick = Date.now(); saveST(); }
   const m = Object.assign({ id: uid('m'), from: 'me', type, text, ts: Date.now() }, extra);
   if (quoteDraft && (type === 'text' || type === 'voice')) { m.quote = quoteDraft; clearQuote(); }
   addMsg(m);
-  scheduleReply();
+  queueReply();
 }
 /* 打卡：记一笔，再给她发一条消息 */
 function doCheckin(id) {
   const t = taskById(id); if (!t) return;
-  if (todayChecks()[id]) { toast(`今天${t.name}已经打过卡了`); return; }
+  if (todayChecks()[id]) { toast(L(`今天${t.name}已经打过卡了`, `Already checked in for ${taskLabel(t)} today`)); return; }
   checkin(id, Date.now());
-  sendMine(`${t.emoji || '✅'} 开始${t.name}了`, 'checkin', { task: id });
+  sendMine(`${t.emoji || '✅'} ` + L(`开始${t.name}了`, `Starting ${taskLabel(t)} now`), 'checkin', { task: id });
 }
 function checkinSheet() {
-  if (!S.tasks.length) { toast('督促清单是空的，去「设置 → 督促清单」加一项'); return; }
+  if (!S.tasks.length) { toast(L('督促清单是空的，去「设置 → 督促清单」加一项', 'Nothing to check in yet. Add one in 设置 → 督促清单.')); return; }
   const c = todayChecks();
   openSheet((p, close) => {
-    p.append(sheetHead('打卡', el('button', { onclick: close }, '取消')),
+    p.append(sheetHead(L('打卡', 'Check in'), el('button', { onclick: close }, L('取消', 'Cancel'))),
       iosGroup('', S.tasks.map(t => el('button', { class: 'ios-row', disabled: !!c[t.id], onclick: () => { close(); doCheckin(t.id); } },
-        el('span', { class: 'task-emoji' }, t.emoji || '✅'), el('span', { class: 'lbl' }, t.name, t.target ? el('small', {}, t.target) : ''),
-        el('span', { class: 'val' }, c[t.id] ? '已打卡 ' + hm(c[t.id]) : ''))), `打卡后会自动发消息告诉${herName()}。`));
+        el('span', { class: 'task-emoji' }, t.emoji || '✅'), el('span', { class: 'lbl' }, taskLabel(t), t.target ? el('small', {}, t.target) : ''),
+        el('span', { class: 'val' }, c[t.id] ? L('已打卡 ', 'Done ') + hm(c[t.id]) : ''))), L(`打卡后会自动发消息告诉${herName()}。`, `${herName()} gets a message when you check in.`)));
   });
 }
 function giftSheet() {
   openSheet((p, close) => {
-    let chosen = GIFTS[0];
-    const note = el('input', { placeholder: '想说的话（可以不填）', 'aria-label': '礼物附言' });
+    let chosen = giftsFor()[0];
+    const note = el('input', { placeholder: L('想说的话（可以不填）', 'Add a note (optional)'), 'aria-label': L('礼物附言', 'Gift note') });
     const grid = el('div', { class: 'gift-grid' });
-    for (const g of GIFTS) {
-      const b = el('button', { 'aria-pressed': String(g === chosen), onclick: () => { chosen = g; $$('button', grid).forEach(x => x.setAttribute('aria-pressed', String(x === b))); } }, el('span', {}, g.emoji), g.name);
+    for (const g of giftsFor()) {
+      const b = el('button', { 'aria-pressed': String(g === chosen), onclick: () => { chosen = g; $$('button', grid).forEach(x => x.setAttribute('aria-pressed', String(x === b))); } }, el('span', {}, g.emoji), giftName(g.name));
       grid.append(b);
     }
-    p.append(sheetHead(`送${herName()}一份礼物`, el('button', { onclick: close }, '取消'),
-      el('button', { onclick: () => { close(); sendMine('', 'gift', { name: chosen.name, emoji: chosen.emoji, note: note.value.trim() }); } }, '送出')),
-      grid, iosGroup('', [el('label', { class: 'ios-field' }, note)], '礼物只是一张小卡片，不涉及钱。'));
+    p.append(sheetHead(L(`送${herName()}一份礼物`, `Send ${herName()} a gift`), el('button', { onclick: close }, L('取消', 'Cancel')),
+      el('button', { onclick: () => { close(); sendMine('', 'gift', { name: chosen.name, emoji: chosen.emoji, note: note.value.trim() }); } }, L('送出', 'Send'))),
+      grid, iosGroup('', [el('label', { class: 'ios-field' }, note)], L('礼物只是一张小卡片，不涉及钱。', 'A gift is just a little card. No money involved.')));
   });
 }
 
@@ -406,13 +398,13 @@ function setComposeMode(mode) {
   $('.wx-cbtn.vk', box).replaceChildren(icon(mode === 'voice' ? 'keyboard' : 'voice', 28, 1.5));
 }
 function buildCompose() {
-  const ta = el('textarea', { class: 'wx-input', rows: '1', enterkeyhint: 'send', 'aria-label': '输入消息' });
-  const hold = el('button', { class: 'wx-hold' }, '按住 说话');
-  const send = el('button', { class: 'wx-send', hidden: true }, '发送');
-  const plus = el('button', { class: 'wx-cbtn', 'aria-label': '更多功能' }, icon('plusCircle', 28, 1.5));
-  const emo = el('button', { class: 'wx-cbtn', 'aria-label': '表情' }, icon('smile', 28, 1.5));
-  const vk = el('button', { class: 'wx-cbtn vk', 'aria-label': '切换语音和键盘' }, icon('voice', 28, 1.5));
-  const quoteBar = el('div', { class: 'wx-quote-bar', hidden: true }, el('span'), el('button', { 'aria-label': '取消引用', onclick: clearQuote }, '✕'));
+  const ta = el('textarea', { class: 'wx-input', rows: '1', enterkeyhint: 'send', 'aria-label': L('输入消息', 'Message') });
+  const hold = el('button', { class: 'wx-hold' }, L('按住 说话', 'Hold to talk'));
+  const send = el('button', { class: 'wx-send', hidden: true }, L('发送', 'Send'));
+  const plus = el('button', { class: 'wx-cbtn', 'aria-label': L('更多功能', 'More') }, icon('plusCircle', 28, 1.5));
+  const emo = el('button', { class: 'wx-cbtn', 'aria-label': L('表情', 'Emoji') }, icon('smile', 28, 1.5));
+  const vk = el('button', { class: 'wx-cbtn vk', 'aria-label': L('切换语音和键盘', 'Voice or keyboard') }, icon('voice', 28, 1.5));
+  const quoteBar = el('div', { class: 'wx-quote-bar', hidden: true }, el('span'), el('button', { 'aria-label': L('取消引用', 'Cancel quote'), onclick: clearQuote }, '✕'));
   const panel = el('div', { class: 'wx-panel' });
   const box = el('div', { class: 'wx-compose' }, el('div', { class: 'wx-bar' }, vk, ta, hold, emo, plus, send), quoteBar, panel);
   let mode = '';
@@ -424,8 +416,8 @@ function buildCompose() {
     if (mode === 'more') {
       const g = el('div', { class: 'wx-more' });
       const t = (ic, label, fn) => el('button', { onclick: () => { togglePanel(''); fn(); } }, el('span', { class: 'tile' }, icon(ic, 28, 1.6)), label);
-      g.append(t('photo', '相册', pickFromFiles), t('camera', '拍摄', () => openApp('camera')), t('phone', FEATURES.voice ? '语音通话' : el('span', { class: 'soon-lbl' }, '语音通话', el('small', {}, '待开发')), callOrSoon),
-        t('gift', '礼物', giftSheet), t('checklist', '打卡', checkinSheet));
+      g.append(t('photo', L('相册', 'Album'), pickFromFiles), t('camera', L('拍摄', 'Camera'), () => openApp('camera')), t('phone', FEATURES.voice ? L('语音通话', 'Voice call') : el('span', { class: 'soon-lbl' }, L('语音通话', 'Voice call'), el('small', {}, L('待开发', 'Coming soon'))), callOrSoon),
+        t('gift', L('礼物', 'Gift'), giftSheet), t('checklist', L('打卡', 'Check in'), checkinSheet));
       panel.append(g);
     }
     if (mode) { ta.blur(); if (composeMode === 'voice' && mode === 'emoji') setComposeMode('text'); }
@@ -436,7 +428,7 @@ function buildCompose() {
     const has = !!ta.value.trim(); send.hidden = !has; plus.hidden = has;
   }
   function submit() { const t = ta.value.trim(); if (!t) return; ta.value = ''; sync(); sendMine(t); }
-  vk.addEventListener('click', () => { if (!FEATURES.voice) { toast('语音消息（待开发）'); return; } if (mode) togglePanel(mode); setComposeMode(composeMode === 'voice' ? 'text' : 'voice'); if (composeMode === 'text') ta.focus(); });
+  vk.addEventListener('click', () => { if (!FEATURES.voice) { toast(L('语音消息（待开发）', 'Voice messages (coming soon)')); return; } if (mode) togglePanel(mode); setComposeMode(composeMode === 'voice' ? 'text' : 'voice'); if (composeMode === 'text') ta.focus(); });
   plus.addEventListener('click', () => togglePanel('more'));
   emo.addEventListener('click', () => togglePanel('emoji'));
   send.addEventListener('click', submit);
@@ -447,7 +439,7 @@ function buildCompose() {
   bindHoldToTalk(hold);
   return box;
 }
-const callOrSoon = () => FEATURES.voice ? startCall('out') : toast('语音通话（待开发）');
+const callOrSoon = () => FEATURES.voice ? startCall('out') : toast(L('语音通话（待开发）', 'Voice calls (coming soon)'));
 function bindHoldToTalk(hold) {
   let rec = null, starting = false, cancel = false, y0 = 0, hud = null, t0 = 0, tm = null;
   const showHud = () => {
@@ -489,30 +481,30 @@ function bindHoldToTalk(hold) {
 function wxChatInfoPage(pg) {
   pg.classList.add('wx');
   const body = el('div', { class: 'wx-scroll' });
-  pg.append(wxNav('聊天信息'), body);
+  pg.append(wxNav(L('聊天信息', 'Chat Info')), body);
   pg.refresh = render; render();
   function render() {
     body.textContent = '';
     body.append(el('div', { class: 'wx-members' },
       el('button', { onclick: () => Nav.push('wx', wxProfilePage) }, herAv(), herName()),
-      el('button', { class: 'add', 'aria-label': '添加', onclick: () => Nav.push('wx', wxBlank('发起群聊', '你只有一个朋友，还建不了群。')) }, el('span', {}, icon('plus', 26, 1.5)), '')),
-      el('div', { class: 'wx-group' }, wxCell({ label: '查找聊天记录', onclick: () => Nav.push('wx', wxSearchPage) })),
+      el('button', { class: 'add', 'aria-label': L('添加', 'Add'), onclick: () => Nav.push('wx', wxBlank(L('发起群聊', 'New group chat'), L('你只有一个朋友，还建不了群。', 'You only have one friend, so no group yet.'))) }, el('span', {}, icon('plus', 26, 1.5)), '')),
+      el('div', { class: 'wx-group' }, wxCell({ label: L('查找聊天记录', 'Search chat history'), onclick: () => Nav.push('wx', wxSearchPage) })),
       el('div', { class: 'wx-group' },
-        wxToggle('消息免打扰', () => S.zx.mute, v => { S.zx.mute = v; saveS(); updateBadges(); }),
-        wxToggle('置顶聊天', () => S.zx.pin, v => { S.zx.pin = v; saveS(); })),
-      el('div', { class: 'wx-group' }, wxCell({ label: '设置当前聊天背景', onclick: () => Nav.push('wx', wxChatBgPage) })),
-      el('div', { class: 'wx-group' }, el('button', { class: 'wx-cell danger', onclick: clearChat }, '清空聊天记录')));
+        wxToggle(L('消息免打扰', 'Mute notifications'), () => S.zx.mute, v => { S.zx.mute = v; saveS(); updateBadges(); }),
+        wxToggle(L('置顶聊天', 'Pin chat'), () => S.zx.pin, v => { S.zx.pin = v; saveS(); })),
+      el('div', { class: 'wx-group' }, wxCell({ label: L('设置当前聊天背景', 'Set chat background'), onclick: () => Nav.push('wx', wxChatBgPage) })),
+      el('div', { class: 'wx-group' }, el('button', { class: 'wx-cell danger', onclick: clearChat }, L('清空聊天记录', 'Clear chat history'))));
   }
 }
 function wxChatBgPage(pg) {
   pg.classList.add('wx');
-  pg.append(wxNav('聊天背景'), el('div', { class: 'wx-scroll' },
+  pg.append(wxNav(L('聊天背景', 'Chat Background')), el('div', { class: 'wx-scroll' },
     el('div', { class: 'wx-group' },
-      wxCell({ label: '从相册中选择', onclick: async () => {
+      wxCell({ label: L('从相册中选择', 'Choose from album'), onclick: async () => {
         const [f] = await pickFile('image/*'); if (!f) return;
-        try { await IDB.put('chatbg', await compress(await fileToDataURL(f), 1280, .85)); imgCache.delete('chatbg'); S.zx.bg = true; saveS(); applyChatBg(); toast('已设置'); } catch (e) { toast(e.message); }
+        try { await IDB.put('chatbg', await compress(await fileToDataURL(f), 1280, .85)); imgCache.delete('chatbg'); S.zx.bg = true; saveS(); applyChatBg(); toast(L('已设置', 'Done')); } catch (e) { toast(e.message); }
       } }),
-      wxCell({ label: '恢复默认背景', onclick: () => { S.zx.bg = false; saveS(); IDB.del('chatbg').catch(() => {}); imgCache.delete('chatbg'); applyChatBg(); toast('已恢复'); } }))));
+      wxCell({ label: L('恢复默认背景', 'Restore default'), onclick: () => { S.zx.bg = false; saveS(); IDB.del('chatbg').catch(() => {}); imgCache.delete('chatbg'); applyChatBg(); toast(L('已恢复', 'Restored')); } }))));
 }
 
 /* ---------- 朋友资料 ---------- */
@@ -525,26 +517,26 @@ function wxProfilePage(pg) {
     body.textContent = '';
     body.append(el('div', { class: 'wx-profile' }, herAv(), el('div', {},
       el('b', {}, herName(), el('span', { class: 'wx-gender ' + (S.her.gender === '男' ? 'm' : 'f'), 'aria-label': S.her.gender || '女' }, S.her.gender === '男' ? '♂' : '♀')),
-      el('small', {}, `${zxName()}号：${zxId()}`),
-      S.her.region ? el('small', {}, '地区：' + S.her.region) : '')));
+      el('small', {}, L(`${zxName()}号：`, `${zxName()} ID: `) + zxId()),
+      S.her.region ? el('small', {}, L('地区：', 'Region: ') + S.her.region) : '')));
     const thumbs = el('span', { class: 'wx-thumbs' });
     POSTS.filter(p => p.author === 'her' && p.imageIds && p.imageIds[0]).slice(-4).reverse().forEach(p => { const im = el('img', { alt: '' }); setImg(im, p.imageIds[0]); thumbs.append(im); });
     body.append(
-      el('div', { class: 'wx-group' }, wxCell({ label: '备注和标签', onclick: () => Nav.push('wx', wxBlank('备注和标签', '暂无备注')) }), wxCell({ label: '朋友权限', onclick: () => Nav.push('wx', wxBlank('朋友权限', '聊天、朋友圈都可见')) })),
+      el('div', { class: 'wx-group' }, wxCell({ label: L('备注和标签', 'Remark and tags'), onclick: () => Nav.push('wx', wxBlank(L('备注和标签', 'Remark and tags'), L('暂无备注', 'No remark'))) }), wxCell({ label: L('朋友权限', 'Permissions'), onclick: () => Nav.push('wx', wxBlank(L('朋友权限', 'Permissions'), L('聊天、朋友圈都可见', 'Chats and Moments are visible'))) })),
       el('div', { class: 'wx-group' },
-        wxCell({ label: '朋友圈', value: thumbs.childNodes.length ? thumbs : '', onclick: () => Nav.push('wx', wxMomentsPage) }),
-        wxCell({ label: '更多信息', onclick: () => Nav.push('wx', wxMoreInfoPage) })),
+        wxCell({ label: L('朋友圈', 'Moments'), value: thumbs.childNodes.length ? thumbs : '', onclick: () => Nav.push('wx', wxMomentsPage) }),
+        wxCell({ label: L('更多信息', 'More info'), onclick: () => Nav.push('wx', wxMoreInfoPage) })),
       el('div', { class: 'wx-group' },
-        el('button', { class: 'wx-cell center', onclick: () => openThread() }, icon('chat', 22, 1.7), '发消息'),
-        el('button', { class: 'wx-cell center', onclick: () => callOrSoon() }, icon('phone', 22, 1.7), FEATURES.voice ? '语音通话' : '语音通话（待开发）')));
+        el('button', { class: 'wx-cell center', onclick: () => openThread() }, icon('chat', 22, 1.7), L('发消息', 'Message')),
+        el('button', { class: 'wx-cell center', onclick: () => callOrSoon() }, icon('phone', 22, 1.7), FEATURES.voice ? L('语音通话', 'Voice call') : L('语音通话（待开发）', 'Voice call (coming soon)'))));
   }
 }
 function wxMoreInfoPage(pg) {
   pg.classList.add('wx');
-  pg.append(wxNav('更多信息'), el('div', { class: 'wx-scroll' }, el('div', { class: 'wx-group' },
-    wxCell({ label: '个性签名', value: S.her.signature || '未填写' }),
-    wxCell({ label: '星座', value: S.her.zodiac || '未设定' }),
-    wxCell({ label: '来源', value: `通过搜索${zxName()}号添加` }))));
+  pg.append(wxNav(L('更多信息', 'More info')), el('div', { class: 'wx-scroll' }, el('div', { class: 'wx-group' },
+    wxCell({ label: L('个性签名', 'Bio'), value: S.her.signature || L('未填写', 'None') }),
+    wxCell({ label: L('星座', 'Zodiac'), value: zodiacName(S.her.zodiac) || L('未设定', 'Not set') }),
+    wxCell({ label: L('来源', 'Source'), value: L(`通过搜索${zxName()}号添加`, `Added by searching ${zxName()} ID`) }))));
 }
 
 /* ---------- 朋友圈 ---------- */
@@ -553,14 +545,14 @@ function wxMomentsPage(pg) {
   ST.seenPosts = Date.now(); ST.momentNews = 0; saveST(); updateBadges();
   const scroll = el('div', { class: 'wx-scroll' });
   const bar = el('form', { class: 'mo-bar', hidden: true });
-  const inp = el('input', { 'aria-label': '评论', placeholder: '评论' });
-  bar.append(inp, el('button', { class: 'wx-send' }, '发送'));
+  const inp = el('input', { 'aria-label': L('评论', 'Comment'), placeholder: L('评论', 'Comment') });
+  bar.append(inp, el('button', { class: 'wx-send' }, L('发送', 'Send')));
   let target = null;
   bar.addEventListener('submit', e => { e.preventDefault(); const t = inp.value.trim(); if (!t || !target) return; inp.value = ''; bar.hidden = true; addComment(target, t); target = null; });
   pg.append(scroll, el('header', { class: 'wx-nav clear' }, wxBack('wx'), el('span'),
-    el('button', { class: 'wx-navbtn r', 'aria-label': '发表', onclick: postMineSheet }, icon('camera', 24, 1.8))), bar);
+    el('button', { class: 'wx-navbtn r', 'aria-label': L('发表', 'Post'), onclick: postMineSheet }, icon('camera', 24, 1.8))), bar);
   pg.refresh = render; render();
-  pg.comment = p => { target = p; bar.hidden = false; inp.placeholder = '评论'; inp.focus(); };
+  pg.comment = p => { target = p; bar.hidden = false; inp.placeholder = L('评论', 'Comment'); inp.focus(); };
   pg.closeMenu = () => { const pop = $('.mo-pop', pg); if (pop) { pop.remove(); return true; } if (!bar.hidden) { bar.hidden = true; return true; } return false; };
   pg.addEventListener('pointerdown', e => { if (!e.target.closest('.mo-pop,.mo-more')) $$('.mo-pop', pg).forEach(x => x.remove()); });
   function render() {
@@ -569,33 +561,33 @@ function wxMomentsPage(pg) {
     const cover = el('div', { class: 'mo-cover' });
     const pid = latestPhotoId();
     if (pid) imgSrc(pid).then(s => { if (s) cover.style.backgroundImage = `url("${s}")`; });
-    cover.append(el('div', { class: 'mo-owner' }, el('b', {}, myName() || '我'), myAv()));
+    cover.append(el('div', { class: 'mo-owner' }, el('b', {}, meName()), myAv()));
     scroll.append(cover);
     const posts = [...POSTS].sort((a, b) => b.ts - a.ts);
-    if (!posts.length) scroll.append(el('p', { class: 'mo-empty' }, `还没有朋友圈。${herName()}会按日程发；你也可以点右上角发一条。`));
+    if (!posts.length) scroll.append(el('p', { class: 'mo-empty' }, L(`还没有朋友圈。${herName()}会按日程发；你也可以点右上角发一条。`, `No Moments yet. ${herName()} posts from time to time, and you can post one from the top right.`)));
     for (const p of posts) scroll.append(momentPost(p, pg));
     scroll.scrollTop = y;
   }
 }
 function momentPost(p, pg) {
   const byMe = p.author === 'me';
-  const name = byMe ? (myName() || '我') : herName();
+  const name = byMe ? meName() : herName();
   const main = el('div', { class: 'mo-main' }, el('b', {}, name), p.text ? el('p', {}, p.text) : '');
   if (p.imageIds && p.imageIds[0]) {
-    const im = el('img', { alt: p.text || '照片' }); setImg(im, p.imageIds[0]);
+    const im = el('img', { alt: p.text || L('照片', 'Photo') }); setImg(im, p.imageIds[0]);
     main.append(el('button', { class: 'mo-pic', onclick: () => openViewer(p.imageIds[0]) }, im));
   }
-  const more = el('button', { class: 'mo-more', 'aria-label': '赞和评论' }, icon('more', 18));
-  main.append(el('div', { class: 'mo-meta' }, el('span', {}, relTime(p.ts).replace('现在', '刚刚')), more));
-  const likers = [p.likes && p.likes.her ? herName() : '', p.likes && p.likes.me ? (myName() || '我') : ''].filter(Boolean);
+  const more = el('button', { class: 'mo-more', 'aria-label': L('赞和评论', 'Like and comment') }, icon('more', 18));
+  main.append(el('div', { class: 'mo-meta' }, el('span', {}, relTime(p.ts, isEN()).replace('现在', '刚刚')), more));
+  const likers = [p.likes && p.likes.her ? herName() : '', p.likes && p.likes.me ? meName() : ''].filter(Boolean);
   const cm = p.comments || [];
   if (likers.length || cm.length) {
     const box = el('div', { class: 'mo-box' });
-    if (likers.length) box.append(el('div', { class: 'mo-likes' }, icon('heart', 14, 2), likers.join('，')));
+    if (likers.length) box.append(el('div', { class: 'mo-likes' }, icon('heart', 14, 2), likers.join(L('，', ', '))));
     for (const c of cm) {
-      const who = c.from === 'me' ? (myName() || '我') : herName();
-      const to = c.to ? (c.to === 'me' ? (myName() || '我') : herName()) : '';
-      box.append(el('div', { class: 'mo-cm' }, el('b', {}, who), to ? [' 回复 ', el('b', {}, to)] : '', '：' + c.text));
+      const who = c.from === 'me' ? meName() : herName();
+      const to = c.to ? (c.to === 'me' ? meName() : herName()) : '';
+      box.append(el('div', { class: 'mo-cm' }, el('b', {}, who), to ? [L(' 回复 ', ' → '), el('b', {}, to)] : '', L('：', ': ') + c.text));
     }
     main.append(box);
   }
@@ -604,8 +596,8 @@ function momentPost(p, pg) {
     $$('.mo-pop', pg).forEach(x => x.remove());
     const liked = p.likes && p.likes.me;
     const pop = el('div', { class: 'mo-pop' },
-      el('button', { onclick: () => { p.likes = Object.assign({}, p.likes, { me: !liked }); savePosts(); pop.remove(); node.replaceWith(momentPost(p, pg)); } }, icon('heart', 17, 1.8), liked ? '取消' : '赞'),
-      el('button', { onclick: () => { pop.remove(); pg.comment(p); } }, icon('chat', 17, 1.8), '评论'));
+      el('button', { onclick: () => { p.likes = Object.assign({}, p.likes, { me: !liked }); savePosts(); pop.remove(); node.replaceWith(momentPost(p, pg)); } }, icon('heart', 17, 1.8), liked ? L('取消', 'Unlike') : L('赞', 'Like')),
+      el('button', { onclick: () => { pop.remove(); pg.comment(p); } }, icon('chat', 17, 1.8), L('评论', 'Comment')));
     more.parentNode.append(pop);
   });
   return node;
@@ -629,14 +621,14 @@ function momentNews() {
 }
 function postMineSheet() {
   openSheet((p, close) => {
-    const ta = el('textarea', { rows: '4', placeholder: '这一刻的想法…', 'aria-label': '朋友圈文字' });
+    const ta = el('textarea', { rows: '4', placeholder: L('这一刻的想法…', "What's on your mind…"), 'aria-label': L('朋友圈文字', 'Post text') });
     let imageId = null;
-    const thumb = el('button', { class: 'mo-add', 'aria-label': '添加照片', onclick: async () => {
+    const thumb = el('button', { class: 'mo-add', 'aria-label': L('添加照片', 'Add photo'), onclick: async () => {
       const [f] = await pickFile('image/*'); if (!f) return;
       const d = await compress(await fileToDataURL(f), 1280, .86); imageId = uid('mp'); await IDB.put(imageId, d); imgCache.set(imageId, d);
       thumb.replaceChildren(el('img', { src: d, alt: '' }));
     } }, icon('plus', 30, 1.4));
-    p.append(sheetHead('发表文字', el('button', { onclick: close }, '取消'), el('button', { onclick: () => {
+    p.append(sheetHead(L('发表文字', 'New post'), el('button', { onclick: close }, L('取消', 'Cancel')), el('button', { onclick: () => {
       const text = ta.value.trim(); if (!text && !imageId) return;
       close();
       const post = { id: uid('p'), author: 'me', text, imageIds: imageId ? [imageId] : [], ts: Date.now(), likes: {}, comments: [] };
@@ -648,7 +640,7 @@ function postMineSheet() {
         if (lines[0]) post.comments.push({ id: uid('c'), from: 'her', text: lines[0], ts: Date.now() });
         savePosts(); momentNews();
       });
-    } }, '发表')), iosGroup('', [el('label', { class: 'ios-field' }, ta), el('div', { class: 'pic-row' }, thumb)]));
+    } }, L('发表', 'Post'))), iosGroup('', [el('label', { class: 'ios-field' }, ta), el('div', { class: 'pic-row' }, thumb)]));
   });
 }
 /* 她发的朋友圈 */
@@ -664,16 +656,16 @@ function addPost({ author = 'her', text, imageIds, ts }) {
 function wxFavsPage(pg) {
   pg.classList.add('wx');
   const body = el('div', { class: 'wx-scroll' });
-  pg.append(wxNav('收藏'), body);
+  pg.append(wxNav(L('收藏', 'Favorites')), body);
   pg.refresh = render; render();
   function render() {
     body.textContent = '';
-    if (!FAVS.length) { body.append(el('p', { class: 'mo-empty' }, '长按聊天里的消息，可以收藏到这里。')); return; }
+    if (!FAVS.length) { body.append(el('p', { class: 'mo-empty' }, L('长按聊天里的消息，可以收藏到这里。', 'Long-press a message in a chat to save it here.'))); return; }
     for (const f of [...FAVS].reverse()) {
-      const who = f.from === 'me' ? (myName() || '我') : herName();
-      const content = f.type === 'image' ? (() => { const im = el('img', { alt: '' }); setImg(im, f.imageId); return el('button', { class: 'fav-pic', onclick: () => openViewer(f.imageId) }, im); })() : el('p', {}, f.type === 'voice' ? `[语音] ${f.text}` : f.text);
-      body.append(el('div', { class: 'fav' }, content, el('small', {}, `${who}　${listTime(f.ts)}`,
-        el('button', { onclick: () => { FAVS = FAVS.filter(x => x !== f); saveFavs(); render(); } }, '删除'))));
+      const who = f.from === 'me' ? meName() : herName();
+      const content = f.type === 'image' ? (() => { const im = el('img', { alt: '' }); setImg(im, f.imageId); return el('button', { class: 'fav-pic', onclick: () => openViewer(f.imageId) }, im); })() : el('p', {}, f.type === 'voice' ? L('[语音] ', '[Voice] ') + f.text : f.text);
+      body.append(el('div', { class: 'fav' }, content, el('small', {}, `${who}　${listTime(f.ts, isEN())}`,
+        el('button', { onclick: () => { FAVS = FAVS.filter(x => x !== f); saveFavs(); render(); } }, L('删除', 'Delete')))));
     }
   }
 }
@@ -681,48 +673,49 @@ function wxFavsPage(pg) {
 /* ---------- 我 → 设置 ---------- */
 function wxSettingsPage(pg) {
   pg.classList.add('wx');
-  pg.append(wxNav('设置'), el('div', { class: 'wx-scroll' },
-    el('div', { class: 'wx-group' }, wxCell({ label: '新消息通知', onclick: () => Nav.push('wx', wxNotifyPage) })),
-    el('div', { class: 'wx-group' }, wxCell({ label: '聊天', onclick: () => Nav.push('wx', wxChatSettings) }), wxCell({ label: '通用', onclick: () => Nav.push('wx', wxBlank('通用', '这里什么都没有。')) })),
-    el('div', { class: 'wx-group' }, wxCell({ label: `关于${appDef('wx').label}`, value: '版本 8.0', onclick: () => Nav.push('wx', wxBlank(`关于${appDef('wx').label}`, `${appDef('wx').label}是网页里模拟的聊天 App。${herName()}的消息由程序生成，不是真人。`)) })),
-    el('p', { class: 'wx-hint' }, `${herName()}的人设、日程和回复方式，在手机桌面的「设置 → ${appDef('wx').label}」里改。`)));
+  const app = appDef('wx').label;
+  pg.append(wxNav(L('设置', 'Settings')), el('div', { class: 'wx-scroll' },
+    el('div', { class: 'wx-group' }, wxCell({ label: L('新消息通知', 'Notifications'), onclick: () => Nav.push('wx', wxNotifyPage) })),
+    el('div', { class: 'wx-group' }, wxCell({ label: L('聊天', 'Chats'), onclick: () => Nav.push('wx', wxChatSettings) }), wxCell({ label: L('通用', 'General'), onclick: () => Nav.push('wx', wxBlank(L('通用', 'General'), L('这里什么都没有。', 'Nothing here.'))) })),
+    el('div', { class: 'wx-group' }, wxCell({ label: L(`关于${app}`, `About ${app}`), value: L('版本 8.0', 'Version 8.0'), onclick: () => Nav.push('wx', wxBlank(L(`关于${app}`, `About ${app}`), L(`${app}是网页里模拟的聊天 App。${herName()}的消息由程序生成，不是真人。`, `${app} is a simulated chat app on a web page. ${herName()}'s messages are generated by a program, not a real person.`))) })),
+    el('p', { class: 'wx-hint' }, L(`${herName()}的人设、日程和回复方式，在手机桌面的「设置 → ${app}」里改。`, `${herName()}'s profile, schedule, reply mode and language are in the phone's 设置 → ${app}.`))));
 }
 function wxNotifyPage(pg) {
   pg.classList.add('wx');
-  pg.append(wxNav('新消息通知'), el('div', { class: 'wx-scroll' },
+  pg.append(wxNav(L('新消息通知', 'Notifications')), el('div', { class: 'wx-scroll' },
     el('div', { class: 'wx-group' },
-      wxToggle('接收新消息通知（横幅）', () => S.notify.banner, v => { S.notify.banner = v; saveS(); }),
-      wxToggle('网页在后台时弹系统通知', () => S.notify.system, async v => { if (v && !(await onNotifyToggle(true))) { S.notify.system = false; Nav.refresh('wx'); return; } S.notify.system = v; saveS(); })),
-    el('p', { class: 'wx-hint' }, '系统通知只在网页还开着（哪怕切到后台）时有效。')));
+      wxToggle(L('接收新消息通知（横幅）', 'Show banners'), () => S.notify.banner, v => { S.notify.banner = v; saveS(); }),
+      wxToggle(L('网页在后台时弹系统通知', 'System notifications in background'), () => S.notify.system, async v => { if (v && !(await onNotifyToggle(true))) { S.notify.system = false; Nav.refresh('wx'); return; } S.notify.system = v; saveS(); })),
+    el('p', { class: 'wx-hint' }, L('系统通知只在网页还开着（哪怕切到后台）时有效。', 'System notifications only work while the page is still open, even in the background.'))));
 }
 function wxChatSettings(pg) {
   pg.classList.add('wx');
-  const sel = el('select', { 'aria-label': `${TA()}发语音的频率` }, el('option', { value: 'never' }, '从不'), el('option', { value: 'sometimes' }, '偶尔'), el('option', { value: 'often' }, '经常'));
+  const sel = el('select', { 'aria-label': L(`${TA()}发语音的频率`, 'Voice message frequency') }, el('option', { value: 'never' }, L('从不', 'Never')), el('option', { value: 'sometimes' }, L('偶尔', 'Sometimes')), el('option', { value: 'often' }, L('经常', 'Often')));
   sel.value = S.zx.voice; sel.addEventListener('change', () => { S.zx.voice = sel.value; saveS(); });
-  if (!FEATURES.voice) { sel.disabled = true; sel.replaceChildren(el('option', {}, '待开发')); }
-  pg.append(wxNav('聊天'), el('div', { class: 'wx-scroll' },
-    el('div', { class: 'wx-group' }, wxCell({ label: '聊天背景', onclick: () => Nav.push('wx', wxChatBgPage) })),
-    el('div', { class: 'wx-group' }, el('label', { class: 'wx-cell noic' }, el('span', { class: 'lbl' }, `${herName()}发语音`), sel)),
-    el('p', { class: 'wx-hint' }, `${TA()}的语音用手机自带的中文朗读声音播放；长按语音可以转文字。`)));
+  if (!FEATURES.voice) { sel.disabled = true; sel.replaceChildren(el('option', {}, L('待开发', 'Coming soon'))); }
+  pg.append(wxNav(L('聊天', 'Chats')), el('div', { class: 'wx-scroll' },
+    el('div', { class: 'wx-group' }, wxCell({ label: L('聊天背景', 'Chat Background'), onclick: () => Nav.push('wx', wxChatBgPage) })),
+    el('div', { class: 'wx-group' }, el('label', { class: 'wx-cell noic' }, el('span', { class: 'lbl' }, L(`${herName()}发语音`, `Voice messages from ${herName()}`)), sel)),
+    el('p', { class: 'wx-hint' }, L(`${TA()}的语音用手机自带的中文朗读声音播放；长按语音可以转文字。`, 'Voice messages play with the phone\'s built-in voice. Long-press one to see it as text.'))));
 }
 
 /* ---------- 搜索聊天记录 ---------- */
 function wxSearchPage(pg) {
   pg.classList.add('wx');
-  const input = el('input', { type: 'search', placeholder: '搜索聊天记录', 'aria-label': '搜索聊天记录' });
+  const input = el('input', { type: 'search', placeholder: L('搜索聊天记录', 'Search chat history'), 'aria-label': L('搜索聊天记录', 'Search chat history') });
   const res = el('div', { class: 'wx-scroll' });
-  pg.append(el('div', { class: 'wx-search-bar' }, el('label', {}, icon('search', 17, 2), input), el('button', { onclick: () => Nav.pop('wx') }, '取消')), res);
+  pg.append(el('div', { class: 'wx-search-bar' }, el('label', {}, icon('search', 17, 2), input), el('button', { onclick: () => Nav.pop('wx') }, L('取消', 'Cancel'))), res);
   input.addEventListener('input', () => {
     const q = input.value.trim(); res.textContent = '';
     if (!q) return;
     const hits = M.filter(m => (m.from === 'me' || m.from === 'her') && (m.type === 'text' || m.type === 'checkin') && (m.text || '').includes(q)).slice(-50).reverse();
-    if (!hits.length) { res.append(el('p', { class: 'mo-empty' }, '没有找到相关的聊天记录')); return; }
+    if (!hits.length) { res.append(el('p', { class: 'mo-empty' }, L('没有找到相关的聊天记录', 'No results'))); return; }
     const grp = el('div', { class: 'wx-group' });
     for (const m of hits) {
       const i = m.text.indexOf(q), s = Math.max(0, i - 12);
       grp.append(el('button', { class: 'wx-hit', onclick: () => jumpTo(m.id) }, m.from === 'me' ? myAv() : herAv(),
         el('div', { style: 'flex:1;min-width:0' },
-          el('b', {}, el('span', {}, m.from === 'me' ? (myName() || '我') : herName()), el('time', {}, listTime(m.ts))),
+          el('b', {}, el('span', {}, m.from === 'me' ? meName() : herName()), el('time', {}, listTime(m.ts, isEN()))),
           el('p', {}, (s > 0 ? '…' : '') + m.text.slice(s, i), el('mark', {}, q), m.text.slice(i + q.length)))));
     }
     res.append(grp);
@@ -733,7 +726,7 @@ function jumpTo(id) {
   openThread(true);
   requestAnimationFrame(() => {
     const row = WXT && WXT.list.querySelector(`[data-id="${CSS.escape(id)}"]`);
-    if (!row) { toast('这条消息太早了，没有加载出来'); return; }
+    if (!row) { toast(L('这条消息太早了，没有加载出来', 'That message is too old to load')); return; }
     row.scrollIntoView({ block: 'center' });
     row.classList.add('flash'); setTimeout(() => row.classList.remove('flash'), 1500);
   });

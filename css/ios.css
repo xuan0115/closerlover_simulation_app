@@ -159,3 +159,4 @@
 .pv-text{padding:12px 16px 4px;position:relative}
 .pv-text p{margin:0 0 9px;font-size:15px;line-height:1.55}
 .pv-text+.ios-row::before,.ios-row+.pv-text::before{content:"";position:absolute;top:0;right:0;left:16px;height:.5px;background:var(--sys-sep)}
+.seg.locked button:disabled{opacity:.4}

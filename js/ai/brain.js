@@ -12,7 +12,7 @@ function photoOptions() {
 }
 
 /* ---------- AI：拼设定 ---------- */
-function buildSystem(at) {
+function buildSystem(at, turnNote = '') {
   const h = S.her, me = S.me, ta = pron(), nm = herName(), T = PROMPTS.sections;
   const today = todayChecks(at);
   const lastMine = [...M].reverse().find(m => m.from === 'me');
@@ -30,8 +30,8 @@ function buildSystem(at) {
   sec(T.personality, h.personality);
   sec(T.style, h.style);
   sec(T.routine, h.routine);
-  sec(T.relationship, h.relationship);
-  sec(T.callMe(ta), h.callMe && `「${h.callMe}」`);
+  sec(T.relationship, [PROMPTS.relType[h.relType] || PROMPTS.relType.lover, h.relationship].filter(Boolean).join('\n'));
+  sec(T.callMe(ta), isEN() ? (h.callMeEn ? `英文里叫${ta}「${h.callMeEn}」` : `英文里直接叫${ta}的名字`) : h.callMe && `「${h.callMe}」`);
   const myGender = me.gender === '自己填写' ? (me.genderText || '').trim() : me.gender;
   sec(T.aboutMe(ta), [myName() && `名字/昵称：${myName()}`, myGender && `性别：${myGender}`, me.identity && `身份：${me.identity}`, me.zodiac && PROMPTS.myZodiac({ ta, sign: me.zodiac }), me.about].filter(Boolean).join('\n'));
   if (S.tasks.length) sec(T.tasks, PROMPTS.tasks({ ta, list: S.tasks.map(t => ({ id: t.id, name: t.name, days: daysText(t.days), target: t.target, remind: t.remindOn && t.remind })) }));
@@ -40,7 +40,7 @@ function buildSystem(at) {
     time: fmtFull(at), ta,
     today: tasksOn(at).map(t => ({ name: t.name, done: today[t.id] && hm(today[t.id]) })),
     lastMineAgo: lastMine && ago(at - lastMine.ts)
-  }));
+  }) + (turnNote ? '\n' + turnNote : ''));
 
   const { pool, gen } = photoOptions();
   const P = [];
@@ -54,6 +54,7 @@ function buildSystem(at) {
   sec(T.photo, P.join('\n'));
 
   L.push(PROMPTS.rules({ nm, ta }));
+  if (isEN()) L.push(PROMPTS.english({ ta, level: S.zx.enLevel, correct: S.zx.correct, edu: edu && edu.label, eduKey: h.edu }));
   L.push(PROMPTS.format({ ta }));
   return L.join('\n\n');
 }
@@ -108,7 +109,7 @@ function parseReply(t) {
     .filter(x => x && !isAction(x)).slice(0, 6);
   if (!o.photo || typeof o.photo !== 'object' || !(o.photo.id || o.photo.scene)) o.photo = null;
   o.voice = o.voice === true;
-  o.gift = typeof o.gift === 'string' && GIFTS.some(g => g.name === o.gift.trim()) ? o.gift.trim() : null;
+  o.gift = typeof o.gift === 'string' && giftsFor().some(g => g.name === o.gift.trim()) ? o.gift.trim() : null;
   o.remember = Array.isArray(o.remember) ? o.remember.map(x => String(x).trim()).filter(Boolean) : [];
   o.done = (Array.isArray(o.done) ? o.done : o.done ? [o.done] : []).map(String);
   return o;
@@ -148,15 +149,25 @@ function templateFor({ kind, ev, unreplied }) {
   return tplScene(ev.scene || 'chat', { photo: !!ev.photo, unreplied, task: ev.task, alarm: ev.alarm });
 }
 
-async function compose({ kind, ev, at, unreplied, note }) {
-  if (!usesAI()) return Object.assign(templateFor({ kind, ev, unreplied }), { by: 'template' });
+async function compose({ kind, ev, at, unreplied, note, count, waited, status }) {
+  if (!usesAI()) {
+    const o = templateFor({ kind, ev, unreplied });
+    if (kind === 'reply' && waited > 3 * 60e3 && TPL_BACK[status] && o.messages.length) o.messages.unshift(...tplPick(TPL_BACK[status]));   // 隔了好一阵才回：先说一句刚在干嘛
+    return Object.assign(o, { by: 'template' });
+  }
+  const crisis = kind === 'reply' && [...REPLY_RULES, ...REPLY_RULES_EN].some(r => r.reply === 'crisis' && r.match.test(pendingText()));
+  const turnNote = [
+    kind === 'reply' && waited > 2 * 60e3 ? PROMPTS.waited({ ta: pron(), gap: ago(waited), doing: STATUS_WORDS[status] }) : '',
+    count && !crisis && kind !== 'opening' && !(ev && ev.to === 'moments') ? PROMPTS.count(count) : ''
+  ].filter(Boolean).join('\n');
   let instruction = '';
   if (kind === 'opening') instruction = PROMPTS.opening({ time: fmtFull(at), ta: pron() });
   if (kind === 'event') instruction = ev.to === 'moments'
     ? PROMPTS.moments({ time: fmtFull(at), prompt: ev.prompt, ta: pron() })
     : PROMPTS.event({ time: fmtFull(at), prompt: ev.prompt || '', photo: ev.photo, note });
   try {
-    const o = parseReply(await callLLM(buildSystem(at), buildHistory(instruction)));
+    const o = parseReply(await callLLM(buildSystem(at, turnNote), buildHistory(instruction)));
+    if (count && !crisis && o.messages.length > count) o.messages = o.messages.slice(0, count);   // 说好几条就几条
     if (ev && ev.photo && !o.photo) o.photo = { auto: true };
     if (!o.messages.length) throw new Error('模型的回复里没有能发的话（格式不对），再发一条试试');
     if (ST.aiErr) { delete ST.aiErr; saveST(); }
@@ -184,11 +195,12 @@ function wantVoice(o) {
  *   at    这轮发生的时间（补发错过的消息时是过去的时间）
  *   live  true = 现在正在发，带「对方正在输入」；false = 补发，直接出现
  */
-async function herTurn({ kind, ev = null, at = Date.now(), live = true, unreplied = false, note = '', retry = null }) {
+async function herTurn({ kind, ev = null, at = Date.now(), live = true, unreplied = false, note = '', retry = null, waited = 0, status = 'free' }) {
   const toMoments = ev && ev.to === 'moments';
   if (live && !toMoments) setTyping(true);
   try {
-    const o = await compose({ kind, ev, at, unreplied, note });
+    const count = drawCount(kind === 'reply' ? pendingText() : '');
+    const o = await compose({ kind, ev, at, unreplied, note, count, waited, status });
 
     for (const r of o.remember) { const s = r.slice(0, 80); if (!S.memory.includes(s)) S.memory.push(s); }
     if (S.memory.length > 80) S.memory = S.memory.slice(-80);
@@ -212,7 +224,7 @@ async function herTurn({ kind, ev = null, at = Date.now(), live = true, unreplie
     }
 
     let items = [];
-    if (o.patBack) items.push({ from: 'tip', who: 'her', kind: 'pat', text: `「${herName()}」拍了拍我` });
+    if (o.patBack) items.push({ from: 'tip', who: 'her', kind: 'pat', text: L(`「${herName()}」拍了拍我`, `${herName()} nudged you`) });
     if (wantVoice(o)) {
       const text = o.messages.join('，');
       items.push({ type: 'voice', text, dur: Math.max(1, Math.min(60, Math.round(text.length * .28) + 1)) });
@@ -226,15 +238,18 @@ async function herTurn({ kind, ev = null, at = Date.now(), live = true, unreplie
 
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
-      if (live && it.from !== 'tip') { // 按字数估一个打字时间
+      if (live && it.from !== 'tip') { // 按字数算打字时间；条与条之间停一下；偶尔打到一半停住
+        if (i > 0) { setTyping(false); await sleep(rnd(1e3, 3e3) * ((S.zx.speed || 'real') === 'fast' ? .3 : 1)); }
         setTyping(true);
-        const d = it.type === 'image' || it.type === 'gift' ? 1300 : it.type === 'voice' ? 900 + it.dur * 250 : Math.min(3200, Math.max(700, 450 + it.text.length * 85));
-        await sleep(i === 0 ? Math.min(d, 1100) : d);
+        const d = typingMs(it);
+        if (it.type === 'text' && d > 2500 && Math.random() < .2) {
+          await sleep(d / 2); setTyping(false); await sleep(rnd(2e3, 5e3)); setTyping(true); await sleep(d / 2);
+        } else await sleep(d);
       }
       addMsg(Object.assign({ id: uid('m'), from: 'her', ts: live ? Date.now() : at + i * 20000 }, it));
     }
   } catch (e) {
-    addSys((live ? `${TA()}的消息没收到：` : `${hm(at)} 那条消息没收到：`) + e.message, retry);
+    addSys((live ? L(`${TA()}的消息没收到：`, `Message from ${herName()} didn't arrive: `) : L(`${hm(at)} 那条消息没收到：`, `The ${hm(at)} message didn't arrive: `)) + e.message, retry);
   } finally {
     if (live) setTyping(false);
   }

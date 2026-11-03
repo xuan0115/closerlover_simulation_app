@@ -44,7 +44,7 @@ const DEFAULTS = {
   her: DEFAULT_HER,
   me: DEFAULT_ME,
   memory: [],
-  ver: 2,                                                          // 设定的版本号，迁移旧数据用
+  ver: 3,                                                          // 设定的版本号，迁移旧数据用
   reply: { mode: 'template', fallback: true, aiOk: false },          // aiOk：看过「AI 会把聊天发给哪里」的说明
   api: { provider: 'openai', base: '', key: '', model: '', json: true },
   photo: { mode: 'pool_then_gen', provider: 'openai', key: '', base: '', model: '' },
@@ -52,7 +52,7 @@ const DEFAULTS = {
   // 外观：锁屏墙纸、主屏幕墙纸、图标大小（large 大图标不显示名字）、状态栏（无线局域网 / 5G、低电量模式）
   look: { v: 3, wall: 'bamboo', lockColor: '#2F4A2A', home: 'same', homeColor: '#2F4A2A', icons: 'small', wifi: false, lowPower: false },
   countdown: { title: '下次见面', date: '' },                          // 桌面上的倒数日小组件
-  zx: { voice: 'sometimes', mute: false, pin: true, bg: false },   // 著信：她发语音的频率、免打扰、置顶、聊天背景
+  zx: { voice: 'sometimes', mute: false, pin: true, bg: false, speed: 'real', lang: 'zh', enLevel: 'edu', correct: true },   // chatwe：她发语音的频率、免打扰、置顶、聊天背景、回复速度（见 rhythm.js）
   home: {},                                                        // 每个桌面图标的自定义：{ id: { label, icon, ios } }
   layout: null,                                                    // 桌面排布（编辑过才有）：{ pages, dock, folders }；null = 用 js/data/ui.js 的默认
   events: DEFAULT_EVENTS,
@@ -108,9 +108,24 @@ function migrate(raw, s) {
   if (!s.events.some(e => e.id === 'e_call') && RAW && RAW.events) s.events.push(clone(DEFAULT_EVENTS.find(e => e.id === 'e_call')));
   if (!REPLY_MODES[s.reply.mode]) s.reply.mode = 'ai';                    // 「混合」取消了，并进 AI
   if (raw && raw.reply && raw.reply.mode && raw.reply.mode !== 'template' && raw.reply.aiOk === undefined) s.reply.aiOk = true;  // 已经在用 AI 的，不再弹说明
+  if (raw && !(raw.ver >= 3)) {                                           // v3：人设规范（2026-11）改了猫、外貌、表情、作息；没自己改过的跟着换
+    const OLD3 = {
+      identity: ['25 岁，一个人住，养了一只叫年糕的橘猫。'],
+      looks: ['25 岁亚洲女生，齐肩微卷黑发，单眼皮，笑起来有酒窝，常穿宽松毛衣和牛仔裤。'],
+      style: ['口语化，短句，一句话一条消息。常说「嗯哼」「好嘛」「你又……」。偶尔用一个表情，不刷屏，不说肉麻套话。'],
+      routine: ['7 点起床先撸猫；9 点到工作室画稿；午饭常在楼下吃面；傍晚去河边跑步；晚上画自己的东西，11 点半前睡。'],
+      region: ['浙江 杭州'],                                                // 2026-11-03：她改在上海，你在杭州
+      relationship: ['交往一年多的恋人。她在杭州工作，对方在上海读书，周末偶尔见面。她支持对方的学业，也会管着对方别偷懒。认真的时候会叫对方的名字。']
+    };
+    for (const [k, olds] of Object.entries(OLD3)) if (olds.includes(s.her[k])) s.her[k] = DEFAULT_HER[k];
+  }
   if (raw && !(raw.ver >= 2)) {                                           // v2：默认值改了的，没自己改过就跟着换
     if (raw.me && raw.me.zodiac === '摩羯座') s.me.zodiac = DEFAULT_ME.zodiac;
     if (raw.her && raw.her.callMe === '笨蛋') s.her.callMe = DEFAULT_HER.callMe;
+  }
+  {  // 默认的两项督促清单补上英文名
+    const EN_NAMES = { read: 'reading', gym: 'workout' };
+    for (const t of s.tasks) if (t.nameEn === undefined) t.nameEn = EN_NAMES[t.id] || '';
   }
   s.ver = DEFAULTS.ver;
   if (s.layout) {                                                         // 去掉已经没有的 App（比如 Safari）
@@ -142,6 +157,14 @@ const saveNotes = () => LS.set('notes', NOTES);
 const saveFavs = () => LS.set('favs', FAVS);
 
 const pron = () => S.me.gender === '女' ? '她' : S.me.gender === '男' ? '他' : 'TA';   // 提到「我」时用的字
+
+/* chatwe 的语言（规范第 12 节）：只影响 chatwe 里的界面和她的消息，手机其他地方仍是中文 */
+const isEN = () => S.zx.lang === 'en';
+const L = (zh, en) => isEN() ? en : zh;
+const ZODIAC_EN = { 白羊座: 'Aries', 金牛座: 'Taurus', 双子座: 'Gemini', 巨蟹座: 'Cancer', 狮子座: 'Leo', 处女座: 'Virgo', 天秤座: 'Libra', 天蝎座: 'Scorpio', 射手座: 'Sagittarius', 摩羯座: 'Capricorn', 水瓶座: 'Aquarius', 双鱼座: 'Pisces' };
+const zodiacName = z => isEN() ? (ZODIAC_EN[z] || z) : z;
+const giftName = n => isEN() ? ((GIFTS.find(g => g.name === n) || {}).en || n) : n;
+const taskLabel = t => isEN() ? ((t.nameEn || '').trim() || t.name) : t.name;
 const TA = () => S.her.gender === '男' ? '他' : '她';            // 界面上指代人物：她 / 他
 const herName = () => (S.her.name || TA()).trim();
 
@@ -209,7 +232,7 @@ function letterAvatar(ch, from, to) {
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 }
 const avatarURL = () => S.her.avatar || letterAvatar(herName().slice(0, 1) || TA(), '#7B6BB5', '#F4B183');
-const myAvatarURL = () => S.me.avatar || letterAvatar(myName().slice(0, 1) || '我', '#4F8FD6', '#7FD1C2');
+const myAvatarURL = () => S.me.avatar || letterAvatar(myName().slice(0, 1) || L('我', 'M'), '#4F8FD6', '#7FD1C2');
 function setAvatar(img) { img.src = avatarURL(); }
 function setMyAvatar(img) { img.src = myAvatarURL(); }
 
@@ -225,7 +248,7 @@ const taskById = id => S.tasks.find(t => t.id === id);
 const OLD_TASK_NAMES = { study: '学习', gym: '健身' };
 const taskName = id => (taskById(id) || {}).name || OLD_TASK_NAMES[id] || id;
 const tasksOn = (t = Date.now()) => S.tasks.filter(x => (x.days || []).includes(new Date(t).getDay()));
-const taskWords = t => [t.name, ...(t.keywords || [])].map(w => String(w).trim()).filter(Boolean);
+const taskWords = t => [t.name, t.nameEn, ...(t.keywords || [])].map(w => String(w || '').trim()).filter(Boolean);
 
 /* 桌面图标：data/ui.js 的默认值 + 设置里改过的 */
 function appDef(id) {

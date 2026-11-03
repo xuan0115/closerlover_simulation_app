@@ -11,8 +11,10 @@ function enqueue(fn) { Q = Q.then(fn).catch(e => console.error(e)); return Q; }
 function hash01(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967295; }
 
 /* 某一天这条日程实际触发的时刻（同一天算出来总是同一个时间） */
+const FRIEND_SOMETIMES = ['e_morning', 'e_night'];   // 挚友不一定每天都道早安、晚安：大约一半的日子
 function fireTime(ev, day) {
   if (!ev.on || !ev.days || !ev.days.includes(day.getDay())) return null;
+  if (S.her.relType === 'friend' && FRIEND_SOMETIMES.includes(ev.id) && hash01(dkey(day) + ev.id + ':friend') < .5) return null;
   const [hh, mm] = String(ev.time || '08:00').split(':').map(Number);
   const off = Math.round((hash01(dkey(day) + ev.id) * 2 - 1) * (+ev.jitter || 0));
   const t = new Date(day); t.setHours(hh, mm + off, 0, 0);
@@ -62,6 +64,7 @@ async function runEvent(ev, { at, live }) {
 
 function tick() {
   alarmTick();                                    // 闹钟：飞行模式下也照样响
+  checkPending();                                 // 她该回你了没（js/core/rhythm.js）
   if (!ST.started || S.notify.airplane) return;   // 飞行模式下她联系不上你
   const now = Date.now();
   const from = Math.max(ST.lastTick || now, now - 12 * 3600e3);

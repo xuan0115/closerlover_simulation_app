@@ -39,8 +39,9 @@ function tasksPage(pg, app) {
 
 function taskEditPage(pg, app, task) {
   const isNew = !task;
-  const t = task ? clone(task) : { id: uid('t'), name: '', emoji: '', days: [...EVERY_DAY], target: '', remind: '', remindOn: true, keywords: [] };
+  const t = task ? clone(task) : { id: uid('t'), name: '', nameEn: '', emoji: '', days: [...EVERY_DAY], target: '', remind: '', remindOn: true, keywords: [] };
   const name = el('input', { value: t.name, placeholder: '比如：背单词、早睡、写论文', 'aria-label': '名称' });
+  const nameEn = el('input', { value: t.nameEn || '', placeholder: '比如：vocab、reading（选填）', 'aria-label': '英文名' });
   const emoji = el('input', { value: t.emoji, placeholder: '✅', maxlength: '4', 'aria-label': '图标', class: 'emoji-in' });
   const target = el('input', { value: t.target, placeholder: '选填，比如：每天 30 分钟、每周 3 次', 'aria-label': '目标' });
   const time = el('input', { type: 'time', value: t.remind || '', 'aria-label': '提醒时间' });
@@ -48,6 +49,7 @@ function taskEditPage(pg, app, task) {
   const kw = el('input', { value: (t.keywords || []).join('，'), placeholder: '用逗号隔开，比如：单词，背词', 'aria-label': '关键词' });
   const save = el('button', { class: 'ios-act bold', onclick: () => {
     t.name = name.value.trim(); if (!t.name) { toast('先写个名称'); name.focus(); return; }
+    t.nameEn = nameEn.value.trim();
     t.emoji = emoji.value.trim(); t.target = target.value.trim(); t.remind = time.value; t.remindOn = on.checked && !!time.value;
     t.keywords = kw.value.split(/[,，、\s]+/).map(x => x.trim()).filter(Boolean);
     if (!t.days.length) { toast('至少选一天'); return; }
@@ -58,7 +60,7 @@ function taskEditPage(pg, app, task) {
   const body = el('div', { class: 'ios-body' });
   pg.append(iosNav(app, { title: isNew ? '新的督促事项' : t.name, back: '督促清单', right: save }), body);
   body.append(
-    iosGroup('', [el('label', { class: 'ios-field' }, el('span', {}, '名称'), name), el('label', { class: 'ios-field' }, el('span', {}, '图标（一个表情，选填）'), emoji)]),
+    iosGroup('', [el('label', { class: 'ios-field' }, el('span', {}, '名称'), name), el('label', { class: 'ios-field' }, el('span', {}, '英文名（chatwe 英文模式用）'), nameEn), el('label', { class: 'ios-field' }, el('span', {}, '图标（一个表情，选填）'), emoji)]),
     iosGroup('哪几天', [el('div', { class: 'ios-field' }, daysPicker(t.days))]),
     iosGroup('', [el('label', { class: 'ios-field' }, el('span', {}, '目标'), target)]),
     iosGroup('提醒', [el('label', { class: 'ios-field' }, el('span', {}, '提醒时间'), time),

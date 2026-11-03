@@ -125,16 +125,37 @@ function settingsZxPage(pg, app) {
       el('span', { style: 'color:var(--sys-ink3)' }, icon('chevron', 18, 2.2)))));
     b.append(iosGroup(`${TA()}`, [
       iosLink({ ic: 'heart', color: '#FF2D55', label: `${TA()}的人设`, onclick: go(settingsHerPage) }),
-      iosLink({ ic: 'link', color: '#FF375F', label: '你们的关系', value: S.her.callMe ? `叫你「${S.her.callMe}」` : '', onclick: go(settingsRelPage) }),
+      iosLink({ ic: 'link', color: '#FF375F', label: '你们的关系', value: (REL_TYPES[S.her.relType] || REL_TYPES.lover).label + (S.her.callMe ? ` · 叫你「${S.her.callMe}」` : ''), onclick: go(settingsRelPage) }),
       iosLink({ ic: 'note', color: '#FF9F0A', label: `${TA()}记得的事`, value: S.memory.length ? `${S.memory.length} 条` : '', onclick: go(settingsMemoryPage) })]));
     b.append(iosGroup('互动', [
       iosLink({ ic: 'clock', color: '#30B0C7', label: `${TA()}什么时候找你`, value: `${S.events.filter(e => e.on).length} 条`, onclick: go(plansPage) }),
+      fSelect('zx.speed', '回复速度', Object.entries(SPEEDS)),
       iosLink({ ic: 'calendar', color: '#FF3B30', label: '倒数日', value: S.countdown.title, onclick: () => editCountdown(() => Nav.refresh(app)) }),
       iosLink({ ic: 'photo', color: '#FF9500', label: '照片池', value: POOL.length ? `${POOL.length} 张` : '', onclick: go(poolPage) }),
       iosLink({ ic: 'sparkle', color: '#AF52DE', label: '回复方式', value: (REPLY_MODES[S.reply.mode] || REPLY_MODES.template).label, onclick: go(settingsReplyPage) }),
       iosLink({ ic: 'camera', color: '#8E8E93', label: 'AI 生成照片', value: { pool: '关闭', pool_then_gen: '照片池用完时', gen: '每次' }[S.photo.mode], onclick: go(settingsPhotoPage) })]));
+    b.append(iosGroup('', [iosLink({ ic: 'globe', color: '#007AFF', label: '语言', value: isEN() ? 'English' : '中文', onclick: go(settingsLangPage) })]));
     b.append(iosGroup('', [iosLink({ ic: 'box', color: '#8E8E93', label: '数据与备份', onclick: go(settingsDataPage) })]));
   }, APPS.settings.label);
+}
+
+/* ---------- chatwe 的语言（规范第 12 节）：像 iPhone 给单个 App 设语言，只改 chatwe ---------- */
+function settingsLangPage(pg, app) {
+  subPage(pg, app, '语言', (b, re) => {
+    const opt = (v, label) => el('button', { class: 'ios-row', onclick: () => {
+      if (S.zx.lang === v) return;
+      S.zx.lang = v; saveS(); re(); if (Nav.stacks.wx) Nav.refresh('wx'); if (WXT) renderThread(); renderHome();
+    } }, el('span', { class: 'lbl' }, label), S.zx.lang === v ? el('span', { class: 'check' }, icon('check', 20, 2.4)) : '');
+    b.append(iosGroup(`${zx()} 的语言`, [opt('zh', '中文'), opt('en', 'English')],
+      `只改 ${zx()} 里的界面和${TA()}的消息，手机其他地方仍是中文。之前的聊天记录不会被翻译。`));
+    if (!isEN()) return;
+    b.append(iosGroup('练英语', [
+      fSelect('zx.enLevel', '用词难度', [['edu', `按${TA()}的学历`], ['easy', '简单'], ['daily', '日常'], ['native', '地道（带俚语）']]),
+      fToggle('zx.correct', '顺口纠正我的英文')],
+      `顺口纠错只在 AI 回复方式下有：你写错时，${TA()}会像朋友一样顺口带出正确说法。选「按${TA()}的学历」时，用词跟着${TA()}的人设走。`),
+      iosGroup('', [fText('her.callMeEn', `英文里${TA()}怎么叫你`, { ph: 'babe、honey，或你的英文名；留空就叫你的名字' })],
+        '督促清单每一项的英文名，在「设置 → 督促清单」里填。'));
+  });
 }
 
 /* ---------- 她 ---------- */
@@ -167,10 +188,26 @@ function settingsHerPage(pg, app) {
   });
 }
 function settingsRelPage(pg, app) {
-  subPage(pg, app, '你们的关系', b => {
-    b.append(iosGroup('', [fArea('her.relationship', '你们是什么关系', '恋人、暧昧、青梅竹马、学姐……认识多久，怎么相处')], `AI 模式会按这段话决定${TA()}跟你说话的分寸。`),
-      iosGroup('', [fText('her.callMe', `${TA()}平时怎么叫你`, { ph: '一个短称呼，比如：宝贝、宝、亲爱的' })], '模板里的 {称呼} 就是它。'));
+  subPage(pg, app, '你们的关系', (b, re) => {
+    const locked = !!ST.started, cur = S.her.relType || 'lover';
+    const seg = el('div', { class: 'seg' + (locked ? ' locked' : ''), role: 'group', 'aria-label': '关系类型' }, ...Object.entries(REL_TYPES).map(([k, v]) =>
+      el('button', { 'aria-pressed': String(cur === k), disabled: locked && cur !== k, onclick: () => { if (!locked && k !== cur) { switchRelType(k); re(); } } }, v.label)));
+    b.append(iosGroup('关系类型', [el('div', { class: 'ios-field' }, seg)], locked
+      ? `开始聊天以后就不能换了，免得${TA()}的人设前后冲突。想换的话：设置 → 通用 → 数据与备份 → 全部恢复默认。`
+      : `恋人会说想你、会撒娇；挚友不说情话，是损友式的关心。开始聊天以后就不能换了。`));
+    b.append(iosGroup('', [fArea('her.relationship', '你们是什么关系', '认识多久、怎么认识的、平时怎么相处')], `AI 模式会按这段话决定${TA()}跟你说话的分寸。`),
+      iosGroup('', [fText('her.callMe', `${TA()}平时怎么叫你`, { ph: cur === 'friend' ? '名字或外号，留空就叫你的名字' : '一个短称呼，比如：宝贝、宝、亲爱的' })], '模板里的 {称呼} 就是它。'));
   });
+}
+/* 换关系类型（只在开始之前）：还是默认值的称呼、关系描述、倒数日跟着换 */
+function switchRelType(k) {
+  const from = REL_TYPES[S.her.relType || 'lover'], to = REL_TYPES[k];
+  if (!to) return;
+  if ((S.her.callMe || '') === from.callMe) S.her.callMe = to.callMe;
+  if ((S.her.callMeEn || '') === from.callMeEn) S.her.callMeEn = to.callMeEn;
+  if ((S.her.relationship || '') === from.relationship) S.her.relationship = to.relationship;
+  if (S.countdown.title === from.countdown) S.countdown.title = to.countdown;
+  S.her.relType = k; saveS(); renderHome();
 }
 function settingsMePage(pg, app) {
   subPage(pg, app, '我的资料', (b, re) => {

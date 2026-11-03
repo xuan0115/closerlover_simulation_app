@@ -35,28 +35,32 @@ function ago(ms) {
   if (h < 48) return (h < 10 ? h.toFixed(1) : Math.round(h)) + ' 小时';
   return Math.round(h / 24) + ' 天';
 }
-function relTime(ts) {
+/* 下面三个时间格式，en = true 时用英文（chatwe 的英文模式） */
+const MON_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const WD_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+function relTime(ts, en) {
   const d = Date.now() - ts;
-  if (d < 60e3) return '现在';
-  if (d < 3600e3) return Math.floor(d / 60e3) + ' 分钟前';
+  if (d < 60e3) return en ? 'just now' : '现在';
+  if (d < 3600e3) return en ? Math.floor(d / 60e3) + ' min ago' : Math.floor(d / 60e3) + ' 分钟前';
   if (dkey(ts) === dkey(Date.now())) return hm(ts);
-  if (dkey(ts) === dkey(Date.now() - 864e5)) return '昨天 ' + hm(ts);
-  const x = new Date(ts); return `${x.getMonth() + 1}月${x.getDate()}日`;
+  if (dkey(ts) === dkey(Date.now() - 864e5)) return (en ? 'Yesterday ' : '昨天 ') + hm(ts);
+  const x = new Date(ts); return en ? `${MON_EN[x.getMonth()]} ${x.getDate()}` : `${x.getMonth() + 1}月${x.getDate()}日`;
 }
-function stampText(ts) {
+function stampText(ts, en) {
   const now = Date.now();
   if (dkey(ts) === dkey(now)) return hm(ts);
-  if (dkey(ts) === dkey(now - 864e5)) return '昨天 ' + hm(ts);
-  const d = new Date(ts); return `${d.getMonth() + 1}月${d.getDate()}日 ${hm(ts)}`;
+  if (dkey(ts) === dkey(now - 864e5)) return (en ? 'Yesterday ' : '昨天 ') + hm(ts);
+  const d = new Date(ts); return en ? `${MON_EN[d.getMonth()]} ${d.getDate()} ${hm(ts)}` : `${d.getMonth() + 1}月${d.getDate()}日 ${hm(ts)}`;
 }
 /* 聊天列表右侧的时间：今天显示时刻，昨天、本周几、更早显示日期 */
-function listTime(ts) {
+function listTime(ts, en) {
   const now = Date.now();
   if (dkey(ts) === dkey(now)) return hm(ts);
-  if (dkey(ts) === dkey(now - 864e5)) return '昨天';
-  if (now - ts < 6 * 864e5) return '星期' + WD[new Date(ts).getDay()];
+  if (dkey(ts) === dkey(now - 864e5)) return en ? 'Yesterday' : '昨天';
+  if (now - ts < 6 * 864e5) return en ? WD_EN[new Date(ts).getDay()] : '星期' + WD[new Date(ts).getDay()];
   const d = new Date(ts); return `${d.getMonth() + 1}/${d.getDate()}`;
 }
+const PART_EN = { 深夜: 'late night', 早上: 'morning', 中午: 'noon', 下午: 'afternoon', 晚上: 'evening' };
 function partOfDay(t = Date.now()) {
   const h = new Date(t).getHours();
   return h < 5 ? '深夜' : h < 11 ? '早上' : h < 13 ? '中午' : h < 18 ? '下午' : h < 23 ? '晚上' : '深夜';
