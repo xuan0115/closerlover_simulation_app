@@ -376,7 +376,7 @@ function settingsAboutPage(pg, app) {
       el('div', { class: 'ios-row' }, el('span', { class: 'lbl' }, '聊天记录'), n(`${M.filter(m => m.from === 'me' || m.from === 'her').length} 条`)),
       el('div', { class: 'ios-row' }, el('span', { class: 'lbl' }, '朋友圈'), n(`${POSTS.length} 条`)),
       el('div', { class: 'ios-row' }, el('span', { class: 'lbl' }, '照片池'), n(`${POOL.length} 张`))],
-      '这是网页里模拟的一台手机。所有内容只存在当前浏览器里。'));
+      '这是网页里模拟的一台手机。没登录时所有内容只存在当前浏览器里；登录后，聊天记录和设定会备份到云端。'));
   });
 }
 

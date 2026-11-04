@@ -49,6 +49,9 @@ function wxToggle(label, get, set) {
 const herAv = () => { const i = el('img', { alt: '' }); setAvatar(i); return i; };
 const myAv = () => { const i = el('img', { alt: '' }); setMyAvatar(i); return i; };
 /* 还没做的入口：一个空白页 */
+/* chatwe 里显示的名字：你给她写了备注就用备注（和真微信一样），没写就用她的名字。AI 那边用的还是她的名字 */
+const wxName = () => ((S.zx.remark || '').trim() || herName());
+const wxTags = () => (S.zx.tags || '').split(/[,，、\s]+/).map(t => t.trim()).filter(Boolean);
 const wxBlank = (title, text) => pg => { pg.classList.add('wx'); pg.append(wxNav(title), el('div', { class: 'wx-scroll' }, el('p', { class: 'mo-empty' }, text || L('暂无内容', 'Nothing here yet')))); };
 
 /* ---------- 首页：四个 tab ---------- */
@@ -106,7 +109,7 @@ function wxChats(body) {
   body.append(el('div', { class: 'wx-group' }, el('button', { class: 'wx-row' + (S.zx.pin ? ' pinned' : ''), onclick: () => openThread() },
     el('span', { class: 'wx-av' }, herAv(), dot),
     el('div', { class: 'wx-row-main' },
-      el('div', { class: 'wx-row-top' }, el('b', {}, herName()), el('time', {}, last ? listTime(last.ts, isEN()) : '')),
+      el('div', { class: 'wx-row-top' }, el('b', {}, wxName()), el('time', {}, last ? listTime(last.ts, isEN()) : '')),
       el('div', { class: 'wx-row-sub' }, el('p', {}, pv), S.zx.mute ? el('span', { class: 'wx-mute' }, icon('bellOff', 15, 1.8)) : '')))));
 }
 function wxContacts(body) {
@@ -115,11 +118,11 @@ function wxContacts(body) {
     top('personAdd', '#FA9D3B', L('新的朋友', 'New friends'), wxBlank(L('新的朋友', 'New friends'), L('没有新的朋友', 'No new friends'))),
     top('person', '#FA9D3B', L('仅聊天的朋友', 'Chats only'), wxBlank(L('仅聊天的朋友', 'Chats only'), L('没有仅聊天的朋友', 'Nobody here'))),
     top('contacts', '#07C160', L('群聊', 'Group chats'), wxBlank(L('群聊', 'Group chats'), L('你还没有保存群聊', 'No saved group chats'))),
-    top('tag', '#2782D7', L('标签', 'Tags'), wxBlank(L('标签', 'Tags'), L('暂无标签', 'No tags'))),
+    top('tag', '#2782D7', L('标签', 'Tags'), wxBlank(L('标签', 'Tags'), wxTags().length ? L(`${wxTags().join('、')}：${wxName()}`, `${wxTags().join(', ')}: ${wxName()}`) : L('暂无标签', 'No tags'))),
     top('star', '#2782D7', L('公众号', 'Official accounts'), wxBlank(L('公众号', 'Official accounts'), L('还没有关注公众号', 'Not following any accounts')))),
     el('div', { class: 'wx-section' }, L('星标朋友', 'Starred friends')),
     el('div', { class: 'wx-group' }, el('button', { class: 'wx-row slim', onclick: () => Nav.push('wx', wxProfilePage) },
-      el('span', { class: 'wx-av' }, herAv()), el('div', { class: 'wx-row-main' }, el('div', { class: 'wx-row-top' }, el('b', {}, herName()))))),
+      el('span', { class: 'wx-av' }, herAv()), el('div', { class: 'wx-row-main' }, el('div', { class: 'wx-row-top' }, el('b', {}, wxName()))))),
     el('p', { class: 'wx-hint', style: 'text-align:center;padding-top:18px' }, L('1 个朋友', '1 friend')));
 }
 function wxDiscover(body) {
@@ -172,7 +175,7 @@ function previewOf(m) {
 
 function wxThreadPage(pg) {
   pg.classList.add('wx', 'thread');
-  const title = el('h1', { class: 'wx-title' }, herName());
+  const title = el('h1', { class: 'wx-title' }, wxName());
   const nav = el('header', { class: 'wx-nav line' }, wxBack('wx'), title,
     el('button', { class: 'wx-navbtn r', 'aria-label': L('聊天信息', 'Chat info'), onclick: () => Nav.push('wx', wxChatInfoPage) }, icon('more', 24)));
   const list = el('div', { class: 'wx-list' });
@@ -184,7 +187,7 @@ function wxThreadPage(pg) {
   scroller.addEventListener('scroll', closeMsgMenu);
   pg.addEventListener('pointerdown', e => { if (!e.target.closest('.wx-pop')) closeMsgMenu(); });
   pg.onclose = () => { if (WXT && WXT.pg === pg) WXT = null; };
-  pg.refresh = () => { title.textContent = typingOn ? L('对方正在输入...', 'typing...') : herName(); renderThread(); markRead(); };
+  pg.refresh = () => { title.textContent = typingOn ? L('对方正在输入...', 'typing...') : wxName(); renderThread(); markRead(); };
   pg.closeMenu = () => { if ($('.wx-pop', pg)) { closeMsgMenu(); return true; } return false; };
   renderThread();
 }
@@ -253,7 +256,7 @@ function scrollBottom(force) {
 }
 function setTyping(on) {
   typingOn = on;
-  if (WXT) { WXT.title.textContent = on ? L('对方正在输入...', 'typing...') : herName(); if (on) scrollBottom(); }
+  if (WXT) { WXT.title.textContent = on ? L('对方正在输入...', 'typing...') : wxName(); if (on) scrollBottom(); }
 }
 
 /* 她的头像：点一下看资料，连点两下拍一拍 */
@@ -265,7 +268,7 @@ function bindAvatarTaps(av) {
   });
 }
 function patHer() {
-  addMsg({ id: uid('t'), from: 'tip', who: 'me', kind: 'pat', text: L(`我拍了拍「${herName()}」`, `You nudged ${herName()}`), ts: Date.now() });
+  addMsg({ id: uid('t'), from: 'tip', who: 'me', kind: 'pat', text: L(`我拍了拍「${wxName()}」`, `You nudged ${wxName()}`), ts: Date.now() });
   const row = WXT && WXT.list.lastElementChild; if (row) row.classList.add('shake');
   queueReply();
 }
@@ -322,7 +325,7 @@ function recallMsg(m) {
   if (Math.random() < .4) queueReply();
 }
 function setQuote(m) {
-  const who = m.from === 'me' ? meName() : herName();
+  const who = m.from === 'me' ? meName() : wxName();
   const text = m.type === 'image' ? L('[图片]', '[Photo]') : m.type === 'voice' ? (m.from === 'me' ? (m.transcript || L('[语音]', '[Voice]')) : m.text) : m.text;
   quoteDraft = { who, text: String(text || '').slice(0, 60) };
   if (WXT) { const bar = $('.wx-quote-bar', WXT.compose); bar.hidden = false; $('span', bar).textContent = `${quoteDraft.who}：${quoteDraft.text}`; setComposeMode('text'); $('.wx-input', WXT.compose).focus(); }
@@ -486,7 +489,7 @@ function wxChatInfoPage(pg) {
   function render() {
     body.textContent = '';
     body.append(el('div', { class: 'wx-members' },
-      el('button', { onclick: () => Nav.push('wx', wxProfilePage) }, herAv(), herName()),
+      el('button', { onclick: () => Nav.push('wx', wxProfilePage) }, herAv(), wxName()),
       el('button', { class: 'add', 'aria-label': L('添加', 'Add'), onclick: () => Nav.push('wx', wxBlank(L('发起群聊', 'New group chat'), L('你只有一个朋友，还建不了群。', 'You only have one friend, so no group yet.'))) }, el('span', {}, icon('plus', 26, 1.5)), '')),
       el('div', { class: 'wx-group' }, wxCell({ label: L('查找聊天记录', 'Search chat history'), onclick: () => Nav.push('wx', wxSearchPage) })),
       el('div', { class: 'wx-group' },
@@ -516,13 +519,14 @@ function wxProfilePage(pg) {
   function render() {
     body.textContent = '';
     body.append(el('div', { class: 'wx-profile' }, herAv(), el('div', {},
-      el('b', {}, herName(), el('span', { class: 'wx-gender ' + (S.her.gender === '男' ? 'm' : 'f'), 'aria-label': S.her.gender || '女' }, S.her.gender === '男' ? '♂' : '♀')),
+      el('b', {}, wxName(), el('span', { class: 'wx-gender ' + (S.her.gender === '男' ? 'm' : 'f'), 'aria-label': S.her.gender || '女' }, S.her.gender === '男' ? '♂' : '♀')),
+      wxName() !== herName() ? el('small', {}, L('昵称：', 'Nickname: ') + herName()) : '',
       el('small', {}, L(`${zxName()}号：`, `${zxName()} ID: `) + zxId()),
       S.her.region ? el('small', {}, L('地区：', 'Region: ') + S.her.region) : '')));
     const thumbs = el('span', { class: 'wx-thumbs' });
     POSTS.filter(p => p.author === 'her' && p.imageIds && p.imageIds[0]).slice(-4).reverse().forEach(p => { const im = el('img', { alt: '' }); setImg(im, p.imageIds[0]); thumbs.append(im); });
     body.append(
-      el('div', { class: 'wx-group' }, wxCell({ label: L('备注和标签', 'Remark and tags'), onclick: () => Nav.push('wx', wxBlank(L('备注和标签', 'Remark and tags'), L('暂无备注', 'No remark'))) }), wxCell({ label: L('朋友权限', 'Permissions'), onclick: () => Nav.push('wx', wxBlank(L('朋友权限', 'Permissions'), L('聊天、朋友圈都可见', 'Chats and Moments are visible'))) })),
+      el('div', { class: 'wx-group' }, wxCell({ label: L('备注和标签', 'Remark and tags'), value: [(S.zx.remark || '').trim(), ...wxTags()].filter(Boolean).join('，'), onclick: () => Nav.push('wx', wxRemarkPage) }), wxCell({ label: L('朋友权限', 'Permissions'), onclick: () => Nav.push('wx', wxBlank(L('朋友权限', 'Permissions'), L('聊天、朋友圈都可见', 'Chats and Moments are visible'))) })),
       el('div', { class: 'wx-group' },
         wxCell({ label: L('朋友圈', 'Moments'), value: thumbs.childNodes.length ? thumbs : '', onclick: () => Nav.push('wx', wxMomentsPage) }),
         wxCell({ label: L('更多信息', 'More info'), onclick: () => Nav.push('wx', wxMoreInfoPage) })),
@@ -530,6 +534,23 @@ function wxProfilePage(pg) {
         el('button', { class: 'wx-cell center', onclick: () => openThread() }, icon('chat', 22, 1.7), L('发消息', 'Message')),
         el('button', { class: 'wx-cell center', onclick: () => callOrSoon() }, icon('phone', 22, 1.7), FEATURES.voice ? L('语音通话', 'Voice call') : L('语音通话（待开发）', 'Voice call (coming soon)'))));
   }
+}
+/* 设置备注和标签：两行自己填。备注会替换 chatwe 里显示的名字；标签用逗号或空格分开 */
+function wxRemarkPage(pg) {
+  pg.classList.add('wx');
+  const field = (key, label, ph) => {
+    const inp = el('input', { class: 'wx-field', id: 'wx-' + key, type: 'text', maxlength: key === 'remark' ? '24' : '60', placeholder: ph, value: S.zx[key] || '', 'aria-label': label });
+    inp.addEventListener('input', () => { S.zx[key] = inp.value; saveS(); });
+    inp.addEventListener('change', () => { S.zx[key] = inp.value.trim(); saveS(); updateBadges(); });
+    return el('label', { class: 'wx-cell noic' }, el('span', { class: 'lbl wx-flbl' }, label), inp);
+  };
+  pg.append(wxNav(L('设置备注和标签', 'Remark and tags')), el('div', { class: 'wx-scroll' },
+    el('div', { class: 'wx-section' }, L('备注', 'Remark')),
+    el('div', { class: 'wx-group' }, field('remark', L('备注', 'Remark'), herName())),
+    el('div', { class: 'wx-section' }, L('标签', 'Tags')),
+    el('div', { class: 'wx-group' }, field('tags', L('标签', 'Tags'), L('比如：家人、最重要的人', 'e.g. family, my person'))),
+    el('p', { class: 'wx-hint' }, L(`备注只改你这边看到的名字：聊天列表、聊天标题、朋友圈都会显示备注。${TA()}还是叫「${herName()}」。多个标签用逗号或空格分开。`,
+      `The remark only changes what you see in chatwe: chat list, chat title and Moments. ${herName()} still goes by ${herName()}. Separate tags with commas or spaces.`))));
 }
 function wxMoreInfoPage(pg) {
   pg.classList.add('wx');
@@ -571,7 +592,7 @@ function wxMomentsPage(pg) {
 }
 function momentPost(p, pg) {
   const byMe = p.author === 'me';
-  const name = byMe ? meName() : herName();
+  const name = byMe ? meName() : wxName();
   const main = el('div', { class: 'mo-main' }, el('b', {}, name), p.text ? el('p', {}, p.text) : '');
   if (p.imageIds && p.imageIds[0]) {
     const im = el('img', { alt: p.text || L('照片', 'Photo') }); setImg(im, p.imageIds[0]);
@@ -579,14 +600,14 @@ function momentPost(p, pg) {
   }
   const more = el('button', { class: 'mo-more', 'aria-label': L('赞和评论', 'Like and comment') }, icon('more', 18));
   main.append(el('div', { class: 'mo-meta' }, el('span', {}, relTime(p.ts, isEN()).replace('现在', '刚刚')), more));
-  const likers = [p.likes && p.likes.her ? herName() : '', p.likes && p.likes.me ? meName() : ''].filter(Boolean);
+  const likers = [p.likes && p.likes.her ? wxName() : '', p.likes && p.likes.me ? meName() : ''].filter(Boolean);
   const cm = p.comments || [];
   if (likers.length || cm.length) {
     const box = el('div', { class: 'mo-box' });
     if (likers.length) box.append(el('div', { class: 'mo-likes' }, icon('heart', 14, 2), likers.join(L('，', ', '))));
     for (const c of cm) {
-      const who = c.from === 'me' ? meName() : herName();
-      const to = c.to ? (c.to === 'me' ? meName() : herName()) : '';
+      const who = c.from === 'me' ? meName() : wxName();
+      const to = c.to ? (c.to === 'me' ? meName() : wxName()) : '';
       box.append(el('div', { class: 'mo-cm' }, el('b', {}, who), to ? [L(' 回复 ', ' → '), el('b', {}, to)] : '', L('：', ': ') + c.text));
     }
     main.append(box);
@@ -662,7 +683,7 @@ function wxFavsPage(pg) {
     body.textContent = '';
     if (!FAVS.length) { body.append(el('p', { class: 'mo-empty' }, L('长按聊天里的消息，可以收藏到这里。', 'Long-press a message in a chat to save it here.'))); return; }
     for (const f of [...FAVS].reverse()) {
-      const who = f.from === 'me' ? meName() : herName();
+      const who = f.from === 'me' ? meName() : wxName();
       const content = f.type === 'image' ? (() => { const im = el('img', { alt: '' }); setImg(im, f.imageId); return el('button', { class: 'fav-pic', onclick: () => openViewer(f.imageId) }, im); })() : el('p', {}, f.type === 'voice' ? L('[语音] ', '[Voice] ') + f.text : f.text);
       body.append(el('div', { class: 'fav' }, content, el('small', {}, `${who}　${listTime(f.ts, isEN())}`,
         el('button', { onclick: () => { FAVS = FAVS.filter(x => x !== f); saveFavs(); render(); } }, L('删除', 'Delete')))));
@@ -715,7 +736,7 @@ function wxSearchPage(pg) {
       const i = m.text.indexOf(q), s = Math.max(0, i - 12);
       grp.append(el('button', { class: 'wx-hit', onclick: () => jumpTo(m.id) }, m.from === 'me' ? myAv() : herAv(),
         el('div', { style: 'flex:1;min-width:0' },
-          el('b', {}, el('span', {}, m.from === 'me' ? meName() : herName()), el('time', {}, listTime(m.ts, isEN()))),
+          el('b', {}, el('span', {}, m.from === 'me' ? meName() : wxName()), el('time', {}, listTime(m.ts, isEN()))),
           el('p', {}, (s > 0 ? '…' : '') + m.text.slice(s, i), el('mark', {}, q), m.text.slice(i + q.length)))));
     }
     res.append(grp);

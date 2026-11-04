@@ -224,7 +224,7 @@ async function herTurn({ kind, ev = null, at = Date.now(), live = true, unreplie
     }
 
     let items = [];
-    if (o.patBack) items.push({ from: 'tip', who: 'her', kind: 'pat', text: L(`「${herName()}」拍了拍我`, `${herName()} nudged you`) });
+    if (o.patBack) items.push({ from: 'tip', who: 'her', kind: 'pat', text: L(`「${wxName()}」拍了拍我`, `${wxName()} nudged you`) });
     if (wantVoice(o)) {
       const text = o.messages.join('，');
       items.push({ type: 'voice', text, dur: Math.max(1, Math.min(60, Math.round(text.length * .28) + 1)) });

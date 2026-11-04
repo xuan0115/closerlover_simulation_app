@@ -115,7 +115,7 @@ function startCall(dir, ev) {
   const status = el('div', { class: 'call-status' });
   const cap = el('div', { class: 'call-cap' });
   const btns = el('div', { class: 'call-btns' });
-  box.append(bg, el('div', { class: 'call-top' }, av, el('div', { class: 'call-name' }, herName()), status), cap, btns);
+  box.append(bg, el('div', { class: 'call-top' }, av, el('div', { class: 'call-name' }, wxName()), status), cap, btns);
   $('#phone').append(box);
   Call.box = box; Call.status = status; Call.cap = cap; Call.btns = btns;
   requestAnimationFrame(() => box.classList.add('on'));

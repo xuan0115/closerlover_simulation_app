@@ -235,3 +235,8 @@
 .wx-gender.m{background:#3E8BF0}
 .soon-lbl small{display:block;font-size:10px;color:var(--wx-ink3,#999);margin-top:1px}
 .wx-more button:has(.soon-lbl) .tile{opacity:.5}
+
+/* 设置备注和标签：一行左边是名称，右边是输入框 */
+.wx-cell .wx-flbl{flex:none;width:4.5em}
+.wx-field{flex:1;min-width:0;border:0;background:transparent;font:inherit;font-size:17px;color:var(--wx-ink);outline:none;padding:15px 0}
+.wx-field::placeholder{color:var(--wx-ink3)}

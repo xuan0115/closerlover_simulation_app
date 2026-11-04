@@ -287,7 +287,7 @@ function renderLock() {
   const un = unreadList();
   for (const m of un.slice(-4).reverse()) {
     box.append(el('button', { class: 'note', onclick: () => unlock(() => { openApp('wx'); openThread(true); }) }, noteAvatar(),
-      el('div', {}, el('div', { class: 'note-top' }, el('span', {}, herName()), el('time', {}, relTime(m.ts))), el('p', {}, preview(m)))));
+      el('div', {}, el('div', { class: 'note-top' }, el('span', {}, wxName()), el('time', {}, relTime(m.ts))), el('p', {}, preview(m)))));
   }
   if (un.length > 4) box.append(el('div', { class: 'more' }, `还有 ${un.length - 4} 条通知`));
 }
@@ -358,7 +358,7 @@ function onHerMessage(m) {
   if (cur === 'lock') renderLock();
   else if (cur === 'home') renderHome();
   const quiet = S.notify.focus || !S.notify.banner || S.zx.mute;
-  if (cur !== 'lock' && !document.hidden && !quiet) showBanner(herName(), preview(m), () => { openApp('wx'); openThread(true); });
-  if (document.hidden && !S.notify.focus && !S.zx.mute) systemNotify(herName(), preview(m));
+  if (cur !== 'lock' && !document.hidden && !quiet) showBanner(wxName(), preview(m), () => { openApp('wx'); openThread(true); });
+  if (document.hidden && !S.notify.focus && !S.zx.mute) systemNotify(wxName(), preview(m));
   if (cur === 'wx' && Nav.top('wx') === Nav.stacks.wx[0]) Nav.refresh('wx');
 }

@@ -93,7 +93,7 @@ function widgetEl(w, c) {
     const last = [...M].reverse().find(m => m.from === 'her');
     const av = el('img', { alt: '' }); setAvatar(av);
     node = cell(appDef('wx').label, el('button', { class: 'widget her2', 'aria-label': `${herName()}的消息`, onclick: () => { if (!ST.started) return unlock(); openApp('wx'); openThread(true); } },
-      el('div', { class: 'w-top' }, av, el('span', {}, herName())),
+      el('div', { class: 'w-top' }, av, el('span', {}, wxName())),
       last ? el('div', { class: 'w-say' }, preview(last)) : el('div', { class: 'w-say quiet' }, ST.started ? '还没有消息' : '先去「设置」设定人物'),
       last ? el('time', { class: 'w-time' }, relTime(last.ts)) : ''));
   }
