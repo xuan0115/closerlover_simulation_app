@@ -39,4 +39,4 @@ show('lock');
 tick();                     // 补上错过的消息
 setInterval(tick, 20000);   // 之后每 20 秒看一眼日程
 setInterval(trackUsage, 30000);
-initAuth();                 // <--- 加在这里！开机自动检查登录Gemini---//
+cloudStart();               // 账号：已登录就同步存档，没登录弹出登录面板（js/core/cloud.js）

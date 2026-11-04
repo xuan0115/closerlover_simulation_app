@@ -9,16 +9,21 @@ function toast(t, ms = 2600) {
   const e = $('#toast'); e.textContent = t; e.classList.add('on');
   clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove('on'), ms);
 }
+/* sheetLock：登录面板开着时为 true —— 点背景、按 Esc 都关不掉，别的面板也弹不出来 */
+let sheetLock = false;
 function openSheet(build) {
+  if (sheetLock) return;
   const s = $('#sheet'), p = $('.sheet-panel', s);
   p.textContent = ''; p.scrollTop = 0; build(p, closeSheet); s.classList.add('on');
 }
-function closeSheet() { $('#sheet').classList.remove('on'); }
+function closeSheet() { if (sheetLock) return; $('#sheet').classList.remove('on'); }
+function lockSheet(on) { sheetLock = !!on; $('#sheet').classList.toggle('locked', sheetLock); }
 const sheetOpen = () => $('#sheet').classList.contains('on');
 function sheetHead(title, left, right) {
   return el('div', { class: 'sheet-head' }, left || el('span'), el('h3', {}, title), right || el('span'));
 }
 function confirmSheet(title, sub, ok, danger) {
+  if (sheetLock) return Promise.resolve(false);   // 登录面板开着：别的确认一律当作「取消」
   return new Promise(res => openSheet((p, close) => {
     p.append(el('div', { class: 'sheet-title' }, title), sub ? el('p', { class: 'sub' }, sub) : '',
       el('div', { class: 'btnrow' },

@@ -11,7 +11,7 @@ const REPLY_MODES = {
 
 /* 聊天用的 AI 服务 */
 const CHAT_PROVIDERS = {
-  builtin:  { label: '知己内置AI（免填Key）', base: 'https://pqrrculvjdirycyafqht.supabase.co/functions/v1/ai-proxy', model: 'deepseek-chat' },
+  builtin:  { label: '知己内置 AI（登录后可用，不用填 Key）', base: 'https://pqrrculvjdirycyafqht.supabase.co/functions/v1/ai-proxy', model: 'deepseek-v4-pro' },   // 走 Supabase 上的中转，见 supabase/ai-proxy.ts
   openai:   { label: 'OpenAI', base: 'https://api.openai.com/v1', model: 'gpt-5-mini' },
   gemini:   { label: 'Gemini', base: 'https://generativelanguage.googleapis.com/v1beta', model: 'gemini-flash-latest' },
   deepseek: { label: 'DeepSeek', base: 'https://api.deepseek.com', model: 'deepseek-flash' },

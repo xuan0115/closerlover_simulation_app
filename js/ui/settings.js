@@ -81,7 +81,7 @@ function settingsRoot(pg, app) {
     body.append(el('h1', { class: 'ios-large' }, APPS.settings.label),
       el('div', { class: 'ios-searchbox' }, icon('search', 17, 2), '搜索'));
     if (!ST.started) body.append(el('div', { class: 'intro' },
-      el('p', {}, `先到下面的「${zx()}」里，设定${TA()}是谁、你们是什么关系。回复方式默认是固定模板，不用填任何 Key 就能用。`),
+      el('p', {}, `先到下面的「${zx()}」里，设定${TA()}是谁、你们是什么关系。回复方式默认是知己内置 AI，登录后就能用，不用填 Key。`),
       el('button', { class: 'btn primary wide', onclick: start }, '设好了，开始')));
     const av = el('img', { alt: '' }); setMyAvatar(av);
     body.append(el('div', { class: 'ios-card', style: 'margin-top:14px' }, el('button', { class: 'profile-card', onclick: go(settingsMePage) }, av,
@@ -230,25 +230,31 @@ function settingsMemoryPage(pg, app) {
 }
 
 /* ---------- 隐私与安全性：用大白话说清楚数据存在哪、什么时候联网、点 App 时发生了什么 ---------- */
-const AI_NOTICE = () => `开启后，${herName()}的每句话都由你选的 AI 服务来写。为此，最近的聊天记录、${TA()}的人设、你填的资料和督促清单、${TA()}记得的事，会发给那个服务（比如 DeepSeek）。知己没有自己的服务器，这些不经过开发者。详细说明在「设置 → 隐私与安全性」。`;
+const AI_NOTICE = () => `开启后，${herName()}的每句话都由 AI 来写。为此，最近的聊天记录、${TA()}的人设、你填的资料和督促清单、${TA()}记得的事，会发给 AI 服务：用「知己内置 AI」时，经过知己的服务器转给 DeepSeek；用你自己的 Key 时，直接发给你选的服务。详细说明在「设置 → 隐私与安全性」。`;
 function settingsPrivacyPage(pg, app) {
   subPage(pg, app, '隐私与安全性', b => {
     const go = fn => () => Nav.push(app, p => fn(p, app));
     const row = (label, value) => el('div', { class: 'ios-row' }, el('span', { class: 'lbl' }, label), el('span', { class: 'val' }, value));
     const text = (...ps) => el('div', { class: 'pv-text' }, ...ps.map(t => el('p', {}, t)));
-    const ai = S.reply.mode === 'ai', pv = (CHAT_PROVIDERS[S.api.provider] || {}).label || 'AI 服务';
+    const ai = S.reply.mode === 'ai', builtin = S.api.provider === 'builtin', pv = builtin ? 'DeepSeek（经知己服务器）' : ((CHAT_PROVIDERS[S.api.provider] || {}).label || 'AI 服务');
+    const cloud = typeof sb !== 'undefined' && !!sb;
     const photoAI = S.photo.mode !== 'pool';
     b.append(el('div', { class: 'pv-hero' }, el('span', { class: 'pv-ic' }, icon('hand', 30, 2)), el('h2', {}, '知己和你的隐私'),
-      el('p', {}, '知己没有服务器，也没有账号。下面说明你的数据存在哪、什么时候会联网，以及点 App 图标时发生了什么。')));
-    b.append(iosGroup('数据存在哪', [text(
+      el('p', {}, cloud ? '知己用账号把你的存档保存在云端。下面说明数据存在哪、谁能看到、什么时候会联网，以及点 App 图标时发生了什么。' : '下面说明你的数据存在哪、什么时候会联网，以及点 App 图标时发生了什么。')));
+    b.append(iosGroup('数据存在哪', [cloud ? text(
+      `登录后，人设、聊天记录、朋友圈、打卡会同步到知己的云端数据库（Supabase），换手机登录也能找回；照片只存在这台手机上。`,
+      `数据库设置成每个账号只能读写自己的存档。但知己的开发者作为数据库管理员，技术上能看到云端存档。别在聊天里发证件号、银行卡号、密码这类信息。`,
+      `API Key 不会上传到云端。`) : text(
       `人设、聊天记录、照片、打卡这些，都只存在这台手机的这个浏览器里，开发者看不到。`,
       `删掉主屏幕上的知己，或者清除 Safari 的网站数据，这些会一起消失。记得常去「数据与备份」导出一份。`),
       iosLink({ label: '数据与备份', onclick: go(settingsDataPage) })]));
     b.append(iosGroup('什么时候会联网', [
       row('回复方式', ai ? `AI · 发给 ${pv}` : '固定模板 · 不发送'),
+      row('云同步', cloud ? (currentUser ? `已登录 · ${accountName(currentUser)}` : '没登录 · 不上传') : '不使用'),
       row('AI 生成照片', photoAI && imgConf().key ? '开启' : '不使用'),
       row('天气', '只发送城市名'),
-      text(`用 AI 回复时：最近的聊天记录、${TA()}的人设、你填的资料和督促清单、${TA()}记得的事，会发给你自己选的 AI 服务，由它写出${TA()}的回复。API Key 只存在这台手机上，导出备份也不含 Key。`,
+      text(`用 AI 回复时：最近的聊天记录、${TA()}的人设、你填的资料和督促清单、${TA()}记得的事，会发给 AI 服务，由它写出${TA()}的回复。`,
+        `用「知己内置 AI」时，这些内容经过知己的服务器（Supabase 上的中转）转给 DeepSeek；中转只转发、不保存聊天内容，但会记下你每天用了几次，用来限量。用你自己的 Key 时，直接发给你选的服务，Key 只存在这台手机上。`,
         `AI 生成照片时：照片描述和参考形象图会发给生成照片的服务。`,
         `看天气时：只把${TA()}所在城市的名字发给 Open-Meteo，不用你的定位。`)]));
     b.append(iosGroup('App 壳子和跳转', [text(
@@ -257,7 +263,7 @@ function settingsPrivacyPage(pg, app) {
       `照片、日历、备忘录这些系统 App 都是知己里的模拟页面，读不到你手机里真的照片和日历。`)]));
     b.append(iosGroup('权限', [row('定位', '不使用'), row('相机', '只在打开「相机」时使用'), row('照片', '只读取你自己选的'),
       row('麦克风', '暂不使用'), row('通知', '你打开后才会问')],
-      '知己的网页文件放在 GitHub Pages 上。和所有网站一样，托管方能看到访问记录（比如 IP 地址），看不到你在知己里的内容。'));
+      '知己的网页文件放在 GitHub Pages 上，账号和云端存档在 Supabase 上。和所有网站一样，托管方能看到访问记录（比如 IP 地址）。'));
   });
 }
 
@@ -431,53 +437,17 @@ function settingsBatteryPage(pg, app) {
   });
 }
 
-/* ---------- 数据与备份 -----Gemini----- */
+/* ---------- 数据与备份 ---------- */
 function settingsDataPage(pg, app) {
   subPage(pg, app, '数据与备份', (b, re) => {
-    /* ---- 云端账号区块 ---- */
-    if (typeof sb !== 'undefined' && sb) {
-      if (currentUser) {
-        b.append(iosGroup('云端账号（已登录）', [
-          el('div', { class: 'ios-row' }, el('span', { class: 'lbl' }, '当前账号'), el('span', { class: 'val' }, currentUser.email)),
-          iosLink({ label: '立即备份到云端', onclick: () => pushCloud(false), chevron: false, cls: 'blue' }),
-          iosLink({ label: '从云端拉取并覆盖本机', onclick: () => pullCloud(false), chevron: false, cls: 'blue' }),
-          el('button', { class: 'ios-row danger', onclick: async () => {
-            await sb.auth.signOut();
-            currentUser = null;
-            toast('已退出登录');
-            re();
-          } }, '退出登录')
-        ], '登录状态下，你的聊天记录、调教设定、朋友圈会自动在后台同步到云端。换设备登录即可恢复。'));
-      } else {
-        const emailIn = el('input', { type: 'email', placeholder: '输入邮箱（如 friend@qq.com）' });
-        const passIn = el('input', { type: 'password', placeholder: '输入密码（至少 6 位）' });
-        const doAuth = async (isSignUp) => {
-          const email = emailIn.value.trim(), password = passIn.value;
-          if (!email || password.length < 6) { toast('请填写有效邮箱和至少6位密码'); return; }
-          const res = isSignUp
-            ? await sb.auth.signUp({ email, password })
-            : await sb.auth.signInWithPassword({ email, password });
-          if (res.error) { toast(res.error.message, 5000); return; }
-          currentUser = res.data.user;
-          toast(isSignUp ? '注册成功，正在同步本地数据…' : '登录成功，正在加载存档…');
-          if (isSignUp) await pushCloud(true);
-          else await pullCloud(false);
-          re();
-        };
-        b.append(iosGroup('账号登录 / 云端同步', [
-          el('label', { class: 'ios-field' }, el('span', {}, '邮箱'), emailIn),
-          el('label', { class: 'ios-field' }, el('span', {}, '密码'), passIn),
-          iosLink({ label: '登录已有账号（加载云端记录）', onclick: () => doAuth(false), chevron: false, cls: 'blue' }),
-          iosLink({ label: '注册新账号（保存当前记录）', onclick: () => doAuth(true), chevron: false, cls: 'blue' })
-        ], '注册并登录后，你调教的人设和聊天记录会保存在云端，清理浏览器缓存或换手机也不会丢失。'));
-      }
-    }
+    /* ---- 账号与云同步（js/core/cloud.js） ---- */
+    b.append(cloudAccountGroup(re));
 
     /* ---- 原有的本地文件导入导出 ---- */
     b.append(iosGroup('本地文件备份', [
       iosLink({ label: '导出备份文件', onclick: exportData, chevron: false, cls: 'blue' }),
       iosLink({ label: '导入备份文件', onclick: importData, chevron: false, cls: 'blue' })],
-      '也可以手动下载备份文件保存在手机里。'),
+      '也可以把记录下载成一个文件存在手机里（文件里不含 API Key）。'),
       iosGroup('', [
         el('button', { class: 'ios-row danger', onclick: clearChat }, '清空聊天记录'),
         el('button', { class: 'ios-row danger', onclick: clearPosts }, '清空朋友圈'),

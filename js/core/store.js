@@ -46,7 +46,7 @@ const DEFAULTS = {
   memory: [],
   ver: 3,                                                          // 设定的版本号，迁移旧数据用
   reply: { mode: 'ai', fallback: true, aiOk: false },          // aiOk：看过「AI 会把聊天发给哪里」的说明
-  api: { provider: 'builtin', base: '', key: 'free-pass', model: '', json: true },
+  api: { provider: 'builtin', base: '', key: '', model: '', json: true },          // builtin = 知己内置 AI（登录后可用，不用填 Key）
   photo: { mode: 'pool_then_gen', provider: 'openai', key: '', base: '', model: '' },
   notify: { system: false, banner: true, relock: true, breakReminder: true, focus: false, focusMode: 'personal', airplane: false },
   // 外观：锁屏墙纸、主屏幕墙纸、图标大小（large 大图标不显示名字）、状态栏（无线局域网 / 5G、低电量模式）
@@ -106,6 +106,8 @@ function migrate(raw, s) {
   if (!s.alarms.some(a => a.id === 'love')) s.alarms.unshift(clone(DEFAULT_ALARMS.find(a => a.id === 'love')));
   for (const a of s.alarms) if (a.id === 'love') Object.assign(a, { time: '20:00', label: DEFAULT_ALARMS[0].label, locked: true, ta: false });
   if (!s.events.some(e => e.id === 'e_call') && RAW && RAW.events) s.events.push(clone(DEFAULT_EVENTS.find(e => e.id === 'e_call')));
+  if (s.api.key === 'free-pass') s.api.key = '';                          // 早先内置 AI 用过的暗号，已经不用了
+  if (!CHAT_PROVIDERS[s.api.provider]) s.api.provider = 'builtin';
   if (!REPLY_MODES[s.reply.mode]) s.reply.mode = 'ai';                    // 「混合」取消了，并进 AI
   if (raw && raw.reply && raw.reply.mode && raw.reply.mode !== 'template' && raw.reply.aiOk === undefined) s.reply.aiOk = true;  // 已经在用 AI 的，不再弹说明
   if (raw && !(raw.ver >= 3)) {                                           // v3：人设规范（2026-11）改了猫、外貌、表情、作息；没自己改过的跟着换
@@ -147,15 +149,17 @@ let NOTES = LS.get('notes', []);                                // 备忘录
 let FAVS = LS.get('favs', []);                                  // 著信「收藏」
 
 let sTimer;
-/* ----将原本单纯存本地的几行代码，改成存本地的同时触发syncToCloud()（防抖自动上云）----*/
-const saveS = () => { clearTimeout(sTimer); LS.set('settings', S); syncToCloud(); };
-const saveSLater = () => { clearTimeout(sTimer); sTimer = setTimeout(() => { LS.set('settings', S); syncToCloud(); }, 300); };
-const saveM = () => { LS.set('msgs', M); syncToCloud(); };
-const savePosts = () => { LS.set('posts', POSTS); syncToCloud(); };
-const saveST = () => { LS.set('state', ST); syncToCloud(); };
-const savePool = () => { LS.set('pool', POOL); syncToCloud(); };
-const saveNotes = () => { LS.set('notes', NOTES); syncToCloud(); };
-const saveFavs = () => { LS.set('favs', FAVS); syncToCloud(); };
+/* 存本地的同时告诉云同步「有改动」（js/core/cloud.js，登录了才会上传）。
+ * saveST 不算：运行状态每 20 秒就存一次，跟着别的改动一起上传就够了 */
+const dirty = () => { if (typeof cloudDirty === 'function') cloudDirty(); };
+const saveS = () => { clearTimeout(sTimer); LS.set('settings', S); dirty(); };
+const saveSLater = () => { clearTimeout(sTimer); sTimer = setTimeout(() => { LS.set('settings', S); dirty(); }, 300); };
+const saveM = () => { LS.set('msgs', M); dirty(); };
+const savePosts = () => { LS.set('posts', POSTS); dirty(); };
+const saveST = () => LS.set('state', ST);
+const savePool = () => { LS.set('pool', POOL); dirty(); };
+const saveNotes = () => { LS.set('notes', NOTES); dirty(); };
+const saveFavs = () => { LS.set('favs', FAVS); dirty(); };
 
 const pron = () => S.me.gender === '女' ? '她' : S.me.gender === '男' ? '他' : 'TA';   // 提到「我」时用的字
 
@@ -259,164 +263,3 @@ function appDef(id) {
 }
 const zxId = () => 'zx_' + (Math.abs([...herName()].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7)) % 1e8).toString(36);
 const myZxId = () => 'zx_' + (Math.abs([...(myName() || 'me')].reduce((h, c) => (h * 37 + c.charCodeAt(0)) | 0, 11)) % 1e8).toString(36);
-
-/* ---------- 云端登录与同步 (Supabase) -----Gemini----- */
-const SUPABASE_URL = 'https://pqrrculvjdirycyafqht.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_vcQqBuX7tOgiRlKW9oKsxA_aAzzXa_V';
-
-const sb = window.supabase && SUPABASE_URL.startsWith('http')
-  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-  : null;
-
-let currentUser = null;
-let cloudTimer = null;
-
-/* 防抖上传：聊天或改设定后停顿 2 秒，自动静默同步到云端 */
-function syncToCloud() {
-  if (!sb || !currentUser) return;
-  clearTimeout(cloudTimer);
-  cloudTimer = setTimeout(() => pushCloud(true), 2000);
-}
-
-/* 打包当前手机状态上传（保留用户自己填的 API Key，或按需清空） */
-async function pushCloud(silent = false) {
-  if (!sb || !currentUser) return;
-  const payload = {
-    app: 'zaoan',
-    v: 3,
-    at: Date.now(),
-    settings: S,
-    msgs: M,
-    posts: POSTS,
-    state: ST,
-    pool: POOL,
-    notes: NOTES,
-    favs: FAVS
-  };
-  const { error } = await sb.from('user_backups').upsert({
-    user_id: currentUser.id,
-    data: payload,
-    updated_at: new Date().toISOString()
-  });
-  if (error) {
-    if (!silent) toast('云同步失败：' + error.message);
-  } else if (!silent) {
-    toast('已同步到云端');
-  }
-}
-
-/* 从云端拉取存档并还原到当前手机 */
-async function pullCloud(silent = false) {
-  if (!sb || !currentUser) return false;
-  const { data, error } = await sb
-    .from('user_backups')
-    .select('data')
-    .eq('user_id', currentUser.id)
-    .maybeSingle();
-
-  if (error) {
-    if (!silent) toast('读取云端存档失败：' + error.message);
-    return false;
-  }
-  if (!data || !data.data || !data.data.settings) {
-    // 云端还没有存档（新注册用户），直接把当前本地数据传上去作为初始存档
-    await pushCloud(true);
-    return false;
-  }
-
-  const d = data.data;
-  const localKeys = { a: S.api.key, p: S.photo.key };
-  S = migrate(d.settings, merge(DEFAULTS, d.settings || {}));
-  // 如果云端没存 Key 但本地有，保留本地 Key
-  if (!S.api.key && localKeys.a) S.api.key = localKeys.a;
-  if (!S.photo.key && localKeys.p) S.photo.key = localKeys.p;
-
-  M = Array.isArray(d.msgs) ? d.msgs : [];
-  POSTS = (Array.isArray(d.posts) ? d.posts : []).map(p => Object.assign({ author: 'her', comments: [], likes: { me: !!p.liked } }, p));
-  POOL = Array.isArray(d.pool) ? d.pool : [];
-  NOTES = Array.isArray(d.notes) ? d.notes : [];
-  FAVS = Array.isArray(d.favs) ? d.favs : [];
-  ST = Object.assign(freshState(), { started: true }, d.state || {});
-  ST.lastTick = Date.now();
-
-  LS.set('settings', S); LS.set('msgs', M); LS.set('posts', POSTS);
-  LS.set('state', ST); LS.set('pool', POOL); LS.set('notes', NOTES); LS.set('favs', FAVS);
-
-  if (typeof Nav !== 'undefined' && Nav.stacks) {
-    for (const k of Object.keys(Nav.stacks)) delete Nav.stacks[k];
-  }
-  if (typeof WXT !== 'undefined' && WXT) renderThread();
-  if (typeof renderHome === 'function') renderHome();
-  if (typeof updateBadges === 'function') updateBadges();
-  if (!silent) toast('已从云端恢复存档');
-  return true;
-}
-
-
-/*----gemini--- 开机时自动检查登录状态，未登录则直接弹出登录面板-----*/
-async function initAuth() {
-  if (!sb) {
-    console.warn('Supabase 尚未配置 URL 和 Key');
-    return;
-  }
-  const { data } = await sb.auth.getSession();
-  currentUser = data.session ? data.session.user : null;
-
-  if (currentUser) {
-    await pullCloud(true);
-  } else {
-    // 如果没登录，延迟 0.5 秒直接弹出登录窗口
-    setTimeout(showLoginModal, 500);
-  }
-
-  sb.auth.onAuthStateChange((_event, session) => {
-    currentUser = session ? session.user : null;
-    if (typeof refreshTop === 'function') refreshTop();
-  });
-}
-
-/* 强制登录弹窗（已经加好禁止点击灰色背景关闭） */
-function showLoginModal() {
-  if (typeof openSheet !== 'function') return;
-  openSheet((p, close) => {
-   // 1. 把输入框提示改成自设账号
-    const userIn = el('input', { type: 'text', placeholder: '自设账号（字母或数字，如 xuan）' });
-    const passIn = el('input', { type: 'password', placeholder: '输入密码（至少 6 位）' });
-   // 2. 在 doAuth 函数里自动拼上假邮箱后缀
-    const doAuth = async (isSignUp) => {
-      const rawUser = userIn.value.trim().toLowerCase();
-      const password = passIn.value;
-      if (!rawUser || password.length < 6) {toast('请填写账号和至少 6 位密码');return;}
-     // 如果朋友没写 @，代码自动帮她拼上 @zhiji.app 骗过 Supabase
-      const email = rawUser.includes('@') ? rawUser : `${rawUser}@zhiji.app`;
-      const res = isSignUp
-         ? await sb.auth.signUp({ email, password })
-         : await sb.auth.signInWithPassword({ email, password });
-
-      if (res.error) { toast('失败：' + res.error.message, 5000); return; }
-      currentUser = res.data.user;
-      toast(isSignUp ? '注册成功！' : '登录成功，正在恢复记录…');
-      if (isSignUp) await pushCloud(true);
-      else await pullCloud(false);
-      close();
-    };
-
-    // 下面这就是 p.append：把标题、输入框、按钮塞进弹窗里
-    p.append(
-      el('div', { class: 'sheet-title' }, '登录「知己」'),
-      el('p', { class: 'sub' }, '请先注册或登录账号。登录后会自动保存你的 AI 调教设定与聊天记录，换手机也不会丢。'),
-      iosGroup('', [
-        el('label', { class: 'ios-field' }, el('span', {}, '邮箱'), emailIn),
-        el('label', { class: 'ios-field' }, el('span', {}, '密码'), passIn)
-      ]),
-      el('div', { class: 'btnrow' },
-        el('button', { class: 'btn', onclick: () => doAuth(true) }, '注册新账号'),
-        el('button', { class: 'btn primary', onclick: () => doAuth(false) }, '直接登录')
-      )
-    );
-
-    // 就在这里！禁止点击弹窗外面的灰色背景关闭，必须登录才能进
-    const back = $('.sheet-back');
-    if (back) back.onclick = e => e.stopPropagation();
-  });
-}

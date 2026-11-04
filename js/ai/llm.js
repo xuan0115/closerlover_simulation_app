@@ -8,8 +8,8 @@ const trimBase = s => String(s || '').trim().replace(/\/+$/, '');
 
 function chatConf() {
   const a = S.api, d = CHAT_PROVIDERS[a.provider] || {};
-  // 如果是内置 AI，不需要用户填 Key，自动使用暗号 free-pass
-  const key = a.provider === 'builtin' ? 'free-pass' : String(a.key || '').trim();
+  // 内置 AI 不用 Key：调用时用登录凭证（见 callLLM）
+  const key = a.provider === 'builtin' ? '' : String(a.key || '').trim();
   return {
     provider: a.provider,
     base: trimBase(a.base || d.base),
@@ -50,13 +50,19 @@ async function apiError(r) {
   let t = '';
   try { t = await r.text(); const j = JSON.parse(t); t = (j.error && (j.error.message || j.error)) || j.message || t; } catch (e) {}
   t = String(t).slice(0, 220);
-  const hint = { 400: '请求格式或参数不被接受', 401: 'Key 不对', 403: 'Key 没有权限，或所在地区不可用', 404: '接口地址或模型名不对', 429: '请求太频繁或额度用完' }[r.status] || '';
+  const hint = { 400: '请求格式或参数不被接受', 401: 'Key 不对，或者还没登录', 403: 'Key 没有权限，或所在地区不可用', 404: '接口地址或模型名不对', 429: '请求太频繁或额度用完' }[r.status] || '';
   return new Error(`接口返回 ${r.status}${hint ? '（' + hint + '）' : ''}：${t}`);
 }
 
 /* system：设定和规则；msgs：[{role:'user'|'assistant', text}]。返回模型原文。 */
 async function callLLM(system, msgs) {
   const c = chatConf();
+  const builtin = c.provider === 'builtin';
+  if (builtin) {   // 知己内置 AI：拿登录凭证去调 Supabase 上的中转，中转再转给 DeepSeek
+    if (!sb) throw new Error('内置 AI 连不上账号服务，检查网络，或者在「设置 → 回复方式」换成自己的 Key');
+    c.key = await cloudToken();
+    if (!c.key) throw new Error('先登录知己账号才能用内置 AI（设置 → chatwe聊我 → 数据与备份）');
+  }
   if (!c.key) throw new Error('还没填 API Key，去「设置 → 回复方式」填一下，或者改用固定模板');
   if (!c.base) throw new Error('还没填接口地址');
   if (!c.model) throw new Error('还没填模型名');
@@ -82,8 +88,8 @@ async function callLLM(system, msgs) {
   const body = { model: c.model, messages: [{ role: 'system', content: system }, ...chat] };
   if (c.json) body.response_format = { type: 'json_object' };
   if (c.provider === 'openai' && /^gpt-5/.test(c.model)) body.reasoning_effort = 'minimal'; // 聊天不需要长思考，回得更快
-  if (isDeepSeek(c)) body.reasoning_effort = 'low';  // DeepSeek：低强度深度思考，想的时间藏在回复节奏的等待里（规范 Q8）
-  const h = { Authorization: 'Bearer ' + c.key };
+  if (isDeepSeek(c) || builtin) body.reasoning_effort = 'low';  // DeepSeek：低强度深度思考，想的时间藏在回复节奏的等待里（规范 Q8）
+  const h = builtin ? { Authorization: 'Bearer ' + c.key, apikey: SUPABASE_KEY } : { Authorization: 'Bearer ' + c.key };
   const url = c.base + '/chat/completions';
   let r = await post(url, body, h);
   if (r.status === 400 && body.response_format) { delete body.response_format; r = await post(url, body, h); }   // 有的接口不认这些参数：一个个去掉再试

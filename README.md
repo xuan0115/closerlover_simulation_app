@@ -62,13 +62,17 @@ js/
     templates-en.js     英文模式的固定模板和关键词规则
     prompts.js          AI 模式下给模型的说明
     providers.js        回复方式说明、模型服务默认值
-  core/                 工具、存储、定时；rhythm.js 回复节奏（多久回、回几条、打字多快）
+  core/                 工具、存储、定时；rhythm.js 回复节奏（多久回、回几条、打字多快）；cloud.js 账号登录和云同步
+  vendor/supabase.js    Supabase 官方客户端（2.118.0，MIT 许可），放在仓库里，不依赖外部 CDN
   ai/                   templates.js 模板引擎 / llm.js 调接口 / brain.js 决定说什么
   ui/                   icons.js 图标 / wallpaper.js 墙纸 / shell.js 外壳、手势 / home.js 桌面、编辑主屏幕、App Store /
                         tasks.js 督促清单 / clock.js 时钟和闹钟 / simapps.js 天气、语音备忘录、第三方 App /
                         wechat.js chatwe聊我 / voice.js 语音和通话 / photos.js / plans.js /
                         extra-apps.js 日历·相机·备忘录·计算器·时钟 / settings.js
   main.js               启动
+supabase/               不上传到网页也行，是给 Supabase 后台用的
+  setup.sql             在 SQL Editor 里运行：存档表的权限（每人只能读写自己的）、内置 AI 用量表
+  ai-proxy.ts           Edge Function「ai-proxy」的代码：只给登录的人用，每人每天限量，转给 DeepSeek
 ```
 
 **注意**：第一次打开后，设定就存进浏览器了，之后以网页「设置」里的为准，再改 `persona.js` 不会覆盖。想让改动生效，在网页「设置 → chatwe聊我 → 数据与备份 → 全部恢复默认」，或者直接在网页里改。`templates.js`、`zodiac.js`、`prompts.js`、`ui.js` 不受影响，改了刷新就生效。
@@ -128,27 +132,40 @@ git push -u origin main
 
 在仓库页面：Settings → Pages → Build and deployment → Source 选 **Deploy from a branch**，Branch 选 **main** 和 **/(root)**，保存。等一两分钟，网址是 `https://你的用户名.github.io/仓库名/`。
 
+## 账号和云同步（Supabase）
+
+- 打开网页会先弹出登录框：账号是自己起的名字（字母、数字），不用邮箱，也不用手机号。连不上服务器时可以「先离线使用」。
+- 登录后，聊天记录、设定、朋友圈会自动备份到云端（改动后 3 秒上传一次），换手机登录同一个账号就能接着聊。照片和墙纸只在本机。
+- 手机里已经有记录、云端也有一份时，会问你用哪一份。
+- API Key 不会上传到云端。
+- Supabase 的设置：
+  1. 后台 → SQL Editor，把 `supabase/setup.sql` 整段粘贴运行（可以重复运行）。它会让每个账号只能读写自己的存档。
+  2. 后台 → Edge Functions → ai-proxy，用 `supabase/ai-proxy.ts` 替换代码；DeepSeek 的 Key 放在 Secrets 里，名字 `MY_SECRET_API_KEY`，不要写进代码。
+  3. Authentication 里 Email 登录的「Confirm email」保持关闭（账号用的是假邮箱 `名字@zhiji.app`，收不到确认信）。
+- 你是数据库的管理员，技术上能看到所有人的云端存档。发给朋友用之前，要跟她们说清楚。
+
 ## 只给自己看（不公开）
 
 - 网页里加了 `noindex`，搜索引擎不会收录；但知道网址的人还是能打开。
-- 别人打开你的网址，看到的是一台全新的手机：你的聊天记录、设定、API Key 都只在你自己的手机里，不在网址上。
+- 别人打开你的网址，看到的是一台全新的手机，要注册自己的账号；看不到你的聊天记录和设定。
 - 想让代码也看不见：仓库设成 Private，再用 Cloudflare Pages 之类连私有仓库发布（GitHub Pages 的免费版不能从私有仓库发布）。
 - 完全不上网：在电脑上 `python3 -m http.server 8000`，手机连同一个 Wi-Fi 打开 `http://电脑的IP:8000`。只有你能看到，但电脑要开着，而且这种 http 地址下用不了相机。
 
 ## 隐私
 
-- API Key、聊天记录、朋友圈、照片、墙纸、你在网页里填的设定，都只存在当前浏览器里，不会上传到 GitHub。导出备份也不含 Key。
+- 没登录时，所有东西都只存在当前浏览器里。登录后，聊天记录、设定、朋友圈会备份到 Supabase；照片、墙纸、API Key 不上传。什么都不会传到 GitHub。导出备份也不含 Key。
 - 仓库是公开的，`persona.js` 里写的东西别人能看到。跟你自己有关的设定，建议在网页「设置」里填。
 - GitHub Pages 的网址里带着你的 GitHub 用户名。介意的话，用一个不暴露真名的账号来放，或者把仓库设为私有（私有仓库开 Pages 需要付费账号）。
 
 ## 接口说明（AI 模式）
 
+- **知己内置 AI**（默认）：登录后直接能用，不用填 Key，走的是 Supabase 上的 ai-proxy 中转，用的是你的 DeepSeek 余额。每人每天限 200 次，在 `ai-proxy.ts` 开头改。
 - **OpenAI**、**Gemini**：浏览器可以直接调用，但在国内需要能访问外网。
 - **DeepSeek**：「服务」里选 DeepSeek，只要填 Key（在 platform.deepseek.com 的 API keys 页面创建，账户里要有余额）。接口地址和模型自动用 `https://api.deepseek.com`、`deepseek-flash`。聊天时会关掉它的「深度思考」，回得更快。
 - **其他兼容接口**（通义、Kimi 等）：填接口地址、Key、模型名即可。个别服务不允许浏览器直接访问，会提示「连不上接口」。
 - 「测试连接」用的是真正聊天时的设定，测通了聊天也就能用。聊天时出的错，会显示在「回复方式」页面最下面。
 - 「AI 连不上时用模板顶上」默认打开：接口出错时 TA 用模板回你，不会冷场。
-- 更新文件后，把 `index.html` 里的 `?v=1103` 改个数字（比如 `1104`），手机就会重新下载新文件，不会用缓存里的旧版。
+- 更新文件后，把 `index.html` 里的 `?v=1105` 改个数字（比如 `1106`），手机就会重新下载新文件，不会用缓存里的旧版。
 - AI 生成照片每张要几十秒、按次收费。
 
 ## 现在做不到的
