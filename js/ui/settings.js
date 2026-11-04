@@ -1,6 +1,6 @@
 /*
  * 「设置」：照手机系统设置的样子做。系统那几栏大多是仿真；
- * 下面「App」里的「著信」进去，就是她的人设、你们的关系、日程、照片池、回复方式这些。
+ * 下面「App」里的「知己」进去，就是她的人设、你们的关系、日程、照片池、回复方式这些。
  * 每个子页面都是 (pg, app) => {}，在别的 App 里也能推进来。
  */
 'use strict';
@@ -115,7 +115,7 @@ function settingsRoot(pg, app) {
   }
 }
 
-/* ---------- App → 著信 ---------- */
+/* ---------- App → 知己 ---------- */
 function settingsZxPage(pg, app) {
   subPage(pg, app, zx(), b => {
     const go = fn => () => Nav.push(app, p => fn(p, app));
@@ -169,9 +169,9 @@ function settingsHerPage(pg, app) {
       fText('her.region', '所在地', { ph: '比如：上海 杨浦' })],
       z ? `${S.her.zodiac}给人的印象：${z.traits}。AI 模式会参考，模板模式下${TA()}偶尔会聊到星座。` : `星座会出现在${TA()}的资料页，也会影响${TA()}偶尔说的话。`));
     const social = [fSelect('her.edu', '学历', [['', '不设定'], ...Object.entries(EDU_LEVELS).map(([k, v]) => [k, v.label])], re)];
-    if (edu && edu.major) social.push(fText('her.major', '专业', { ph: '比如：社会学、临床医学' }));
+    if (edu && edu.major) social.push(fText('her.major', '专业', { ph: '比如：计算机、社会学、临床医学' }));
     social.push(
-      fText('her.job', '工作', { ph: '比如：插画师、在读研究生、公务员' }),
+      fText('her.job', '工作', { ph: '比如：程序员、在读博士生、调酒师' }),
       fSelect('her.siblings', '家庭情况', [['', '不设定'], ...Object.entries(SIBLINGS)]),
       el('div', { class: 'ios-row' }, el('span', { class: 'lbl' }, '收入状况'), el('span', { class: 'val locked' }, icon('lock', 15, 2), '系统生成')));
     b.append(iosGroup('社会人设', social, `AI 模式下，这些会写进${TA()}的设定，影响${TA()}聊的话题和生活细节。收入状况由系统根据学历、工作和所在地生成，你看不到，${TA()}也不会直接说出来。`));
@@ -196,7 +196,7 @@ function settingsRelPage(pg, app) {
       ? `开始聊天以后就不能换了，免得${TA()}的人设前后冲突。想换的话：设置 → 通用 → 数据与备份 → 全部恢复默认。`
       : `恋人会说想你、会撒娇；挚友不说情话，是损友式的关心。开始聊天以后就不能换了。`));
     b.append(iosGroup('', [fArea('her.relationship', '你们是什么关系', '认识多久、怎么认识的、平时怎么相处')], `AI 模式会按这段话决定${TA()}跟你说话的分寸。`),
-      iosGroup('', [fText('her.callMe', `${TA()}平时怎么叫你`, { ph: cur === 'friend' ? '名字或外号，留空就叫你的名字' : '一个短称呼，比如：宝贝、宝、亲爱的' })], '模板里的 {称呼} 就是它。'));
+      iosGroup('', [fText('her.callMe', `${TA()}平时怎么叫你`, { ph: cur === 'friend' ? '名字或外号，留空就叫你的名字' : '一个短称呼，比如：宝贝、小宝、亲爱的' })], '模板里的 {称呼} 就是它。'));
   });
 }
 /* 换关系类型（只在开始之前）：还是默认值的称呼、关系描述、倒数日跟着换 */
@@ -284,15 +284,28 @@ function settingsReplyPage(pg, app) {
 
     if (S.reply.mode === 'template') return;
     const pv = S.api.provider, def = CHAT_PROVIDERS[pv] || {};
-    b.append(iosGroup('AI 接口', [
-      fSelect('api.provider', '服务', Object.entries(CHAT_PROVIDERS).map(([k, v]) => [k, v.label]), re),
-      fText('api.base', '接口地址', { ph: def.base || '比如 https://api.example.com/v1' }),
-      fText('api.key', 'API Key', { type: 'password', ph: '只存在这个浏览器里' }),
-      fText('api.model', '模型', { ph: def.model || '填模型名', btn: miniBtn('看看有哪些', btn => listModels('chat', btn)) }),
-      fToggle('api.json', '要求模型按 JSON 回复'),
-      fToggle('reply.fallback', 'AI 连不上时用模板顶上')],
-      `${def.base ? '接口地址和模型留空就用灰字里的默认值。' : ''}Key 只存在这个浏览器里，不会写进网页文件，导出备份也不含 Key。`),
-      el('div', { class: 'btnrow', style: 'margin-top:14px' }, el('button', { class: 'btn', onclick: e => testApi(e.currentTarget) }, '测试连接')));
+    const isBuiltin = pv === 'builtin';
+
+    const rows = [
+      fSelect('api.provider', '服务', Object.entries(CHAT_PROVIDERS).map(([k, v]) => [k, v.label]), re)
+    ];
+    // 只有不是「内置免填」时，才让用户填地址、Key 和模型
+    if (!isBuiltin) {
+      rows.push(
+        fText('api.base', '接口地址', { ph: def.base || '比如 https://api.example.com/v1' }),
+        fText('api.key', 'API Key', { type: 'password', ph: '只存在这个浏览器里' }),
+        fText('api.model', '模型', { ph: def.model || '填模型名', btn: miniBtn('看看有哪些', btn => listModels('chat', btn)) }),
+        fToggle('api.json', '要求模型按 JSON 回复')
+      );
+    }
+    rows.push(fToggle('reply.fallback', 'AI 连不上时用模板顶上'));
+
+    b.append(
+      iosGroup('AI 接口', rows, isBuiltin
+        ? '当前使用内置 AI 线路，无需填写任何 Key 即可直接聊天。如果你想换用自己的大模型 Key，可以在上方「服务」里切换。'
+        : `${def.base ? '接口地址和模型留空就用灰字里的默认值。' : ''}Key 只存在这个浏览器里，不会写进网页文件，导出备份也不含 Key。`),
+      el('div', { class: 'btnrow', style: 'margin-top:14px' }, el('button', { class: 'btn', onclick: e => testApi(e.currentTarget) }, '测试连接'))
+    );
     if (ST.aiErr) b.append(el('p', { class: 'ios-foot ai-err' }, `最近一次聊天时出错（${fmtFull(ST.aiErr.at)}）：${ST.aiErr.msg}`));
   });
 }
@@ -418,13 +431,53 @@ function settingsBatteryPage(pg, app) {
   });
 }
 
-/* ---------- 数据与备份 ---------- */
+/* ---------- 数据与备份 -----Gemini----- */
 function settingsDataPage(pg, app) {
-  subPage(pg, app, '数据与备份', b => {
-    b.append(iosGroup('', [
-      iosLink({ label: '导出备份', onclick: exportData, chevron: false, cls: 'blue' }),
-      iosLink({ label: '导入备份', onclick: importData, chevron: false, cls: 'blue' })],
-      '聊天、朋友圈、收藏、备忘录、设定和照片都只存在这个浏览器里。换手机或换浏览器时，用备份搬过去（备份不含 API Key）。'),
+  subPage(pg, app, '数据与备份', (b, re) => {
+    /* ---- 云端账号区块 ---- */
+    if (typeof sb !== 'undefined' && sb) {
+      if (currentUser) {
+        b.append(iosGroup('云端账号（已登录）', [
+          el('div', { class: 'ios-row' }, el('span', { class: 'lbl' }, '当前账号'), el('span', { class: 'val' }, currentUser.email)),
+          iosLink({ label: '立即备份到云端', onclick: () => pushCloud(false), chevron: false, cls: 'blue' }),
+          iosLink({ label: '从云端拉取并覆盖本机', onclick: () => pullCloud(false), chevron: false, cls: 'blue' }),
+          el('button', { class: 'ios-row danger', onclick: async () => {
+            await sb.auth.signOut();
+            currentUser = null;
+            toast('已退出登录');
+            re();
+          } }, '退出登录')
+        ], '登录状态下，你的聊天记录、调教设定、朋友圈会自动在后台同步到云端。换设备登录即可恢复。'));
+      } else {
+        const emailIn = el('input', { type: 'email', placeholder: '输入邮箱（如 friend@qq.com）' });
+        const passIn = el('input', { type: 'password', placeholder: '输入密码（至少 6 位）' });
+        const doAuth = async (isSignUp) => {
+          const email = emailIn.value.trim(), password = passIn.value;
+          if (!email || password.length < 6) { toast('请填写有效邮箱和至少6位密码'); return; }
+          const res = isSignUp
+            ? await sb.auth.signUp({ email, password })
+            : await sb.auth.signInWithPassword({ email, password });
+          if (res.error) { toast(res.error.message, 5000); return; }
+          currentUser = res.data.user;
+          toast(isSignUp ? '注册成功，正在同步本地数据…' : '登录成功，正在加载存档…');
+          if (isSignUp) await pushCloud(true);
+          else await pullCloud(false);
+          re();
+        };
+        b.append(iosGroup('账号登录 / 云端同步', [
+          el('label', { class: 'ios-field' }, el('span', {}, '邮箱'), emailIn),
+          el('label', { class: 'ios-field' }, el('span', {}, '密码'), passIn),
+          iosLink({ label: '登录已有账号（加载云端记录）', onclick: () => doAuth(false), chevron: false, cls: 'blue' }),
+          iosLink({ label: '注册新账号（保存当前记录）', onclick: () => doAuth(true), chevron: false, cls: 'blue' })
+        ], '注册并登录后，你调教的人设和聊天记录会保存在云端，清理浏览器缓存或换手机也不会丢失。'));
+      }
+    }
+
+    /* ---- 原有的本地文件导入导出 ---- */
+    b.append(iosGroup('本地文件备份', [
+      iosLink({ label: '导出备份文件', onclick: exportData, chevron: false, cls: 'blue' }),
+      iosLink({ label: '导入备份文件', onclick: importData, chevron: false, cls: 'blue' })],
+      '也可以手动下载备份文件保存在手机里。'),
       iosGroup('', [
         el('button', { class: 'ios-row danger', onclick: clearChat }, '清空聊天记录'),
         el('button', { class: 'ios-row danger', onclick: clearPosts }, '清空朋友圈'),

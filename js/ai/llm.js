@@ -8,14 +8,17 @@ const trimBase = s => String(s || '').trim().replace(/\/+$/, '');
 
 function chatConf() {
   const a = S.api, d = CHAT_PROVIDERS[a.provider] || {};
+  // 如果是内置 AI，不需要用户填 Key，自动使用暗号 free-pass
+  const key = a.provider === 'builtin' ? 'free-pass' : String(a.key || '').trim();
   return {
     provider: a.provider,
     base: trimBase(a.base || d.base),
-    key: String(a.key || '').trim(),
+    key: key,
     model: String(a.model || d.model || '').trim().replace(/^models\//, ''),
     json: a.json !== false
   };
 }
+
 function imgConf() {
   const p = S.photo, d = IMAGE_PROVIDERS[p.provider] || IMAGE_PROVIDERS.openai;
   const reuse = S.api.provider === p.provider ? S.api.key : ''; // 同一家服务时沿用聊天的 Key

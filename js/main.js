@@ -39,3 +39,4 @@ show('lock');
 tick();                     // 补上错过的消息
 setInterval(tick, 20000);   // 之后每 20 秒看一眼日程
 setInterval(trackUsage, 30000);
+initAuth();                 // <--- 加在这里！开机自动检查登录Gemini---//

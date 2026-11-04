@@ -11,11 +11,13 @@ const REPLY_MODES = {
 
 /* 聊天用的 AI 服务 */
 const CHAT_PROVIDERS = {
-  openai: { label: 'OpenAI', base: 'https://api.openai.com/v1', model: 'gpt-5-mini' },
-  gemini: { label: 'Gemini', base: 'https://generativelanguage.googleapis.com/v1beta', model: 'gemini-flash-latest' },
+  builtin:  { label: '知己内置AI（免填Key）', base: 'https://zhiji-ai.xuan0115.workers.dev', model: 'deepseek-chat' },
+  openai:   { label: 'OpenAI', base: 'https://api.openai.com/v1', model: 'gpt-5-mini' },
+  gemini:   { label: 'Gemini', base: 'https://generativelanguage.googleapis.com/v1beta', model: 'gemini-flash-latest' },
   deepseek: { label: 'DeepSeek', base: 'https://api.deepseek.com', model: 'deepseek-flash' },
-  compat: { label: '其他兼容 OpenAI 格式的接口', base: '', model: '' } // 比如通义、Kimi 或你自己的转发地址
+  compat:   { label: '其他兼容 OpenAI 格式的接口', base: '', model: '' }
 };
+
 
 /* 生成照片用 */
 const IMAGE_PROVIDERS = {
