@@ -11,7 +11,7 @@ const REPLY_MODES = {
 
 /* 聊天用的 AI 服务 */
 const CHAT_PROVIDERS = {
-  builtin:  { label: '知己内置AI（免填Key）', base: 'https://zhiji-ai.xuan0115.workers.dev', model: 'deepseek-chat' },
+  builtin:  { label: '知己内置AI（免填Key）', base: 'https://pqrrculvjdirycyafqht.supabase.co/functions/v1/ai-proxy', model: 'deepseek-chat' },
   openai:   { label: 'OpenAI', base: 'https://api.openai.com/v1', model: 'gpt-5-mini' },
   gemini:   { label: 'Gemini', base: 'https://generativelanguage.googleapis.com/v1beta', model: 'gemini-flash-latest' },
   deepseek: { label: 'DeepSeek', base: 'https://api.deepseek.com', model: 'deepseek-flash' },
