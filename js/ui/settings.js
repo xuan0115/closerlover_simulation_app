@@ -338,9 +338,10 @@ function settingsPhotoPage(pg, app) {
 
 /* ---------- 通知 / 屏幕使用时间 ---------- */
 function settingsNotifyPage(pg, app) {
-  subPage(pg, app, '通知', b => {
-    b.append(iosGroup('', [fToggle('notify.banner', '横幅通知')], `在别的 App 里时，${herName()}的消息从屏幕顶上弹出来。专注模式打开时不弹。`),
-      iosGroup('', [fToggle('notify.system', '网页在后台时弹系统通知', onNotifyToggle)], '只在网页还开着（哪怕切到后台）时有效。网页完全关掉后，下次打开会补上错过的消息。'),
+  subPage(pg, app, '通知', (b, re) => {
+    b.append(pushSettingsGroup(re),
+      iosGroup('', [fToggle('notify.banner', '横幅通知')], `在别的 App 里时，${herName()}的消息从屏幕顶上弹出来。专注模式打开时不弹。`),
+      iosGroup('', [fToggle('notify.system', '网页在后台时弹系统通知', onNotifyToggle)], '只在网页还开着（哪怕切到后台）时有效。想关掉网页也收到，打开上面的「锁屏通知」。'),
       iosGroup('', [fToggle('notify.relock', '离开 3 分钟后回到锁屏')], `像重新拿起手机，锁屏上能看到${TA()}这段时间发来的消息。`));
   });
 }

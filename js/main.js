@@ -4,10 +4,11 @@
 /* 离开网页一会儿再回来 → 回到锁屏，像重新拿起手机 */
 let hiddenAt = 0;
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { hiddenAt = Date.now(); stopCamera(); return; }
+  if (document.hidden) { hiddenAt = Date.now(); stopCamera(); pushOnHidden(); return; }
   if (cur === 'camera') startCamera();
   if (S.notify.relock && hiddenAt && Date.now() - hiddenAt > 3 * 60e3 && cur !== 'lock') show('lock');
-  markRead(); tick(); updateBadges();
+  markRead(); updateBadges();
+  pushOnVisible().then(() => tick());   // 开了锁屏通知：先取回服务器替她发的，再补剩下的（js/core/push.js）
 });
 
 /* 连续使用 2 小时提醒休息（中间离开超过 10 分钟就重新计时） */

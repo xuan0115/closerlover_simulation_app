@@ -61,8 +61,24 @@ async function fetchCloud() {
   if (error) throw error;
   return data && data.data && data.data.settings ? data.data : null;
 }
+/* 用云端覆盖之前：这台手机上有云端那份没有的聊天，先存一份到本机（IndexedDB，最多留 3 份），
+ * 在「数据与备份」里能找回。云端那份已经包含这台手机的全部聊天时不用存。 */
+async function backupBeforeOverwrite(d) {
+  try {
+    const ids = new Set(((d && d.msgs) || []).map(m => m.id));
+    const lost = M.filter(m => (m.from === 'me' || m.from === 'her') && !ids.has(m.id)).length;
+    if (!lost) return;
+    const at = Date.now(), snap = cloudPayload();
+    snap.at = at;
+    await IDB.put('bk:' + at, snap);
+    const old = LS.get('backups', []);
+    LS.set('backups', [{ at, lost, total: M.length }, ...old].slice(0, 3));
+    for (const b of old.slice(2)) IDB.del('bk:' + b.at).catch(() => {});
+  } catch (e) { console.warn('覆盖前的本机备份没存上', e); }
+}
 /* 用云端存档替换这台手机上的数据（API Key 用本机的） */
-function applyCloud(d) {
+async function applyCloud(d) {
+  await backupBeforeOverwrite(d);
   d = clone(d);
   const keys = { a: S.api.key, p: S.photo.key };
   S = migrate(d.settings, merge(DEFAULTS, d.settings || {}));
@@ -77,7 +93,7 @@ function applyCloud(d) {
   ST.lastTick = Date.now(); delete ST.pending;
   LS.set('settings', S); LS.set('msgs', M); LS.set('posts', POSTS); LS.set('state', ST);
   LS.set('pool', POOL); LS.set('notes', NOTES); LS.set('favs', FAVS);
-  LS.set('cloudLocalAt', d.at || Date.now()); LS.set('cloudUser', currentUser.id);
+  LS.set('cloudLocalAt', d.at || Date.now()); if (currentUser) LS.set('cloudUser', currentUser.id);
   for (const k of Object.keys(Nav.stacks)) delete Nav.stacks[k];   // 各个 App 的页面按新数据重画
   WXT = null;
   syncStatusIcons(); show(cur === 'lock' ? 'lock' : 'home'); updateBadges();
@@ -93,17 +109,38 @@ async function syncOnLogin({ fresh = false } = {}) {
     const sameOwner = LS.get('cloudUser', '') === currentUser.id;
     const hasLocal = M.some(m => m.from === 'me' || m.from === 'her');
     if (!d) { await pushCloud(true, true); return; }                    // 云端还没有：上传本机
-    if (sameOwner) { if ((d.at || 0) > localAt) applyCloud(d); else if (localAt > (d.at || 0)) await pushCloud(true, true); return; }
-    if (!hasLocal) { applyCloud(d); toast('已从云端恢复存档'); return; }   // 这台手机上没聊过：直接用云端的
+    if (sameOwner) { if ((d.at || 0) > localAt) await applyCloud(d); else if (localAt > (d.at || 0)) await pushCloud(true, true); return; }
+    if (!hasLocal) { await applyCloud(d); toast('已从云端恢复存档'); return; }   // 这台手机上没聊过：直接用云端的
     const useCloud = await chooseSheet('用哪一份记录？',
-      `这台手机上有聊天记录，你的账号在云端也有一份存档（${fmtFull(d.at || Date.now())}）。用云端的，这台手机上的会被替换；用这台手机的，云端那份会被覆盖。`,
+      `这台手机上有聊天记录，你的账号在云端也有一份存档（${fmtFull(d.at || Date.now())}）。用云端的，这台手机上的会被替换（替换前自动在本机备份一份，在「数据与备份」里能找回）；用这台手机的，云端那份会被覆盖。`,
       '用这台手机的', '用云端的');
-    if (useCloud) { applyCloud(d); toast('已从云端恢复存档'); } else await pushCloud(false, true);
+    if (useCloud) { await applyCloud(d); toast('已从云端恢复存档'); } else await pushCloud(false, true);
   } catch (e) {
     toast('读取云端存档失败：' + (e.message || e), 5000);
   } finally {
     cloudReady = true;
+    if (typeof pushAfterSync === 'function') pushAfterSync();   // 锁屏通知：取回网页关着时她发的消息（js/core/push.js）
   }
+}
+
+/* 找回被云端覆盖前的本机记录 */
+function backupSheet(rerender) {
+  const list = LS.get('backups', []);
+  openSheet((p, close) => {
+    p.append(sheetHead('找回被覆盖的记录', el('button', { onclick: close }, '取消')),
+      iosGroup('', list.map(b => el('button', { class: 'ios-row', onclick: async () => {
+        close();
+        if (!(await confirmSheet(`恢复 ${fmtFull(b.at)} 的备份？`, '这台手机上现在的记录会被替换（替换前也会先备份），恢复后会同步到云端。', '恢复'))) return;
+        try {
+          const d = await IDB.get('bk:' + b.at);
+          if (!d) { toast('这份备份找不到了'); return; }
+          await applyCloud(d);
+          LS.set('cloudLocalAt', Date.now()); cloudDirty();
+          toast('已恢复'); if (rerender) rerender();
+        } catch (e) { toast('恢复失败：' + e.message, 5000); }
+      } }, el('span', { class: 'lbl' }, fmtFull(b.at), el('small', {}, `当时有 ${b.lost} 条聊天云端没有，一共 ${b.total} 条`))))),
+      el('p', { class: 'sub small' }, '用云端存档覆盖这台手机之前，这台手机上云端没有的聊天会自动存一份在这里，最多留 3 份。只存在这台手机上。'));
+  });
 }
 
 /* 两个选项的面板：返回 true = 选了右边那个 */
@@ -121,7 +158,7 @@ async function cloudStart() {
   currentUser = session ? session.user : null;
   sb.auth.onAuthStateChange((_e, s) => { currentUser = s ? s.user : null; });
   if (currentUser) await syncOnLogin();
-  else setTimeout(showLoginModal, 400);
+  else { setTimeout(showLoginModal, 400); if (typeof pushAfterSync === 'function') pushAfterSync(); }
   /* 切走、关网页时，把还没上传的改动赶紧传上去 */
   document.addEventListener('visibilitychange', () => { if (document.hidden && cloudTimer) pushCloud(true); });
 }
@@ -183,16 +220,20 @@ function showLoginModal() {
 /* 「数据与备份」里的账号一栏 */
 function cloudAccountGroup(rerender) {
   if (!sb) return el('span');
+  const backups = LS.get('backups', []);
   if (currentUser) return iosGroup('账号与云同步', [
     el('div', { class: 'ios-row' }, el('span', { class: 'lbl' }, '当前账号'), el('span', { class: 'val' }, accountName(currentUser))),
     iosLink({ label: '立即备份到云端', onclick: () => pushCloud(false), chevron: false, cls: 'blue' }),
     iosLink({ label: '用云端存档覆盖这台手机', chevron: false, cls: 'blue', onclick: async () => {
-      if (!(await confirmSheet('用云端存档覆盖这台手机？', '这台手机上还没上传的改动会丢掉。', '覆盖'))) return;
-      try { const d = await fetchCloud(); if (!d) { toast('云端还没有存档'); return; } applyCloud(d); toast('已从云端恢复存档'); } catch (e) { toast('读取失败：' + e.message, 5000); }
+      if (!(await confirmSheet('用云端存档覆盖这台手机？', '这台手机上还没上传的改动会被替换；云端没有的聊天会先在本机备份一份，在下面「找回被覆盖的记录」里能找回。', '覆盖'))) return;
+      try { const d = await fetchCloud(); if (!d) { toast('云端还没有存档'); return; } await applyCloud(d); toast('已从云端恢复存档'); rerender(); } catch (e) { toast('读取失败：' + e.message, 5000); }
     } }),
+    ...(backups.length ? [iosLink({ label: '找回被覆盖的记录', value: `${backups.length} 份`, onclick: () => backupSheet(rerender) })] : []),
     el('button', { class: 'ios-row danger', onclick: async () => {
-      if (!(await confirmSheet('退出登录？', '退出前会先把改动传到云端。这台手机上的记录会留着，下次登录同一个账号会接着用。', '退出'))) return;
-      await pushCloud(true); await sb.auth.signOut(); currentUser = null; cloudReady = false; clearTimeout(cloudTimer); cloudTimer = null; rerender(); showLoginModal();
+      if (!(await confirmSheet('退出登录？', '退出前会先把改动传到云端。这台手机上的记录会留着，下次登录同一个账号会接着用。这台手机的锁屏通知会关掉。', '退出'))) return;
+      await pushCloud(true);
+      if (typeof pushSignOut === 'function') await pushSignOut();
+      await sb.auth.signOut(); currentUser = null; cloudReady = false; clearTimeout(cloudTimer); cloudTimer = null; rerender(); showLoginModal();
     } }, '退出登录')],
     '登录后，设定、聊天记录、朋友圈、打卡会自动同步到云端；照片只存在这台手机上。');
   const f = accountForm(async signUp => { toast(signUp ? '注册好了' : '登录成功'); await syncOnLogin({ fresh: signUp }); rerender(); });

@@ -1,6 +1,8 @@
 /*
  * 定时：她什么时候主动找你（她的作息 + 督促清单的提醒 + 要她来提醒的闹钟），以及时钟里只响铃的闹钟（js/ui/clock.js）。
  * 网页开着时每 20 秒检查一次；网页关着错过的，下次打开时补最近 3 条（12 小时内）。
+ * 开了锁屏通知（js/core/push.js）：网页关着时由服务器按时发，打开时先把那些取回来，再补剩下的。
+ * 她连着主动找你 3 次你都没回，就不再追发（你让她提醒的闹钟除外）。
  */
 'use strict';
 
@@ -48,22 +50,37 @@ function dueBetween(from, to) {
   return out.sort((a, b) => a.t - b.t);
 }
 
+/* 她连着主动找了你几次你都没回（拍一拍也算回了）。到 MAX_PRO 次就不再追发，你让她提醒的闹钟除外 */
+const MAX_PRO = 3;
+function proTurns() {
+  const seen = new Set();
+  for (let i = M.length - 1; i >= 0; i--) {
+    const m = M[i];
+    if (m.from === 'me' || (m.from === 'tip' && m.who === 'me')) break;
+    if (m.from === 'her' && m.pro) seen.add(m.pro);
+  }
+  return seen.size;
+}
+
 async function runEvent(ev, { at, live }) {
+  if (ev.to !== 'moments' && !ev.alarm && proTurns() >= MAX_PRO) return;   // 上三次你都没回：这次不找你了
+  const pro = ev.to === 'moments' ? '' : uid('p');
   if (ev.to === 'call' && !FEATURES.voice) ev = Object.assign({}, ev, { to: 'chat' });   // 语音通话待开发：先改成发消息
   if (ev.to === 'call') { // 她打语音电话来
     if (live && !document.hidden && !S.notify.airplane) { startCall('in', ev); return; }
-    addMsg({ id: uid('m'), from: 'her', type: 'call', status: 'missed', ts: at });
-    for (const t of tplPick('callMissed')) addMsg({ id: uid('m'), from: 'her', type: 'text', text: t, ts: at + 30000 });
+    addMsg({ id: uid('m'), from: 'her', type: 'call', status: 'missed', ts: at, pro });
+    for (const t of tplPick('callMissed')) addMsg({ id: uid('m'), from: 'her', type: 'text', text: t, ts: at + 30000, pro });
     return;
   }
   const last = [...M].reverse().find(m => m.from !== 'sys');
   const unreplied = ev.to !== 'moments' && !!last && last.from === 'her' && at - last.ts > 2 * 3600e3;
   const note = unreplied ? PROMPTS.unreplied({ ta: pron(), gap: ago(at - last.ts) }) : '';
-  await herTurn({ kind: 'event', ev, at, live, unreplied, note, retry: { kind: 'event', id: ev.id } });
+  await herTurn({ kind: 'event', ev, at, live, unreplied, note, retry: { kind: 'event', id: ev.id }, pro });
 }
 
 function tick() {
   alarmTick();                                    // 闹钟：飞行模式下也照样响
+  if (pushHold()) return;                         // 锁屏通知开着、网页在后台：交给服务器发（js/core/push.js）
   checkPending();                                 // 她该回你了没（js/core/rhythm.js）
   if (!ST.started || S.notify.airplane) return;   // 飞行模式下她联系不上你
   const now = Date.now();
@@ -87,5 +104,5 @@ function tick() {
 function start() {
   ST.started = true; ST.lastTick = Date.now(); saveST();
   openApp('wx'); openThread(true);
-  enqueue(() => herTurn({ kind: 'opening', at: Date.now(), live: true, retry: { kind: 'reply' } }));
+  enqueue(() => herTurn({ kind: 'opening', at: Date.now(), live: true, retry: { kind: 'reply' }, pro: uid('p') }));
 }

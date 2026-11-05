@@ -151,7 +151,7 @@ let FAVS = LS.get('favs', []);                                  // 著信「收�
 let sTimer;
 /* 存本地的同时告诉云同步「有改动」（js/core/cloud.js，登录了才会上传）。
  * saveST 不算：运行状态每 20 秒就存一次，跟着别的改动一起上传就够了 */
-const dirty = () => { if (typeof cloudDirty === 'function') cloudDirty(); };
+const dirty = () => { if (typeof cloudDirty === 'function') cloudDirty(); if (typeof pushDirty === 'function') pushDirty(); };
 const saveS = () => { clearTimeout(sTimer); LS.set('settings', S); dirty(); };
 const saveSLater = () => { clearTimeout(sTimer); sTimer = setTimeout(() => { LS.set('settings', S); dirty(); }, 300); };
 const saveM = () => { LS.set('msgs', M); dirty(); };

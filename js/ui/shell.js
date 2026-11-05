@@ -333,6 +333,7 @@ function updateBadges() {
   const n = unreadList().length;
   $$('.wxbadge').forEach(b => { b.hidden = !n; b.textContent = n > 99 ? '99+' : n; });
   document.title = (n ? `(${n}) ` : '') + APP_TITLE;
+  if ('setAppBadge' in navigator) { try { (n ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => {}); } catch (e) {} }   // 主屏幕图标上的红色数字
   if (Nav.stacks.wx && Nav.stacks.wx[0].updateBadges) Nav.stacks.wx[0].updateBadges();
 }
 
@@ -350,7 +351,9 @@ function systemNotify(title, body) {
   try {
     const n = new Notification(title, { body, icon: S.her.avatar || undefined, tag: 'qmar' });
     n.onclick = () => { window.focus(); openApp('wx'); openThread(true); n.close(); };
-  } catch (e) {} // 有的手机浏览器只允许通过 Service Worker 发通知
+  } catch (e) {   // 有的手机浏览器只允许通过 Service Worker 发通知
+    if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistration().then(r => r && r.showNotification(title, { body, tag: 'qmar', data: { url: './?open=chat' } })).catch(() => {});
+  }
 }
 function onHerMessage(m) {
   if (threadVisible() && !document.hidden) { markRead(); return; }

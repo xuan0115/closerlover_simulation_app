@@ -12,10 +12,20 @@ function photoOptions() {
 }
 
 /* ---------- AI：拼设定 ---------- */
-function buildSystem(at, turnNote = '') {
-  const h = S.her, me = S.me, ta = pron(), nm = herName(), T = PROMPTS.sections;
+/* 「此刻」这一段：现在几点、今天的督促清单、这一轮的说明 */
+function nowText(at, turnNote = '') {
   const today = todayChecks(at);
   const lastMine = [...M].reverse().find(m => m.from === 'me');
+  return (PROMPTS.now({
+    time: fmtFull(at), ta: pron(),
+    today: tasksOn(at).map(t => ({ name: t.name, done: today[t.id] && hm(today[t.id]) })),
+    lastMineAgo: lastMine && ago(at - lastMine.ts)
+  }) + (turnNote ? '\n' + turnNote : '')).trim();
+}
+const nowSection = (at, turnNote) => `【${PROMPTS.sections.now}】\n${nowText(at, turnNote)}`;
+/* opt.nowSlot：「此刻」先空着（写成 {{NOW}}），锁屏通知的服务器到点再填（js/core/push.js）；opt.noPhoto：这次发不了照片 */
+function buildSystem(at, turnNote = '', opt = {}) {
+  const h = S.her, me = S.me, ta = pron(), nm = herName(), T = PROMPTS.sections;
   const L = [];
   const sec = (title, v) => { v = String(v || '').trim(); if (v) L.push(`【${title}】\n${v}`); };
 
@@ -36,13 +46,9 @@ function buildSystem(at, turnNote = '') {
   sec(T.aboutMe(ta), [myName() && `名字/昵称：${myName()}`, myGender && `性别：${myGender}`, me.identity && `身份：${me.identity}`, me.zodiac && PROMPTS.myZodiac({ ta, sign: me.zodiac }), me.about].filter(Boolean).join('\n'));
   if (S.tasks.length) sec(T.tasks, PROMPTS.tasks({ ta, list: S.tasks.map(t => ({ id: t.id, name: t.name, days: daysText(t.days), target: t.target, remind: t.remindOn && t.remind })) }));
   if (S.memory.length) sec(T.memory, S.memory.map(x => '- ' + x).join('\n'));
-  sec(T.now, PROMPTS.now({
-    time: fmtFull(at), ta,
-    today: tasksOn(at).map(t => ({ name: t.name, done: today[t.id] && hm(today[t.id]) })),
-    lastMineAgo: lastMine && ago(at - lastMine.ts)
-  }) + (turnNote ? '\n' + turnNote : ''));
+  if (opt.nowSlot) L.push('{{NOW}}'); else sec(T.now, nowText(at, turnNote));
 
-  const { pool, gen } = photoOptions();
+  const { pool, gen } = opt.noPhoto ? { pool: [], gen: false } : photoOptions();
   const P = [];
   if (pool.length) {
     P.push(PROMPTS.photoPoolHead);
@@ -78,18 +84,25 @@ function msgForAI(m) {
   }
 }
 
-/* 最近 40 条聊天整理成模型能读的对话；extra 是电话里的话之类 */
-function buildHistory(instruction, extra = []) {
+/* 同一个人连着说的几条并成一段 */
+const pushTurn = (out, role, text) => { if (!text) return; const l = out[out.length - 1]; if (l && l.role === role) l.text += '\n' + text; else out.push({ role, text }); };
+/* 最近 40 条聊天，整理成模型能读的对话（锁屏通知的服务器也用这一份） */
+function histCore() {
   const src = M.filter(m => m.from !== 'sys').slice(-40);
   const out = [];
-  const push = (role, text) => { if (!text) return; const l = out[out.length - 1]; if (l && l.role === role) l.text += '\n' + text; else out.push({ role, text }); };
   let prev = null;
   for (const m of src) {
-    if (prev && m.ts - prev > 3 * 3600e3) push('user', PROMPTS.gap({ gap: ago(m.ts - prev), time: fmtFull(m.ts) }));
+    if (prev && m.ts - prev > 3 * 3600e3) pushTurn(out, 'user', PROMPTS.gap({ gap: ago(m.ts - prev), time: fmtFull(m.ts) }));
     prev = m.ts;
     const mine = m.from === 'me' || (m.from === 'tip' && m.who === 'me');
-    push(mine ? 'user' : 'assistant', msgForAI(m));
+    pushTurn(out, mine ? 'user' : 'assistant', msgForAI(m));
   }
+  return out;
+}
+/* 加上这一轮的指令；extra 是电话里的话之类 */
+function buildHistory(instruction, extra = []) {
+  const out = histCore();
+  const push = (role, text) => pushTurn(out, role, text);
   if (instruction) push('user', instruction);
   for (const x of extra) push(x.role, x.text);
   if (!out.length || out[out.length - 1].role !== 'user') push('user', PROMPTS.carryOn);
@@ -195,20 +208,25 @@ function wantVoice(o) {
  *   at    这轮发生的时间（补发错过的消息时是过去的时间）
  *   live  true = 现在正在发，带「对方正在输入」；false = 补发，直接出现
  */
-async function herTurn({ kind, ev = null, at = Date.now(), live = true, unreplied = false, note = '', retry = null, waited = 0, status = 'free' }) {
+/* 她这一轮记下的事、确认你做完的督促事项（网页里说的、网页关着时服务器替她说的，都走这里） */
+function absorbTurn(o) {
+  for (const r of o.remember || []) { const s = String(r).slice(0, 80); if (s && !S.memory.includes(s)) S.memory.push(s); }
+  if (S.memory.length > 80) S.memory = S.memory.slice(-80);
+  for (const d of o.done || []) {   // 模型可能给 id，也可能给名称
+    const t = taskById(d) || S.tasks.find(x => x.name === d);
+    if (t && !todayChecks()[t.id]) checkin(t.id, Date.now());
+  }
+  saveS(); saveST();
+}
+
+/*   pro   她主动找你的这一轮的记号（回你的话没有）：用来数「她连着主动找了你几次你都没回」 */
+async function herTurn({ kind, ev = null, at = Date.now(), live = true, unreplied = false, note = '', retry = null, waited = 0, status = 'free', pro = '' }) {
   const toMoments = ev && ev.to === 'moments';
   if (live && !toMoments) setTyping(true);
   try {
     const count = drawCount(kind === 'reply' ? pendingText() : '');
     const o = await compose({ kind, ev, at, unreplied, note, count, waited, status });
-
-    for (const r of o.remember) { const s = r.slice(0, 80); if (!S.memory.includes(s)) S.memory.push(s); }
-    if (S.memory.length > 80) S.memory = S.memory.slice(-80);
-    for (const d of o.done) {   // 模型可能给 id，也可能给名称
-      const t = taskById(d) || S.tasks.find(x => x.name === d);
-      if (t && !todayChecks()[t.id]) checkin(t.id, Date.now());
-    }
-    saveS(); saveST();
+    absorbTurn(o);
 
     let photo = null;
     if (o.photo) {
@@ -246,7 +264,7 @@ async function herTurn({ kind, ev = null, at = Date.now(), live = true, unreplie
           await sleep(d / 2); setTyping(false); await sleep(rnd(2e3, 5e3)); setTyping(true); await sleep(d / 2);
         } else await sleep(d);
       }
-      addMsg(Object.assign({ id: uid('m'), from: 'her', ts: live ? Date.now() : at + i * 20000 }, it));
+      addMsg(Object.assign({ id: uid('m'), from: 'her', ts: live ? Date.now() : at + i * 20000 }, it, pro && it.from !== 'tip' ? { pro } : {}));
     }
   } catch (e) {
     addSys((live ? L(`${TA()}的消息没收到：`, `Message from ${herName()} didn't arrive: `) : L(`${hm(at)} 那条消息没收到：`, `The ${hm(at)} message didn't arrive: `)) + e.message, retry);

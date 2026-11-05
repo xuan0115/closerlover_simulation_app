@@ -6,7 +6,7 @@
  */
 'use strict';
 
-const CITIES = [['上海', 'Asia/Shanghai'], ['东京', 'Asia/Tokyo'], ['伦敦', 'Europe/London'], ['纽约', 'America/New_York']];
+const CITIES = [['上海', 'Asia/Shanghai'], ['首尔', 'Asia/Seoul'],['纽约', 'America/New_York'],['东京', 'Asia/Tokyo'], ['伦敦', 'Europe/London'], ['悉尼', 'Australia/Sydney']];
 let clockTab = 'alarm', alarmEditing = false, SW = { t0: 0, acc: 0, laps: [], run: false }, TM = { end: 0, left: 0, run: false, total: 0 };
 const alarmDays = ds => ds.length ? daysText(ds) : '只响一次';
 

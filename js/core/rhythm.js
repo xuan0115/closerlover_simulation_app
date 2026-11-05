@@ -82,6 +82,7 @@ function queueReply() {
   const { delay, status } = replyDelay(now);
   ST.pending = { due: now + Math.max(2e3, delay), since: now, status };
   saveST(); armReply();
+  pushDirty(true);   // 你马上关网页的话，到时间由服务器替她回（js/core/push.js）
 }
 function armReply() {
   clearTimeout(replyTimer);
@@ -92,6 +93,7 @@ let replyBusy = false;
 /* 到点了就让她回；飞行模式下先不回，关掉后再回 */
 function checkPending() {
   const p = ST.pending, now = Date.now();
+  if (pushHold()) return;   // 网页在后台：服务器替她回；回到前台时再看（js/core/push.js）
   if (!p || p.due > now || replyBusy || S.notify.airplane) { if (p && !replyBusy) armReply(); return; }
   delete ST.pending; saveST();
   const live = now - p.due < 60e3 && !document.hidden;   // 网页关着时错过的：按预定时间补上，不演打字
