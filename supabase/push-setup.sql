@@ -114,7 +114,8 @@ select cron.schedule('zhiji-cron-cleanup', '17 4 * * *', $job$
   delete from cron.job_run_details where end_time < now() - interval '3 days';
 $job$);
 
--- 7) 检查：应该看到 4 张表都是 rls_on = true，以及两个定时任务
-select relname as table_name, relrowsecurity as rls_on from pg_class
-where oid in ('public.push_subs'::regclass, 'public.push_plans'::regclass, 'public.push_inbox'::regclass, 'public.push_config'::regclass);
-select jobname, schedule, active from cron.job where jobname like 'zhiji-%';
+-- 7) 检查（SQL Editor 只显示最后一段的结果，所以合成一张表）：应该有 4 行「表」都是「RLS 开着」，2 行「定时任务」都是「运行中」
+select '表' as 类型, relname::text as 名字, case when relrowsecurity then 'RLS 开着' else 'RLS 没开！' end as 状态
+from pg_class where relnamespace = 'public'::regnamespace and relname in ('push_subs', 'push_plans', 'push_inbox', 'push_config')
+union all
+select '定时任务', jobname::text, case when active then '运行中' else '停了' end from cron.job where jobname like 'zhiji-%';

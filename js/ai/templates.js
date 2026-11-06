@@ -82,8 +82,13 @@ function pendingMine() {
 /* 回你 */
 /* 你最近没被回应的那几条消息的文字 */
 const pendingText = () => pendingMine().map(m => m.type === 'voice' ? (m.transcript || '') : (m.from === 'me' ? m.text || '' : '')).join('\n').trim();
-/* 隔了好一阵才回你时，先说的那句「刚在……」用哪组台词 */
-const TPL_BACK = { busy: 'backBusy', run: 'backRun', sleep: 'backSleep' };
+/* 隔了好一阵才回你时，先说的那句「刚在……」 */
+function tplBack(status, what = '') {
+  const key = status === 'woken' ? 'backWoken' : status === 'sleep' ? 'backSleep'
+    : status === 'run' || ((status === 'away' || status === 'busy') && /跑|运动|健身|游泳|球|瑜伽/.test(what)) ? 'backRun'
+    : status === 'busy' || status === 'away' ? 'backBusy' : '';
+  return key ? tplPick(key, what ? { 事: what.replace(/^在/, '') } : {}) : [];
+}
 
 function tplReply() {
   const mine = pendingMine();

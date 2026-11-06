@@ -44,9 +44,9 @@ function buildPushPlan(now = Date.now()) {
         const p = ST.pending, waited = p.due - p.since, text = pendingText();
         const crisis = [...REPLY_RULES, ...REPLY_RULES_EN].some(r => r.reply === 'crisis' && r.match.test(text));
         const count = crisis ? 0 : drawCount(text);
-        const note = [waited > 2 * 60e3 ? PROMPTS.waited({ ta, gap: ago(waited), doing: STATUS_WORDS[p.status] }) : '', count ? PROMPTS.count(count) : ''].filter(Boolean).join('\n');
+        const note = [p.status === 'woken' ? PROMPTS.woken(ta) : waited > 2 * 60e3 ? PROMPTS.waited({ ta, gap: ago(waited), doing: doingText(p) }) : '', p.status === 'night' ? PROMPTS.night : '', count ? PROMPTS.count(count) : ''].filter(Boolean).join('\n');
         const t = templateFor({ kind: 'reply' });
-        const back = waited > 3 * 60e3 && TPL_BACK[p.status] ? tplPick(TPL_BACK[p.status]) : [];
+        const back = waited > 3 * 60e3 || p.status === 'woken' ? tplBack(p.status, p.what) : [];
         items.push({ key: 'reply@' + p.since, kind: 'reply', at: Math.max(p.due, now), now: nowSection(p.due, note), count, tpl: [...back, ...t.messages], tplDone: t.done || [] });
       }
       for (const { ev, t } of dueBetween(now, now + PUSH_HORIZON)) {   // 她自己找你的
@@ -69,6 +69,7 @@ function buildPushPlan(now = Date.now()) {
     base: ai ? buildSystem(now, '', { nowSlot: true, noPhoto: true }) : '', history: ai ? histCore() : [],
     items, pro: proTurns(), lastFrom: last ? last.from : '', lastTs: last ? last.ts : 0,
     unread: unreadList().length, quiet: !!(S.zx.mute || S.notify.focus), off: !!S.notify.airplane,
+    badge: S.notify.badge !== false, hidden: S.notify.preview === 'never' ? HIDDEN_TEXT() : '',   // 设置 → 通知：标记、显示预览
     gifts: giftsFor().map(g => g.name), carryOn: PROMPTS.carryOn
   };
 }
@@ -279,27 +280,49 @@ function pushHowSheet() {
     el('p', { class: 'sub' }, '需要 iOS 16.4 或更新的系统。声音和震动在 iPhone 的「设置 → 通知 → 知己」里调。'),
     el('div', { class: 'btnrow' }, el('button', { class: 'btn primary', onclick: close }, '知道了'))));
 }
-function pushSettingsGroup(re) {
-  const T = '锁屏通知', sup = pushSupport();
+/* 设置 → 通知 最上面的「允许通知」 */
+function pushAllowGroup(re) {
+  const sup = pushSupport();
+  const sw = (on, onchange, disabled) => {
+    const c = el('input', { type: 'checkbox', class: 'sw', 'aria-label': '允许通知' }); c.checked = on; c.disabled = !!disabled;
+    if (onchange) c.addEventListener('change', () => onchange(c));
+    return el('label', { class: 'ios-row' }, el('span', { class: 'lbl' }, '允许通知'), c);
+  };
   if (sup === 'no-cloud') return el('span');
-  if (sup === 'need-home') return iosGroup(T, [iosLink({ label: '怎么开启', onclick: pushHowSheet })],
-    `iPhone 上要先把知己「添加到主屏幕」，从主屏幕打开才能开启。开启后网页关着，${herName()}的消息也会弹到锁屏上。`);
-  if (sup === 'no') return iosGroup(T, [el('div', { class: 'ios-row' }, el('span', { class: 'lbl' }, '这个浏览器收不了'))],
-    '可以用 iPhone 的 Safari（先添加到主屏幕），或者电脑上的 Safari、Chrome。');
-  if (!currentUser) return iosGroup(T, [el('div', { class: 'ios-row' }, el('span', { class: 'lbl' }, '先登录账号'))], '登录知己账号以后才能开：设置 → chatwe聊我 → 数据与备份。');
+  if (sup === 'need-home') return iosGroup('', [sw(false, c => { c.checked = false; pushHowSheet(); }), iosLink({ label: '怎么开启', onclick: pushHowSheet })],
+    `iPhone 上要先把知己「添加到主屏幕」，从主屏幕打开才能开。开了以后网页关着，${herName()}的消息也会弹到锁屏上。`);
+  if (sup === 'no') return iosGroup('', [sw(false, null, true)], '这个浏览器收不了锁屏通知。可以用 iPhone 的 Safari（先添加到主屏幕），或者电脑上的 Safari、Chrome。');
+  if (!currentUser) return iosGroup('', [sw(false, null, true)], '登录知己账号以后才能开：设置 → chatwe聊我 → 数据与备份。');
   const on = PUSH.on && Notification.permission === 'granted';
-  const c = el('input', { type: 'checkbox', class: 'sw', 'aria-label': '关掉网页也能收到消息' }); c.checked = on;
-  c.addEventListener('change', async () => {
+  const rows = [sw(on, async c => {
     c.disabled = true;
     const ok = c.checked ? await pushEnable() : await pushDisable();
     c.disabled = false;
     if (!ok) c.checked = !c.checked;
     re();
-  });
-  const rows = [el('label', { class: 'ios-row' }, el('span', { class: 'lbl' }, '关掉网页也能收到消息'), c)];
+  })];
   if (on) rows.push(iosLink({ label: '发一条测试通知', chevron: false, cls: 'blue', onclick: () => pushTest().catch(e => toast('没发出去：' + e.message, 6000)) }));
   const own = usesAI() && S.api.provider !== 'builtin' ? `你用的是自己的 Key，服务器拿不到：网页关着的这段时间，${TA()}用固定模板说话。` : '';
-  return iosGroup(T, rows, on
-    ? `开着：网页关掉以后，${herName()}按作息找你、回你的消息，会像别的聊天软件一样弹到锁屏上，图标上有红色数字。${TA()}连着找你 3 次你都没回，就不再追发。每台手机要分别开启。${own}`
-    : `打开后，网页关着${herName()}也能找你、回你，消息弹到锁屏上。${own}`);
+  return iosGroup('', rows, (on ? `网页关掉以后，${herName()}找你、回你的消息也会弹到锁屏上。每台手机要分别开。` : `打开后，网页关着${herName()}也能找你、回你，消息弹到锁屏上。`) + own);
+}
+
+/* 第一次进到手机里（注册、登录以后）：问一次要不要开通知。只问一次，以后在「设置 → 通知」里开 */
+let pushAsking = false;
+function pushMaybeAsk() {
+  if (pushAsking || PUSH.on || !ST.started || !currentUser || !cloudReady || LS.get('pushAsked', false)) return;   // 设好陪伴对象、进到手机里以后才问
+  const sup = pushSupport();
+  if (sup !== 'ok' && sup !== 'need-home') return;
+  pushAsking = true;
+  setTimeout(async () => {
+    if (cur === 'lock' || sheetOpen() || document.hidden || PUSH.on || $('.ios-alert-wrap')) { pushAsking = false; return; }   // 等下次进来再问
+    LS.set('pushAsked', true);
+    if (sup === 'need-home') {
+      const v = await iosAlert({ title: `在锁屏上收到${TA()}的消息`, message: '先把知己添加到主屏幕，从主屏幕打开，就能像别的聊天软件一样收到通知。', buttons: [{ label: '以后再说', value: false }, { label: '看步骤', bold: true, value: true }] });
+      if (v) pushHowSheet();
+    } else {
+      const v = await iosAlert({ title: '“知己”想给你发送通知', message: `网页关着时，${TA()}的消息也会像别的聊天软件一样弹到锁屏上。以后可以在「设置 → 通知」里更改。`, buttons: [{ label: '不允许', value: false }, { label: '允许', bold: true, value: true }] });
+      if (v) await pushEnable();
+    }
+    pushAsking = false;
+  }, 900);
 }

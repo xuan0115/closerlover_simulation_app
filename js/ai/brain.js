@@ -162,15 +162,17 @@ function templateFor({ kind, ev, unreplied }) {
   return tplScene(ev.scene || 'chat', { photo: !!ev.photo, unreplied, task: ev.task, alarm: ev.alarm });
 }
 
-async function compose({ kind, ev, at, unreplied, note, count, waited, status }) {
+async function compose({ kind, ev, at, unreplied, note, count, waited, status, what }) {
   if (!usesAI()) {
     const o = templateFor({ kind, ev, unreplied });
-    if (kind === 'reply' && waited > 3 * 60e3 && TPL_BACK[status] && o.messages.length) o.messages.unshift(...tplPick(TPL_BACK[status]));   // 隔了好一阵才回：先说一句刚在干嘛
+    if (kind === 'reply' && (waited > 3 * 60e3 || status === 'woken') && o.messages.length) o.messages.unshift(...tplBack(status, what));   // 隔了好一阵才回：先说一句刚在干嘛
     return Object.assign(o, { by: 'template' });
   }
   const crisis = kind === 'reply' && [...REPLY_RULES, ...REPLY_RULES_EN].some(r => r.reply === 'crisis' && r.match.test(pendingText()));
   const turnNote = [
-    kind === 'reply' && waited > 2 * 60e3 ? PROMPTS.waited({ ta: pron(), gap: ago(waited), doing: STATUS_WORDS[status] }) : '',
+    kind === 'reply' && status === 'woken' ? PROMPTS.woken(pron())
+      : kind === 'reply' && waited > 2 * 60e3 ? PROMPTS.waited({ ta: pron(), gap: ago(waited), doing: doingText({ status, what }) }) : '',
+    kind === 'reply' && status === 'night' ? PROMPTS.night : '',
     count && !crisis && kind !== 'opening' && !(ev && ev.to === 'moments') ? PROMPTS.count(count) : ''
   ].filter(Boolean).join('\n');
   let instruction = '';
@@ -220,12 +222,12 @@ function absorbTurn(o) {
 }
 
 /*   pro   她主动找你的这一轮的记号（回你的话没有）：用来数「她连着主动找了你几次你都没回」 */
-async function herTurn({ kind, ev = null, at = Date.now(), live = true, unreplied = false, note = '', retry = null, waited = 0, status = 'free', pro = '' }) {
+async function herTurn({ kind, ev = null, at = Date.now(), live = true, unreplied = false, note = '', retry = null, waited = 0, status = 'free', what = '', pro = '' }) {
   const toMoments = ev && ev.to === 'moments';
   if (live && !toMoments) setTyping(true);
   try {
     const count = drawCount(kind === 'reply' ? pendingText() : '');
-    const o = await compose({ kind, ev, at, unreplied, note, count, waited, status });
+    const o = await compose({ kind, ev, at, unreplied, note, count, waited, status, what });
     absorbTurn(o);
 
     let photo = null;

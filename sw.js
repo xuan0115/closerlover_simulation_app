@@ -1,11 +1,86 @@
 /*
- * 知己的 Service Worker：只负责锁屏通知（js/core/push.js、supabase/push-tick.ts）。
- * 不缓存任何文件，网页更新照旧马上生效。
+ * 知己的 Service Worker：锁屏通知（js/core/push.js、supabase/push-tick.ts），和把网页文件存在手机里。
+ *
+ * 存文件是为了打开快、不白屏（GitHub 在国内有时慢）：
+ *   打开知己（index.html）：先上网拿最新的；2.5 秒还没拿到，就先用手机里存的那份，最新的在后台下载，下次打开就是新版。
+ *   带版本号的文件（js、css 后面的 ?v=1110）：手机里有这个版本就直接用；index.html 里版本号一改，就会下载新的。
+ *   其他自己网站的文件（图标、清单）：先用存的，同时在后台更新。
+ *   Supabase、DeepSeek、天气这些别的网站：不经过这里。
  */
 'use strict';
 
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+const CACHE = 'zhiji-files-v1';
+const PAGE = new URL('./', self.registration.scope).href;   // 知己的首页，不管地址后面带什么都存成这一份
+const PAGE_WAIT = 2500;
+
+self.addEventListener('install', e => {
+  self.skipWaiting();
+  e.waitUntil(precache().catch(() => {}));   // 先把首页和它用到的文件存一份；失败也不影响
+});
+self.addEventListener('activate', e => e.waitUntil((async () => {
+  for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k);
+  await self.clients.claim();
+})()));
+
+/* 首页和它引用的带版本号的文件 */
+async function precache() {
+  const c = await caches.open(CACHE);
+  const res = await fetch(PAGE, { cache: 'no-cache' });
+  if (!res.ok) return;
+  const html = await res.clone().text();
+  await c.put(PAGE, res);
+  const urls = [...html.matchAll(/(?:src|href)="([^"]+\?v=[^"]+)"/g)].map(m => new URL(m[1], PAGE).href);
+  for (const u of urls) {
+    if (await c.match(u)) continue;
+    try { const r = await fetch(u); if (r.ok) await c.put(u, r); } catch (err) {}
+  }
+}
+
+self.addEventListener('fetch', e => {
+  const req = e.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;              // 别的网站：不管
+  if (url.pathname.endsWith('/sw.js')) return;
+  if (req.mode === 'navigate') { e.respondWith(page(req, e)); return; }
+  if (/[?&]v=/.test(url.search)) { e.respondWith(versioned(req)); return; }
+  e.respondWith(fresh(req, e));
+});
+
+/* 打开知己：先上网拿，2.5 秒拿不到（或者没网、GitHub 出错）就用存的 */
+async function page(req, e) {
+  const c = await caches.open(CACHE);
+  const net = fetch(req);
+  e.waitUntil(net.then(res => res.ok ? c.put(PAGE, res.clone()) : null).catch(() => {}));   // 拿到了就存起来，下次用
+  const good = net.then(res => res.ok ? res : Promise.reject(new Error('HTTP ' + res.status)));
+  const timer = new Promise((_, rej) => setTimeout(() => rej(new Error('slow')), PAGE_WAIT));
+  try { return await Promise.race([good, timer]); }
+  catch (err) {
+    const hit = await c.match(PAGE);
+    return hit || net;   // 手机里还没有（第一次打开）：只能等网络
+  }
+}
+/* 带版本号的：有就用，没有就下载并存起来，同一个文件的旧版本删掉 */
+async function versioned(req) {
+  const c = await caches.open(CACHE);
+  const hit = await c.match(req);
+  if (hit) return hit;
+  const res = await fetch(req);
+  if (res.ok) {
+    await c.put(req, res.clone());
+    const path = new URL(req.url).pathname;
+    for (const k of await c.keys()) { const u = new URL(k.url); if (u.pathname === path && k.url !== req.url) await c.delete(k); }
+  }
+  return res;
+}
+/* 其他：先用存的，同时更新 */
+async function fresh(req, e) {
+  const c = await caches.open(CACHE);
+  const hit = await c.match(req);
+  const net = fetch(req);
+  e.waitUntil(net.then(res => res.ok ? c.put(req, res.clone()) : null).catch(() => {}));
+  return hit || net;
+}
 
 /* 服务器推来一条：弹通知，更新图标上的红色数字 */
 self.addEventListener('push', e => {

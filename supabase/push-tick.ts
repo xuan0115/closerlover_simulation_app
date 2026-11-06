@@ -139,6 +139,7 @@ type Plan = {
   v?: number; title?: string; ta?: string; mode?: 'ai' | 'tpl'; fallback?: boolean; base?: string;
   history?: { role: string; text: string }[]; items?: Item[]; pro?: number; lastFrom?: string; lastTs?: number;
   unread?: number; quiet?: boolean; off?: boolean; gifts?: string[]; carryOn?: string;
+  badge?: boolean; hidden?: string;   // 设置 → 通知：图标上要不要红色数字；「显示预览：从不」时通知上只写这句
 };
 type Out = { messages: string[]; remember: string[]; done: string[]; gift: string | null };
 type Ready = { key: string; kind: string; ts: number; data: Out | null };
@@ -293,14 +294,15 @@ export async function tickUser(db: Db, row: PlanRow, now: number, getVapid: () =
   const subs = await db.subs(uid);
   if (!subs.length) return;
   const v = await getVapid();
-  const bubbles = [...out.messages];
+  let bubbles = [...out.messages];
   if (out.gift) bubbles.push(`[礼物] ${out.gift}`);
+  if (plan.hidden) bubbles = [plan.hidden];   // 不显示内容：一轮只弹一条「发来一条消息」
   let unread = (plan.unread || 0) + prior.reduce((n, r) => n + ((r.data && r.data.messages) || []).length, 0);
   for (let i = 0; i < bubbles.length; i++) {
     if (i) await sleep(Math.min(4000, 1200 + bubbles[i].length * 120));   // 一条一条来，像在打字
     unread++;
     for (const s of subs) {
-      const st = await sendPush(s, { title: plan.title || '知己', body: bubbles[i], tag: `${it.key}#${i}`, badge: unread, ts: ts + i * 1000, url: './?open=chat' }, v);
+      const st = await sendPush(s, { title: plan.title || '知己', body: bubbles[i], tag: `${it.key}#${i}`, badge: plan.badge === false ? undefined : unread, ts: ts + i * 1000, url: './?open=chat' }, v);
       if ((st === 404 || st === 410) && s.id != null) await db.dropSub(s.id);   // 这台手机关掉了通知
     }
   }

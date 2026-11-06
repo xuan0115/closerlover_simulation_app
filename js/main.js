@@ -4,7 +4,7 @@
 /* 离开网页一会儿再回来 → 回到锁屏，像重新拿起手机 */
 let hiddenAt = 0;
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { hiddenAt = Date.now(); stopCamera(); pushOnHidden(); return; }
+  if (document.hidden) { hiddenAt = Date.now(); rememberPlace(); stopCamera(); pushOnHidden(); return; }
   if (cur === 'camera') startCamera();
   if (S.notify.relock && hiddenAt && Date.now() - hiddenAt > 3 * 60e3 && cur !== 'lock') show('lock');
   markRead(); updateBadges();

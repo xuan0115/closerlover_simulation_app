@@ -21,9 +21,10 @@ const TEMPLATES_EN = {
     night:     [['going to bed', 'you sleep early too', 'night'], ['good night {称呼}']],
     nightGood: [['you finished everything today', 'reward: go to bed early', 'night']],
     unreplied: [['why aren\'t you answering'], ['hello??']],
-    backBusy:  [['sorry, was drawing'], ['just got free'], ['wasn\'t looking at my phone']],
+    backBusy:  [['sorry, was busy'], ['just got free'], ['wasn\'t looking at my phone']],
     backRun:   [['just got back from my run'], ['went for a run']],
     backSleep: [['just woke up'], ['fell asleep, just saw this']],
+    backWoken: [['mm... you woke me up'], ['what is it', 'I was asleep'], ['so many messages', 'you ok?']],
 
     photoSend: [['here'], ['look']],
     noPhoto:   [['can\'t take one right now', 'later']],

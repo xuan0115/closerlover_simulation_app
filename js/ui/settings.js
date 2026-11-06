@@ -129,7 +129,7 @@ function settingsZxPage(pg, app) {
       iosLink({ ic: 'note', color: '#FF9F0A', label: `${TA()}记得的事`, value: S.memory.length ? `${S.memory.length} 条` : '', onclick: go(settingsMemoryPage) })]));
     b.append(iosGroup('互动', [
       iosLink({ ic: 'clock', color: '#30B0C7', label: `${TA()}什么时候找你`, value: `${S.events.filter(e => e.on).length} 条`, onclick: go(plansPage) }),
-      fSelect('zx.speed', '回复速度', Object.entries(SPEEDS)),
+      iosLink({ ic: 'moon', color: '#5856D6', label: '陪伴方式', value: (COMPANY[S.zx.company] || COMPANY.real).label, onclick: go(settingsCompanyPage) }),
       iosLink({ ic: 'calendar', color: '#FF3B30', label: '倒数日', value: S.countdown.title, onclick: () => editCountdown(() => Nav.refresh(app)) }),
       iosLink({ ic: 'photo', color: '#FF9500', label: '照片池', value: POOL.length ? `${POOL.length} 张` : '', onclick: go(poolPage) }),
       iosLink({ ic: 'sparkle', color: '#AF52DE', label: '回复方式', value: (REPLY_MODES[S.reply.mode] || REPLY_MODES.template).label, onclick: go(settingsReplyPage) }),
@@ -137,6 +137,60 @@ function settingsZxPage(pg, app) {
     b.append(iosGroup('', [iosLink({ ic: 'globe', color: '#007AFF', label: '语言', value: isEN() ? 'English' : '中文', onclick: go(settingsLangPage) })]));
     b.append(iosGroup('', [iosLink({ ic: 'box', color: '#8E8E93', label: '数据与备份', onclick: go(settingsDataPage) })]));
   }, APPS.settings.label);
+}
+
+/* ---------- 陪伴方式：真人作息 / 24 小时陪伴（js/core/rhythm.js） ---------- */
+function settingsCompanyPage(pg, app) {
+  subPage(pg, app, '陪伴方式', (b, re) => {
+    const opt = k => el('button', { class: 'ios-row', onclick: () => { if (S.zx.company === k) return; S.zx.company = k; saveS(); re(); } },
+      el('span', { class: 'lbl' }, COMPANY[k].label + (k === 'real' ? '（默认）' : ''), el('small', {}, COMPANY[k].desc)),
+      S.zx.company === k ? el('span', { class: 'check' }, icon('check', 20, 2.4)) : '');
+    b.append(iosGroup('', [opt('real'), opt('always')], `不管哪种，你说出想伤害自己这类话，${TA()}都会马上回。${TA()}主动找你的时间（早安、晚安、督促……）不受这里影响，在「${TA()}什么时候找你」里改。`));
+    b.append(iosGroup('', [iosLink({ label: `${TA()}的作息`, value: schedSummary(), onclick: () => Nav.push(app, p => settingsSchedPage(p, app)) })],
+      S.zx.company === 'always' ? `24 小时陪伴下，作息只影响${TA()}聊什么。` : `真人作息下，${TA()}按这里的时间睡觉、忙。`));
+    if (S.zx.speed === 'fast') b.append(iosGroup('测试', [el('div', { class: 'ios-row' }, el('span', { class: 'lbl' }, '秒回（测试用）开着'), miniBtn('关掉', () => { S.zx.speed = 'real'; saveS(); re(); }))],
+      '开着时不管哪种陪伴方式，都在 1–3 秒内回。'));
+  });
+}
+/* 作息：几点起、几点睡、工作日忙的时候 */
+const schedSummary = () => { const sc = S.her.sched || {}; return `${(sc.wake || '').replace(/^0/, '')} 起 · ${(sc.bed || '').replace(/^0/, '')} 睡`; };
+function fTime(path, label, onchange) {
+  const i = el('input', { type: 'time', step: '300' });
+  i.value = getP(path) || '';
+  i.addEventListener('change', () => { if (!i.value) { i.value = getP(path) || ''; return; } setP(path, i.value); saveS(); if (onchange) onchange(i.value); });
+  return el('label', { class: 'ios-field' }, el('span', {}, label), i);
+}
+function settingsSchedPage(pg, app) {
+  subPage(pg, app, `${TA()}的作息`, (b, re) => {
+    const sc = S.her.sched;
+    b.append(iosGroup('工作日', [fTime('her.sched.wake', '起床'), fTime('her.sched.bed', '睡觉')], '过了半夜才睡就写 00:30 这样。'),
+      iosGroup('周末', [fTime('her.sched.wakeWeekend', '起床'), fTime('her.sched.bedWeekend', '睡觉')], '周五、周六晚上按周末的时间睡。'));
+    const rows = (sc.busy || []).map((x, i) => iosLink({ label: `${x.from}–${x.to}`, sub: x.what || '', value: x.phone === false ? '看不了手机' : '偶尔看手机', onclick: () => busySheet(i, re) }));
+    if ((sc.busy || []).length < 6) rows.push(iosLink({ label: '添加一段', chevron: false, cls: 'blue', onclick: () => busySheet(-1, re) }));
+    b.append(iosGroup('工作日忙的时候', rows, `偶尔看手机：${TA()}过几分钟才回。看不了手机（比如跑步、开会、考试）：忙完才回。周末不算忙。`));
+    b.append(iosGroup('', [fToggle('her.sched.vary', '每天早晚差一点')], '打开：起床、睡觉的时间每天早晚差半小时左右，更像真人；关掉：每天都一样。'));
+    b.append(el('p', { class: 'ios-foot' }, `这些只在「陪伴方式 → 真人作息」下决定${TA()}回不回消息。「${TA()}的人设」里「${TA()}平时的一天」那段文字是给 AI 看的，影响${TA()}聊什么，改了作息记得一起改。`));
+  });
+}
+function busySheet(i, re) {
+  const list = S.her.sched.busy || (S.her.sched.busy = []);
+  const x = i >= 0 ? Object.assign({}, list[i]) : { from: '09:00', to: '12:00', what: '', phone: true };
+  const from = el('input', { type: 'time', step: '300', value: x.from }), to = el('input', { type: 'time', step: '300', value: x.to });
+  const what = el('input', { type: 'text', value: x.what || '', placeholder: '上班、上课、画稿……', maxlength: '12' });
+  const away = el('input', { type: 'checkbox', class: 'sw', 'aria-label': '这段时间看不了手机' }); away.checked = x.phone === false;
+  openSheet((p, close) => {
+    const save = () => {
+      if (!from.value || !to.value || to.value <= from.value) { toast('结束时间要晚于开始时间'); return; }
+      const v = { from: from.value, to: to.value, what: what.value.trim(), phone: !away.checked };
+      if (i >= 0) list[i] = v; else list.push(v);
+      list.sort((a, c) => a.from < c.from ? -1 : 1);
+      saveS(); close(); re();
+    };
+    p.append(sheetHead(i >= 0 ? '忙的时间' : '添加忙的时间', el('button', { onclick: close }, '取消'), el('button', { class: 'bold', onclick: save }, '完成')),
+      iosGroup('', [el('label', { class: 'ios-field' }, el('span', {}, '从'), from), el('label', { class: 'ios-field' }, el('span', {}, '到'), to),
+        el('label', { class: 'ios-field' }, el('span', {}, '在做什么'), what), el('label', { class: 'ios-row' }, el('span', { class: 'lbl' }, '这段时间看不了手机'), away)]),
+      i >= 0 ? el('button', { class: 'btn danger wide', onclick: () => { list.splice(i, 1); saveS(); close(); re(); } }, '删除这一段') : '');
+  });
 }
 
 /* ---------- chatwe 的语言（规范第 12 节）：像 iPhone 给单个 App 设语言，只改 chatwe ---------- */
@@ -182,7 +236,8 @@ function settingsHerPage(pg, app) {
       '固定模板模式只认上面的「语气」，三种台词在 js/data/templates.js 里，可以自己改、自己加。'));
     b.append(iosGroup(`${TA()}的生活`, [
       fArea('her.identity', '补充说明', '年龄、一个人住还是和家人住、养了什么……'),
-      fArea('her.routine', `${TA()}平时的一天`, `${TA()}每天大概在做什么，聊天时会用上`),
+      iosLink({ label: `${TA()}的作息`, sub: '几点起、几点睡、工作日忙的时候', value: schedSummary(), onclick: () => Nav.push(app, p => settingsSchedPage(p, app)) }),
+      fArea('her.routine', `${TA()}平时的一天`, `给 AI 看的文字，影响${TA()}聊什么；和上面的作息对得上最好`),
       fArea('her.looks', '外貌', '只在 AI 生成照片时用'),
       fText('her.signature', '个性签名')]));
   });
@@ -229,41 +284,17 @@ function settingsMemoryPage(pg, app) {
   });
 }
 
-/* ---------- 隐私与安全性：用大白话说清楚数据存在哪、什么时候联网、点 App 时发生了什么 ---------- */
-const AI_NOTICE = () => `开启后，${herName()}的每句话都由 AI 来写。为此，最近的聊天记录、${TA()}的人设、你填的资料和督促清单、${TA()}记得的事，会发给 AI 服务：用「知己内置 AI」时，经过知己的服务器转给 DeepSeek；用你自己的 Key 时，直接发给你选的服务。详细说明在「设置 → 隐私与安全性」。`;
+/* ---------- 隐私与安全性：只说明知己里的 App 是模拟的、点它们时会发生什么 ---------- */
+const AI_NOTICE = () => `开启后，${herName()}的每句话都由 AI 来写。为此，最近的聊天记录、${TA()}的人设、你填的资料和督促清单、${TA()}记得的事，会发给 AI 服务：用「知己内置 AI」时，经过知己的服务器转给 DeepSeek；用你自己的 Key 时，直接发给你选的服务。`;
 function settingsPrivacyPage(pg, app) {
   subPage(pg, app, '隐私与安全性', b => {
-    const go = fn => () => Nav.push(app, p => fn(p, app));
-    const row = (label, value) => el('div', { class: 'ios-row' }, el('span', { class: 'lbl' }, label), el('span', { class: 'val' }, value));
     const text = (...ps) => el('div', { class: 'pv-text' }, ...ps.map(t => el('p', {}, t)));
-    const ai = S.reply.mode === 'ai', builtin = S.api.provider === 'builtin', pv = builtin ? 'DeepSeek（经知己服务器）' : ((CHAT_PROVIDERS[S.api.provider] || {}).label || 'AI 服务');
-    const cloud = typeof sb !== 'undefined' && !!sb;
-    const photoAI = S.photo.mode !== 'pool';
     b.append(el('div', { class: 'pv-hero' }, el('span', { class: 'pv-ic' }, icon('hand', 30, 2)), el('h2', {}, '知己和你的隐私'),
-      el('p', {}, cloud ? '知己用账号把你的存档保存在云端。下面说明数据存在哪、谁能看到、什么时候会联网，以及点 App 图标时发生了什么。' : '下面说明你的数据存在哪、什么时候会联网，以及点 App 图标时发生了什么。')));
-    b.append(iosGroup('数据存在哪', [cloud ? text(
-      `登录后，人设、聊天记录、朋友圈、打卡会同步到知己的云端数据库（Supabase），换手机登录也能找回；照片只存在这台手机上。`,
-      `数据库设置成每个账号只能读写自己的存档。但知己的开发者作为数据库管理员，技术上能看到云端存档。别在聊天里发证件号、银行卡号、密码这类信息。`,
-      `API Key 不会上传到云端。`) : text(
-      `人设、聊天记录、照片、打卡这些，都只存在这台手机的这个浏览器里，开发者看不到。`,
-      `删掉主屏幕上的知己，或者清除 Safari 的网站数据，这些会一起消失。记得常去「数据与备份」导出一份。`),
-      iosLink({ label: '数据与备份', onclick: go(settingsDataPage) })]));
-    b.append(iosGroup('什么时候会联网', [
-      row('回复方式', ai ? `AI · 发给 ${pv}` : '固定模板 · 不发送'),
-      row('云同步', cloud ? (currentUser ? `已登录 · ${accountName(currentUser)}` : '没登录 · 不上传') : '不使用'),
-      row('AI 生成照片', photoAI && imgConf().key ? '开启' : '不使用'),
-      row('天气', '只发送城市名'),
-      text(`用 AI 回复时：最近的聊天记录、${TA()}的人设、你填的资料和督促清单、${TA()}记得的事，会发给 AI 服务，由它写出${TA()}的回复。`,
-        `用「知己内置 AI」时，这些内容经过知己的服务器（Supabase 上的中转）转给 DeepSeek；中转只转发、不保存聊天内容，但会记下你每天用了几次，用来限量。用你自己的 Key 时，直接发给你选的服务，Key 只存在这台手机上。`,
-        `AI 生成照片时：照片描述和参考形象图会发给生成照片的服务。`,
-        `看天气时：只把${TA()}所在城市的名字发给 Open-Meteo，不用你的定位。`)]));
+      el('p', {}, '知己里的 App 大多是模拟出来的。点它们时会发生什么，下面说清楚。')));
     b.append(iosGroup('App 壳子和跳转', [text(
       `第二页的小红书、美团这些第三方 App，还有「图书」「播客」，在 iPhone 上点了会打开你手机里真的那个。知己只是让 iPhone 打开一个地址（比如小红书是 xhsdiscover://），和点一个链接一样，不附带你的任何信息；跳过去以后你在那边做什么，知己看不到。`,
       `知己会看一下有没有跳过去，只用来决定要不要显示它的模拟页面，不记录、不上传。`,
       `照片、日历、备忘录这些系统 App 都是知己里的模拟页面，读不到你手机里真的照片和日历。`)]));
-    b.append(iosGroup('权限', [row('定位', '不使用'), row('相机', '只在打开「相机」时使用'), row('照片', '只读取你自己选的'),
-      row('麦克风', '暂不使用'), row('通知', '你打开后才会问')],
-      '知己的网页文件放在 GitHub Pages 上，账号和云端存档在 Supabase 上。和所有网站一样，托管方能看到访问记录（比如 IP 地址）。'));
   });
 }
 
@@ -337,14 +368,46 @@ function settingsPhotoPage(pg, app) {
 }
 
 /* ---------- 通知 / 屏幕使用时间 ---------- */
+/* 设置 → 通知：照 iPhone「设置 → 通知 → 某个 App」的样子做 */
+const BANNER_STYLES = { temp: ['临时', '过几秒自己收起'], keep: ['持续', '点掉或往上划才收起'] };
+const PREVIEWS = { always: ['始终', '锁屏和横幅上都显示消息内容'], unlocked: ['解锁时', '锁屏上只写「发来一条消息」，解锁以后的横幅显示内容'], never: ['从不', '锁屏、横幅、锁屏通知上都只写「发来一条消息」'] };
+function nfPhone(kind) {   // 「提醒」里的三个小手机
+  const inner = kind === 'lock' ? '<text x="23" y="21" text-anchor="middle" font-size="8.5" font-weight="600" fill="currentColor" stroke="none">09:41</text><rect x="9" y="60" width="28" height="7" rx="3.5" fill="currentColor" stroke="none"/>'
+    : kind === 'center' ? '<rect x="9" y="16" width="28" height="6" rx="3" fill="currentColor" opacity=".45" stroke="none"/><rect x="9" y="25" width="28" height="6" rx="3" fill="currentColor" opacity=".45" stroke="none"/><rect x="9" y="37" width="28" height="7" rx="3.5" fill="currentColor" stroke="none"/><rect x="9" y="48" width="28" height="6" rx="3" fill="currentColor" opacity=".45" stroke="none"/><rect x="9" y="57" width="28" height="6" rx="3" fill="currentColor" opacity=".45" stroke="none"/>'
+    : '<rect x="8" y="12" width="30" height="8" rx="4" fill="currentColor" stroke="none"/>';
+  const s = el('span', { class: 'nf-ph', 'aria-hidden': 'true' });
+  s.innerHTML = `<svg viewBox="0 0 46 80"><rect x="3" y="3" width="40" height="74" rx="8" fill="var(--nf-screen)" stroke="currentColor" stroke-width="2.6"/><rect x="18" y="6.5" width="10" height="3" rx="1.5" fill="currentColor" stroke="none"/>${inner}</svg>`;
+  return s;
+}
 function settingsNotifyPage(pg, app) {
   subPage(pg, app, '通知', (b, re) => {
-    b.append(pushSettingsGroup(re),
-      iosGroup('', [fToggle('notify.banner', '横幅通知')], `在别的 App 里时，${herName()}的消息从屏幕顶上弹出来。专注模式打开时不弹。`),
-      iosGroup('', [fToggle('notify.system', '网页在后台时弹系统通知', onNotifyToggle)], '只在网页还开着（哪怕切到后台）时有效。想关掉网页也收到，打开上面的「锁屏通知」。'),
-      iosGroup('', [fToggle('notify.relock', '离开 3 分钟后回到锁屏')], `像重新拿起手机，锁屏上能看到${TA()}这段时间发来的消息。`));
+    const kinds = [['lock', '锁定屏幕', 'notify.lockShow'], ['center', '通知中心', 'notify.center'], ['banner', '横幅', 'notify.banner']];
+    const kindRow = el('div', { class: 'nf-kinds' }, ...kinds.map(([k, label, path]) => {
+      const on = getP(path) !== false;
+      return el('button', { class: 'nf-kind', 'aria-pressed': String(on), onclick: () => { setP(path, !on); saveS(); re(); if (k === 'lock' && cur === 'lock') renderLock(); } },
+        nfPhone(k), el('span', { class: 'nf-lbl' }, label), el('span', { class: 'nf-check' + (on ? ' on' : '') }, on ? icon('check', 14, 3) : ''));
+    }));
+    const go = fn => () => Nav.push(app, p => fn(p, app));
+    b.append(pushAllowGroup(re),
+      iosGroup('提醒', [kindRow,
+        iosLink({ label: '横幅风格', value: BANNER_STYLES[S.notify.bannerStyle || 'temp'][0], onclick: go(settingsBannerStylePage) }),
+        fToggle('notify.sound', '声音'),
+        fToggle('notify.badge', '标记', () => { setTimeout(updateBadges); return true; })],
+        `锁定屏幕：知己的锁屏上显示${TA()}的消息。横幅：你在知己里别的 App 时，消息从屏幕顶上弹出来。声音：网页开着时来消息「叮」一声。标记：App 图标上的红色数字。专注模式、免打扰打开时不弹也不响。`),
+      iosGroup('锁定屏幕外观', [iosLink({ label: '显示预览', value: PREVIEWS[S.notify.preview || 'always'][0], onclick: go(settingsPreviewPage) }),
+        fToggle('notify.relock', '离开 3 分钟后回到锁屏')], `回到锁屏像重新拿起手机，能看到${TA()}这段时间发来的消息。`),
+      iosGroup('其他', [fToggle('notify.system', '网页在后台时弹系统通知', onNotifyToggle)], '只在网页还开着（哪怕切到后台）时有效。网页关着也想收到，打开最上面的「允许通知」。'));
   });
 }
+/* 两三个选项、打勾选一个的小页面 */
+function choicePage(pg, app, title, path, opts, foot, after) {
+  subPage(pg, app, title, (b, re) => {
+    b.append(iosGroup('', Object.entries(opts).map(([k, [label, desc]]) => el('button', { class: 'ios-row', onclick: () => { setP(path, k); saveS(); re(); if (after) after(); } },
+      el('span', { class: 'lbl' }, label, el('small', {}, desc)), getP(path) === k ? el('span', { class: 'check' }, icon('check', 20, 2.4)) : '')), foot));
+  });
+}
+const settingsBannerStylePage = (pg, app) => choicePage(pg, app, '横幅风格', 'notify.bannerStyle', BANNER_STYLES, '');
+const settingsPreviewPage = (pg, app) => choicePage(pg, app, '显示预览', 'notify.preview', PREVIEWS, '开着「允许通知」时，网页关着弹到手机锁屏上的通知也按这里：选「从不」就只写「发来一条消息」。', () => { if (cur === 'lock') renderLock(); pushDirty(); });
 function settingsScreenTimePage(pg, app) {
   subPage(pg, app, '屏幕使用时间', b => {
     const mins = Math.round(((ST.usage && ST.usage.active) || 0) / 60000);

@@ -160,3 +160,12 @@
 .pv-text p{margin:0 0 9px;font-size:15px;line-height:1.55}
 .pv-text+.ios-row::before,.ios-row+.pv-text::before{content:"";position:absolute;top:0;right:0;left:16px;height:.5px;background:var(--sys-sep)}
 .seg.locked button:disabled{opacity:.4}
+
+/* 设置 → 通知 →「提醒」里的三个小手机（照 iPhone 的通知设置） */
+.nf-kinds{display:flex;justify-content:space-around;padding:16px 6px 14px;border-bottom:.5px solid var(--sys-sep);--nf-screen:color-mix(in srgb, var(--sys-blue) 7%, var(--sys-card))}
+.nf-kind{display:flex;flex-direction:column;align-items:center;gap:7px;background:none;border:0;padding:4px 8px;font:inherit;color:var(--sys-ink);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.nf-ph{color:var(--sys-blue);display:block}
+.nf-ph svg{width:46px;height:80px;display:block}
+.nf-lbl{font-size:13px}
+.nf-check{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--sys-ink3);display:grid;place-items:center;box-sizing:border-box}
+.nf-check.on{background:var(--sys-blue);border-color:var(--sys-blue);color:#fff}

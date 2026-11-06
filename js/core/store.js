@@ -48,11 +48,12 @@ const DEFAULTS = {
   reply: { mode: 'ai', fallback: true, aiOk: false },          // aiOk：看过「AI 会把聊天发给哪里」的说明
   api: { provider: 'builtin', base: '', key: '', model: '', json: true },          // builtin = 知己内置 AI（登录后可用，不用填 Key）
   photo: { mode: 'pool_then_gen', provider: 'openai', key: '', base: '', model: '' },
-  notify: { system: false, banner: true, relock: true, breakReminder: true, focus: false, focusMode: 'personal', airplane: false },
+  notify: { system: false, banner: true, relock: true, breakReminder: true, focus: false, focusMode: 'personal', airplane: false,
+            lockShow: true, center: true, bannerStyle: 'temp', sound: true, badge: true, preview: 'always' },   // 后一行：设置 → 通知（照 iPhone 的通知设置做的）
   // 外观：锁屏墙纸、主屏幕墙纸、图标大小（large 大图标不显示名字）、状态栏（无线局域网 / 5G、低电量模式）
   look: { v: 3, wall: 'bamboo', lockColor: '#2F4A2A', home: 'same', homeColor: '#2F4A2A', icons: 'small', wifi: false, lowPower: false },
   countdown: { title: '下次见面', date: '' },                          // 桌面上的倒数日小组件
-  zx: { voice: 'sometimes', mute: false, pin: true, bg: false, speed: 'real', lang: 'zh', enLevel: 'edu', correct: true },   // chatwe：她发语音的频率、免打扰、置顶、聊天背景、回复速度（见 rhythm.js）
+  zx: { voice: 'sometimes', mute: false, pin: true, bg: false, speed: 'real', company: 'real', lang: 'zh', enLevel: 'edu', correct: true },   // chatwe：她发语音的频率、免打扰、置顶、聊天背景、回复速度（只剩测试用的秒回）、陪伴方式（见 rhythm.js）
   home: {},                                                        // 每个桌面图标的自定义：{ id: { label, icon, ios } }
   layout: null,                                                    // 桌面排布（编辑过才有）：{ pages, dock, folders }；null = 用 js/data/ui.js 的默认
   events: DEFAULT_EVENTS,
@@ -109,6 +110,8 @@ function migrate(raw, s) {
   if (s.api.key === 'free-pass') s.api.key = '';                          // 早先内置 AI 用过的暗号，已经不用了
   if (!CHAT_PROVIDERS[s.api.provider]) s.api.provider = 'builtin';
   if (!REPLY_MODES[s.reply.mode]) s.reply.mode = 'ai';                    // 「混合」取消了，并进 AI
+  if (s.zx.speed !== 'fast') s.zx.speed = 'real';                          // 「慢热」取消了：回复速度换成陪伴方式（秒回只留着测试用）
+  if (!COMPANY[s.zx.company]) s.zx.company = 'real';
   if (raw && raw.reply && raw.reply.mode && raw.reply.mode !== 'template' && raw.reply.aiOk === undefined) s.reply.aiOk = true;  // 已经在用 AI 的，不再弹说明
   if (raw && !(raw.ver >= 3)) {                                           // v3：人设规范（2026-11）改了猫、外貌、表情、作息；没自己改过的跟着换
     const OLD3 = {

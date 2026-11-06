@@ -1,40 +1,73 @@
 /*
  * 回复节奏（《陪伴对象设计规范》第 5 节）：你发完消息，她过多久才开始回、回几条、打字多快。
  *
- *   她此刻的状态由她的作息决定（js/data/persona.js 的 routine 只是给 AI 看的文字，这里是程序用的大概时间）：
- *     起床、睡觉、跑步的时间每天不一样（按日期算，同一天总是同一个结果）
+ *   陪伴方式（S.zx.company，见 js/data/persona.js 的 COMPANY）：
+ *     真人作息（默认）：按她的作息（S.her.sched：几点起、几点睡、工作日忙的时候）决定多久回。
+ *       睡着了醒来才回；你连发 7 条能把她吵醒；忙的时候过几分钟回；看不了手机的时候忙完才回。
+ *     24 小时陪伴：什么时候都在几分钟内回。
+ *   不管哪种：你说出想伤害自己这类话，她马上回。
  *   时间表只决定倾向：你们正聊得热的时候，她忙着也会回（「取决于对话者」）。
- *   等待中切走、关掉网页都没关系：预定的回复时间存在 ST.pending 里，下次打开时按那个时间补上。
+ *   起床、睡觉的时间可以每天早晚差半小时左右（按日期算，同一天总是同一个结果）。
+ *   等待中切走、关掉网页都没关系：预定的回复时间存在 ST.pending 里，到时由服务器（锁屏通知）或下次打开网页时补上。
  */
 'use strict';
 
-const SPEEDS = { fast: '秒回（测试用）', real: '像真人', slow: '慢热' };
 const rnd = (a, b) => a + Math.random() * (b - a);
+const WAKE_N = 7;   // 她睡着时，你连发几条能把她吵醒
 
-/* 她这一天的大概时间（毫秒时间戳） */
+const toMin = s => { const [h, m] = String(s || '').split(':').map(Number); return (h || 0) * 60 + (m || 0); };
+/* 她这一天的时间（毫秒时间戳）：起床、睡觉（可能过了半夜）、工作日忙的时候 */
 function herDay(t) {
   const d = new Date(t); d.setHours(0, 0, 0, 0);
-  const key = dkey(d), r = k => hash01(key + ':' + k);
-  const at = (h, m) => d.getTime() + (h * 60 + m) * 60e3;
-  const weekend = d.getDay() === 0 || d.getDay() === 6;
-  const wake = weekend ? at(8, 30 + r('wake') * 60) : at(6, 45 + r('wake') * 60);   // 工作日 6:45–7:45，周末 8:30–9:30
-  const bed = at(23, r('bed') * 90);                                                  // 23:00–0:30
-  const busy = weekend ? [] : [[at(9, 0), at(12, 0)], [at(13, 30), at(18, 0)]];
-  let run = null;
-  if (r('run?') < (weekend ? .5 : .8)) { const s = at(17, 45 + r('run') * 105); run = [s, s + (40 + r('runlen') * 30) * 60e3]; } // 17:45–19:30 开始，跑 40–70 分钟
-  return { wake, bed, busy, run };
+  const sc = S.her.sched || DEFAULT_HER.sched, dow = d.getDay();
+  const r = k => hash01(dkey(d) + ':' + k);
+  const at = min => d.getTime() + min * 60e3;
+  const jit = k => sc.vary === false ? 0 : (r(k) * 2 - 1) * 30;               // 每天早晚差半小时左右
+  const wake = at(toMin(dow === 0 || dow === 6 ? sc.wakeWeekend : sc.wake) + jit('wake'));
+  let bedMin = toMin(dow === 5 || dow === 6 ? sc.bedWeekend : sc.bed);         // 周五、周六晚上按周末的睡
+  if (bedMin < 12 * 60) bedMin += 24 * 60;                                      // 00:30 = 过了半夜才睡
+  const bed = Math.max(wake + 3600e3, at(bedMin + jit('bed')));
+  const busy = dow === 0 || dow === 6 ? [] : (sc.busy || []).map(b => {
+    const s = toMin(b.from), e = toMin(b.to);
+    return e > s ? { from: at(s), to: at(e), what: String(b.what || '').trim(), phone: b.phone !== false } : null;
+  }).filter(Boolean);
+  return { wake, bed, busy };
 }
-/* 她此刻在干嘛：sleep / run / busy / free，以及这个状态到什么时候结束 */
+/* 她此刻在干嘛：sleep 睡觉 / busy 忙（偶尔看手机）/ away 看不了手机 / free 有空，以及到什么时候 */
 function herStatus(t = Date.now()) {
   const d = herDay(t);
+  if (t < herDay(t - 864e5).bed) return { status: 'free', until: t };          // 昨晚过了半夜还没睡
   if (t < d.wake) return { status: 'sleep', until: d.wake };
   if (t >= d.bed) return { status: 'sleep', until: herDay(t + 864e5).wake };
-  if (d.run && t >= d.run[0] && t < d.run[1]) return { status: 'run', until: d.run[1] };
-  const b = d.busy.find(([s, e]) => t >= s && t < e);
-  if (b) return { status: 'busy', until: b[1] };
+  const b = d.busy.find(x => t >= x.from && t < x.to);
+  if (b) return { status: b.phone ? 'busy' : 'away', until: b.to, what: b.what };
   return { status: 'free', until: t };
 }
-const STATUS_WORDS = { sleep: '在睡觉', run: '在跑步', busy: '在画稿', free: '' };
+/* 她刚说了「晚安」「我睡了」：睡到明早醒来；「我眯一会儿」：睡一个小时左右。返回睡到什么时候，没说过就是 0 */
+const GOODNIGHT = /晚安|(我|先|要|去)睡(了|啦)|睡觉去|good ?night|going to bed|off to bed/i, NAP = /眯一会|睡一会|午睡|小睡|nap/i;
+function sleepSaidUntil(now) {
+  let last = null;
+  for (let i = M.length - 1; i >= 0 && !last; i--) if (M[i].from === 'her') last = M[i];
+  const t = last && last.type === 'text' ? String(last.text || '') : '';
+  if (!t || /[吗？?]/.test(t)) return 0;
+  let until = 0;
+  if (NAP.test(t)) until = last.ts + 60 * 60e3;
+  else if (GOODNIGHT.test(t)) { const d = herDay(last.ts); until = last.ts < d.wake ? d.wake : herDay(last.ts + 864e5).wake; }
+  return now < until ? until : 0;
+}
+/* 「刚才你在……」：告诉 AI 她刚才在干嘛 */
+function doingText({ status, what } = {}) {
+  if (status === 'sleep') return '在睡觉';
+  if (status === 'woken') return `在睡觉，被${pron()}连着发的消息吵醒了`;
+  if (status === 'run') return '在跑步';   // 旧版存下的
+  if (status === 'busy' || status === 'away') return what ? (what.startsWith('在') ? what : '在' + what) : '在忙';
+  return '';
+}
+/* 你还没被回的消息里，有没有想伤害自己之类的话 */
+function crisisNow() {
+  const t = pendingText();
+  return !!t && [...REPLY_RULES, ...REPLY_RULES_EN].some(r => r.reply === 'crisis' && r.match.test(t));
+}
 
 /* 你们是不是正聊得热：她 5 分钟内回过你 */
 function chatIsHot(now) {
@@ -44,16 +77,18 @@ function chatIsHot(now) {
 
 /* 这次等多久才开始回 */
 function replyDelay(now = Date.now()) {
-  const speed = S.zx.speed || 'real';
-  if (speed === 'fast') return { delay: rnd(1e3, 3e3), status: 'free' };
-  const k = speed === 'slow' ? 2 : 1;
-  if (chatIsHot(now)) return { delay: rnd(3e3, 25e3) * k, status: 'free' };   // 聊得正热：忙也会回
-  const st = herStatus(now);
-  if (st.status !== 'sleep' && Math.random() < .1) return { delay: rnd(500, 3e3), status: 'free' };   // 刚好拿着手机
-  if (st.status === 'free') return { delay: rnd(20e3, 180e3) * k, status: 'free' };
-  if (st.status === 'busy') return { delay: rnd(3, 15) * 60e3 * k, status: 'busy' };
-  if (st.status === 'run') return { delay: Math.min(st.until - now, 70 * 60e3) + rnd(1, 5) * 60e3 * k, status: 'run' };
-  return { delay: st.until - now + rnd(5, 40) * 60e3 * k, status: 'sleep' };   // 睡着了：醒来以后才看到
+  if (S.zx.speed === 'fast') return { delay: rnd(1e3, 3e3), status: 'free' };                     // 测试用的秒回
+  if (crisisNow()) return { delay: rnd(2e3, 6e3), status: 'free' };                               // 说出想伤害自己这类话：马上回
+  const st = herStatus(now), said = sleepSaidUntil(now);
+  if (S.zx.company === 'always')                                                                   // 24 小时陪伴
+    return { delay: chatIsHot(now) ? rnd(3e3, 25e3) : rnd(15e3, 120e3), status: st.status === 'sleep' || said ? 'night' : 'free' };
+  if (said) return { delay: said - now + rnd(5, 30) * 60e3, status: 'sleep' };                    // 她刚说了晚安 / 眯一会儿：睡着了
+  if (chatIsHot(now)) return { delay: rnd(3e3, 25e3), status: 'free' };                           // 聊得正热：忙也会回
+  if (st.status !== 'sleep' && st.status !== 'away' && Math.random() < .1) return { delay: rnd(500, 3e3), status: 'free' };   // 刚好拿着手机
+  if (st.status === 'free') return { delay: rnd(20e3, 180e3), status: 'free' };
+  if (st.status === 'busy') return { delay: Math.min(rnd(3, 15) * 60e3, st.until - now + rnd(1, 5) * 60e3), status: 'busy', what: st.what };
+  if (st.status === 'away') return { delay: st.until - now + rnd(1, 5) * 60e3, status: 'away', what: st.what };   // 看不了手机：忙完才回
+  return { delay: st.until - now + rnd(5, 40) * 60e3, status: 'sleep' };                          // 睡着了：醒来以后才看到
 }
 
 /* 这次回几条：1 条 45%，2 条 35%，3 条 15%，4 条 5%；你只回了「嗯」或一个表情，最多 1 条 */
@@ -76,11 +111,16 @@ function typingMs(it) {
 let replyTimer = null;
 function queueReply() {
   const now = Date.now();
-  if (ST.pending && ST.pending.due > now) {   // 已经在等了：她看到时会一起看到，不重新算
-    ST.pending.due = Math.max(ST.pending.due, now + 2e3); saveST(); armReply(); return;
+  const p = ST.pending;
+  if (p && p.due > now) {   // 已经在等了：她看到时会一起看到
+    if (crisisNow()) { p.due = Math.min(p.due, now + rnd(2e3, 6e3)); p.status = 'free'; delete p.what; }   // 想伤害自己这类话：马上回
+    else if (p.status === 'sleep' && S.zx.company !== 'always' && pendingMine().filter(m => m.from === 'me').length >= WAKE_N) {
+      p.due = Math.min(p.due, now + rnd(20e3, 90e3)); p.status = 'woken';                                // 连发 7 条：被吵醒了
+    } else p.due = Math.max(p.due, now + 2e3);
+  } else {
+    const { delay, status, what } = replyDelay(now);
+    ST.pending = Object.assign({ due: now + Math.max(2e3, delay), since: now, status }, what ? { what } : {});
   }
-  const { delay, status } = replyDelay(now);
-  ST.pending = { due: now + Math.max(2e3, delay), since: now, status };
   saveST(); armReply();
   pushDirty(true);   // 你马上关网页的话，到时间由服务器替她回（js/core/push.js）
 }
@@ -99,7 +139,7 @@ function checkPending() {
   const live = now - p.due < 60e3 && !document.hidden;   // 网页关着时错过的：按预定时间补上，不演打字
   replyBusy = true;
   enqueue(async () => {
-    try { await herTurn({ kind: 'reply', at: live ? Date.now() : p.due, live, waited: p.due - p.since, status: p.status, retry: { kind: 'reply' } }); }
+    try { await herTurn({ kind: 'reply', at: live ? Date.now() : p.due, live, waited: p.due - p.since, status: p.status, what: p.what || '', retry: { kind: 'reply' } }); }
     finally { replyBusy = false; if (ST.pending) armReply(); }
   });
 }

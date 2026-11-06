@@ -212,7 +212,7 @@ function showLoginModal() {
     p.append(el('div', { class: 'sheet-title' }, `登录「${APP_TITLE}」`),
       el('p', { class: 'sub' }, '第一次用就点「注册新账号」，自己起一个账号和密码。登录后，人设和聊天记录会保存在知己的云端，换手机登录也能找回。'),
       iosGroup('', f.fields), f.msg, f.buttons, f.offBtn,
-      el('p', { class: 'sub small' }, '用内置 AI 时，聊天内容会经过知己的服务器转给 DeepSeek。知己的开发者作为数据库管理员，技术上能看到云端存档。别在聊天里发证件号、银行卡号这类信息。详细说明在「设置 → 隐私与安全性」。'));
+      el('p', { class: 'sub small' }, '用内置 AI 时，聊天内容会经过知己的服务器转给 DeepSeek。知己的开发者作为数据库管理员，技术上能看到云端存档。别在聊天里发证件号、银行卡号这类信息。'));
   });
   lockSheet(true);
 }

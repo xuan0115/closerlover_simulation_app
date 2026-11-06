@@ -99,6 +99,7 @@ const secOf = name => appRoots()[name] ? name : 'shell';
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 function show(name) {
   const prev = cur;
+  if (name === 'lock' && prev !== 'lock') rememberPlace();   // 锁屏前记下在哪，解锁后回到这里
   if (name === 'lock') $('#lock').classList.add('on');
   else $('#lock').classList.remove('on');
   const sec = APPS[name] ? 'app-' + secOf(name) : '';
@@ -111,6 +112,13 @@ function show(name) {
   if (name === 'home' || name === 'lock') renderHome();
   if (prev === 'camera' && name !== 'camera') stopCamera();
   syncInk();
+  if (name !== 'lock' && typeof pushMaybeAsk === 'function') pushMaybeAsk();   // 第一次进到手机里：问要不要开通知（js/core/push.js）
+}
+/* 你在知己里的哪儿（哪个 App、是不是在和她的聊天里）：锁屏或切走时记下，解锁后回到这里，像真的手机 */
+function rememberPlace() {
+  if (cur === 'lock' || !ST.started) return;
+  ST.resume = { app: cur, chat: cur === 'wx' && threadVisible() };
+  saveST();
 }
 /* 在 iPhone 上：有跳转地址的 App（第二页的第三方 App、图书、播客）直接打开手机里真的那个 */
 function launchReal(d) {
@@ -149,7 +157,12 @@ function shellPage(pg, id) {
 function unlock(then) {
   if (!ST.started) { show('home'); openApp('settings'); Nav.popToRoot('settings'); return; }
   show('home');
-  if (then) then();
+  if (then) { then(); return; }
+  const r = ST.resume;   // 回到上次离开的地方（相机不自动打开）
+  if (r && r.app && r.app !== 'home' && r.app !== 'camera' && APPS[r.app]) {
+    openApp(r.app, null, true);
+    if (r.app === 'wx' && r.chat) openThread(true);
+  }
 }
 /* 状态栏颜色：锁屏、桌面、相机、朋友圈封面上用白字 */
 function syncInk() {
@@ -284,10 +297,10 @@ function renderLock() {
         el('p', {}, `先告诉${TA()}是谁、你们是什么关系，然后就能开始收到${TA()}的消息。`))));
     return;
   }
-  const un = unreadList();
+  const un = S.notify.lockShow === false ? [] : unreadList();   // 设置 → 通知 → 锁定屏幕
   for (const m of un.slice(-4).reverse()) {
     box.append(el('button', { class: 'note', onclick: () => unlock(() => { openApp('wx'); openThread(true); }) }, noteAvatar(),
-      el('div', {}, el('div', { class: 'note-top' }, el('span', {}, wxName()), el('time', {}, relTime(m.ts))), el('p', {}, preview(m)))));
+      el('div', {}, el('div', { class: 'note-top' }, el('span', {}, wxName()), el('time', {}, relTime(m.ts))), el('p', {}, notePreview(m, 'lock')))));
   }
   if (un.length > 4) box.append(el('div', { class: 'more' }, `还有 ${un.length - 4} 条通知`));
 }
@@ -330,21 +343,61 @@ function askCheckin(id) {
   });
 }
 function updateBadges() {
-  const n = unreadList().length;
+  const all = unreadList().length, n = S.notify.badge === false ? 0 : all;   // 设置 → 通知 → 标记：图标上的红色数字
   $$('.wxbadge').forEach(b => { b.hidden = !n; b.textContent = n > 99 ? '99+' : n; });
-  document.title = (n ? `(${n}) ` : '') + APP_TITLE;
+  document.title = (all ? `(${all}) ` : '') + APP_TITLE;
   if ('setAppBadge' in navigator) { try { (n ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => {}); } catch (e) {} }   // 主屏幕图标上的红色数字
   if (Nav.stacks.wx && Nav.stacks.wx[0].updateBadges) Nav.stacks.wx[0].updateBadges();
 }
 
 /* ---------- 新消息提醒 ---------- */
+/* 通知上显示什么：设置 → 通知 → 显示预览。始终 / 解锁时（锁屏上不显示内容）/ 从不 */
+const HIDDEN_TEXT = () => isEN() ? 'sent you a message' : '发来一条消息';
+function notePreview(m, where) {
+  const p = S.notify.preview || 'always';
+  return p === 'never' || (p === 'unlocked' && where === 'lock') ? HIDDEN_TEXT() : preview(m);
+}
 let bannerT;
 function showBanner(title, body, onclick) {
   const b = $('#banner'); b.textContent = '';
   b.append(noteAvatar(), el('div', {}, el('div', { class: 'note-top' }, el('span', {}, title), el('time', {}, '现在')), el('p', {}, body)));
   b.onclick = () => { b.classList.remove('on'); onclick(); };
   b.classList.add('on');
-  clearTimeout(bannerT); bannerT = setTimeout(() => b.classList.remove('on'), 4500);
+  clearTimeout(bannerT);
+  if (S.notify.bannerStyle !== 'keep') bannerT = setTimeout(() => b.classList.remove('on'), 4500);   // 持续：点掉或往上划才消失
+}
+(function bannerSwipe() {   // 横幅往上划：收起
+  const b = $('#banner'); let y0 = null;
+  b.addEventListener('touchstart', e => { y0 = e.touches[0].clientY; }, { passive: true });
+  b.addEventListener('touchmove', e => { if (y0 != null && e.touches[0].clientY - y0 < -18) { b.classList.remove('on'); y0 = null; } }, { passive: true });
+})();
+/* 来消息的提示音（网页开着时）：两声短促的「叮」。真正锁屏通知的声音由手机决定 */
+let chimeCtx = null;
+function playChime() {
+  try {
+    chimeCtx = chimeCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (chimeCtx.state === 'suspended') chimeCtx.resume();
+    const t = chimeCtx.currentTime;
+    [[880, 0], [1318.5, 0.11]].forEach(([f, d]) => {
+      const o = chimeCtx.createOscillator(), g = chimeCtx.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t + d); g.gain.exponentialRampToValueAtTime(0.18, t + d + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.32);
+      o.connect(g).connect(chimeCtx.destination); o.start(t + d); o.stop(t + d + 0.34);
+    });
+  } catch (e) {}
+}
+document.addEventListener('pointerdown', () => { if (chimeCtx && chimeCtx.state === 'suspended') chimeCtx.resume(); }, { passive: true });
+/* 和 iPhone 一样的居中弹窗。buttons：[{ label, bold, value }]，点哪个就返回它的 value */
+function iosAlert({ title, message, buttons }) {
+  return new Promise(res => {
+    const wrap = el('div', { class: 'ios-alert-wrap', role: 'alertdialog', 'aria-label': title });
+    const done = v => { wrap.classList.remove('on'); setTimeout(() => wrap.remove(), 220); res(v); };
+    wrap.append(el('div', { class: 'ios-alert' },
+      el('div', { class: 'ios-alert-text' }, el('h3', {}, title), message ? el('p', {}, message) : ''),
+      el('div', { class: 'ios-alert-btns' + (buttons.length > 2 ? ' col' : '') }, ...buttons.map(b => el('button', { class: b.bold ? 'bold' : '', onclick: () => done(b.value) }, b.label)))));
+    $('#phone').append(wrap);
+    requestAnimationFrame(() => wrap.classList.add('on'));
+  });
 }
 function systemNotify(title, body) {
   if (!S.notify.system || !('Notification' in window) || Notification.permission !== 'granted') return;
@@ -360,8 +413,9 @@ function onHerMessage(m) {
   updateBadges();
   if (cur === 'lock') renderLock();
   else if (cur === 'home') renderHome();
-  const quiet = S.notify.focus || !S.notify.banner || S.zx.mute;
-  if (cur !== 'lock' && !document.hidden && !quiet) showBanner(wxName(), preview(m), () => { openApp('wx'); openThread(true); });
-  if (document.hidden && !S.notify.focus && !S.zx.mute) systemNotify(wxName(), preview(m));
+  const hush = S.notify.focus || S.zx.mute, quiet = hush || !S.notify.banner;
+  if (cur !== 'lock' && !document.hidden && !quiet) showBanner(wxName(), notePreview(m, 'banner'), () => { openApp('wx'); openThread(true); });
+  if (!document.hidden && !hush && S.notify.sound !== false) playChime();
+  if (document.hidden && !hush) systemNotify(wxName(), notePreview(m, 'banner'));
   if (cur === 'wx' && Nav.top('wx') === Nav.stacks.wx[0]) Nav.refresh('wx');
 }
