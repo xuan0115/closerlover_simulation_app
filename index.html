@@ -13,6 +13,19 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/icon-180.png">
+<!-- 从 iPhone 主屏幕打开时先显示的启动图：开屏动画「小手机亮着知己」那一帧，各种 iPhone 尺寸一张（改了开屏的样子要重新生成） -->
+<link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="assets/launch/750x1334.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="assets/launch/1242x2208.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="assets/launch/1125x2436.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="assets/launch/828x1792.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="assets/launch/1242x2688.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="assets/launch/1170x2532.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="assets/launch/1284x2778.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="assets/launch/1179x2556.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="assets/launch/1290x2796.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="assets/launch/1206x2622.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="assets/launch/1320x2868.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 420px) and (device-height: 912px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="assets/launch/1260x2736.png">
 <!-- 开屏动画的样式（其余样式在 body 里、开屏页后面加载，这样开屏页不用等它们） -->
 <style>
 #splash{position:fixed;inset:0;z-index:2147483000;background:#000;overflow:hidden;cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -24,7 +37,7 @@
 <div id="splash" aria-hidden="true"></div>
 <script>
 /* 开屏动画：图标上的那台小手机出现，屏幕里亮起「知己 KNOW ME」，然后往屏幕里推，
- * 推的时候「知己」淡出、「欢迎来到知己」一个字一个字出现，屏幕铺满整个画面后换成锁屏。
+ * 屏幕铺满整个画面后换成锁屏（现在用的是版本二：一直只有「知己」；版本一推的时候换成「欢迎来到知己」，见下面的 VER）。
  * 写在 index.html 里，不等其他文件下载，一打开就能看到。网页没加载完时停在「知己」亮着的画面等。
  * 点一下可以跳过。系统开了「减弱动态效果」时不推近，只淡出。
  * 中文字形：有字库龙藏体（Long Cang）；KNOW ME：Cormorant Garamond。两者都是 SIL Open Font License 1.1，
@@ -39,6 +52,14 @@
     '<circle cx="256" cy="101" r="4" fill="#fff" stroke="none"/>';
   var sp = document.getElementById('splash');
   var reduce = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  /* 从 iPhone 主屏幕打开：系统先显示启动图（assets/launch/，就是「小手机亮着知己」这一帧），动画从这一帧接着播 */
+  var home = navigator.standalone === true || !!(window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  /* 节奏（毫秒）。VER 1：往里推时「知己」换成「欢迎来到知己」；VER 2：一直只有「知己」
+   *   intro：小手机出现、「知己」亮起；hold：亮着停多久才往里推（从主屏幕打开时用 homeHold）；D：推多久 */
+  var VER = 2;   // 2026-11-06 定了加速版本二
+  var T = VER === 1
+    ? { pd: 300, zh: [200, 450], glow: [200, 800], km: [450, 400], hold: 900, homeHold: 450, D: 1300, out: 300, wel: [220, 100, 380], ease: [0.42, 0, 0.78, 0.42] }
+    : { pd: 300, zh: [200, 450], glow: [200, 800], km: [450, 400], hold: 900, homeHold: 450, D: 1200, out: 0, wel: null, ease: [0.5, 0, 0.85, 0.35] };
   var ready = false, readyFns = [], run = null;
   function setReady() { if (ready) return; ready = true; readyFns.splice(0).forEach(function (f) { f(); }); }
   function whenReady() { return new Promise(function (r) { ready ? r() : readyFns.push(r); }); }
@@ -104,17 +125,24 @@
       whenReady().then(function () { return wait(900); }).then(function () { end(400); });
       return;
     }
-    /* 1. 小手机出现，屏幕是黑的；屏幕里「知己」亮起（先有一圈光晕，再落成清楚的白字），下面是 KNOW ME */
-    fade(q('.pd'), 0, 1, 350);
-    fade(q('.zh'), 0, 1, 550, 300);
-    if (q('.glow').animate) q('.glow').animate([{ opacity: 0 }, { opacity: 0.95, offset: 0.45 }, { opacity: 0.3 }], { duration: 1000, delay: 300, fill: 'both' });
-    fade(q('.km'), 0, 0.8, 500, 700);
+    if (home) {
+      /* 1'. 从主屏幕打开：启动图已经是这一帧，直接亮着 */
+      q('.glow').style.opacity = 0.3; q('.km').style.opacity = 0.8;
+    } else {
+      /* 1. 小手机出现，屏幕是黑的；屏幕里「知己」亮起（先有一圈光晕，再落成清楚的白字），下面是 KNOW ME */
+      fade(q('.pd'), 0, 1, T.pd);
+      fade(q('.zh'), 0, 1, T.zh[1], T.zh[0]);
+      if (q('.glow').animate) q('.glow').animate([{ opacity: 0 }, { opacity: 0.95, offset: 0.45 }, { opacity: 0.3 }], { duration: T.glow[1], delay: T.glow[0], fill: 'both' });
+      fade(q('.km'), 0, 0.8, T.km[1], T.km[0]);
+    }
     /* 2. 网页加载完、而且「知己」亮了一会儿，才开始往屏幕里推 */
-    wait(1350).then(whenReady).then(function () {
+    wait(home ? T.homeHold : T.hold).then(whenReady).then(function () {
       if (!live() || me.skip) return;
-      fade(q('.zh-all'), 1, 0, 350, 0, 'ease-in');
-      for (var j = 0; j < chars.length; j++) fade(chars[j], 0, 1, 480, 380 + j * 140);
-      var D = 1800, ease = bezier(0.42, 0, 0.78, 0.42), start = performance.now();
+      if (T.wel) {   // 版本一：「知己」淡出，「欢迎来到知己」一个字一个字出现
+        fade(q('.zh-all'), 1, 0, T.out, 0, 'ease-in');
+        for (var j = 0; j < chars.length; j++) fade(chars[j], 0, 1, T.wel[2], T.wel[0] + j * T.wel[1]);
+      }
+      var D = T.D, ease = bezier(T.ease[0], T.ease[1], T.ease[2], T.ease[3]), start = performance.now();
       /* 每一帧重新画放大后的样子（不用 CSS 放大位图），字和线条放大了也是清楚的 */
       (function frame(now) {
         if (!live() || me.skip) return;
@@ -132,13 +160,13 @@
 })();
 </script>
 <!-- ?v= 是版本号：每次更新文件后改一下（比如 1101 → 1102），手机就不会用缓存里的旧文件 -->
-<link rel="stylesheet" href="css/tokens.css?v=1108">
-<link rel="stylesheet" href="css/phone.css?v=1108">
-<link rel="stylesheet" href="css/ios.css?v=1108">
-<link rel="stylesheet" href="css/wechat.css?v=1108">
-<link rel="stylesheet" href="css/extra-apps.css?v=1108">
-<link rel="stylesheet" href="css/call.css?v=1108">
-<link rel="stylesheet" href="css/overlays.css?v=1108">
+<link rel="stylesheet" href="css/tokens.css?v=1110">
+<link rel="stylesheet" href="css/phone.css?v=1110">
+<link rel="stylesheet" href="css/ios.css?v=1110">
+<link rel="stylesheet" href="css/wechat.css?v=1110">
+<link rel="stylesheet" href="css/extra-apps.css?v=1110">
+<link rel="stylesheet" href="css/call.css?v=1110">
+<link rel="stylesheet" href="css/overlays.css?v=1110">
 <div class="desk">
   <div class="device" id="device">
     <div class="phone" id="phone" data-screen="lock">
@@ -204,39 +232,39 @@
 <input type="file" id="anyfile" hidden>
 
 <!-- 数据：人设、台词、星座、名字、桌面布局，都在这几个文件里改 -->
-<script src="js/data/ui.js?v=1108"></script>
-<script src="js/data/persona.js?v=1108"></script>
-<script src="js/data/zodiac.js?v=1108"></script>
-<script src="js/data/templates.js?v=1108"></script>
-<script src="js/data/templates-en.js?v=1108"></script>
-<script src="js/data/prompts.js?v=1108"></script>
-<script src="js/data/providers.js?v=1108"></script>
+<script src="js/data/ui.js?v=1110"></script>
+<script src="js/data/persona.js?v=1110"></script>
+<script src="js/data/zodiac.js?v=1110"></script>
+<script src="js/data/templates.js?v=1110"></script>
+<script src="js/data/templates-en.js?v=1110"></script>
+<script src="js/data/prompts.js?v=1110"></script>
+<script src="js/data/providers.js?v=1110"></script>
 <!-- 程序 -->
 <!-- Supabase 客户端（账号和云同步）：固定版本 2.118.0，放在本仓库里，不依赖外部 CDN -->
 <script src="js/vendor/supabase.js?v=2.118.0"></script>
 <!-- 程序 -->
-<script src="js/core/util.js?v=1108"></script>
-<script src="js/core/store.js?v=1108"></script>
-<script src="js/core/cloud.js?v=1108"></script>
-<script src="js/ai/llm.js?v=1108"></script>
-<script src="js/ai/templates.js?v=1108"></script>
-<script src="js/ai/brain.js?v=1108"></script>
-<script src="js/core/schedule.js?v=1108"></script>
-<script src="js/core/rhythm.js?v=1108"></script>
-<script src="js/core/push.js?v=1108"></script>
-<script src="js/ui/icons.js?v=1108"></script>
-<script src="js/ui/wallpaper.js?v=1108"></script>
-<script src="js/ui/shell.js?v=1108"></script>
-<script src="js/ui/home.js?v=1108"></script>
-<script src="js/ui/wechat.js?v=1108"></script>
-<script src="js/ui/photos.js?v=1108"></script>
-<script src="js/ui/plans.js?v=1108"></script>
-<script src="js/ui/extra-apps.js?v=1108"></script>
-<script src="js/ui/clock.js?v=1108"></script>
-<script src="js/ui/simapps.js?v=1108"></script>
-<script src="js/ui/tasks.js?v=1108"></script>
-<script src="js/ui/voice.js?v=1108"></script>
-<script src="js/ui/settings.js?v=1108"></script>
-<script src="js/main.js?v=1108"></script>
+<script src="js/core/util.js?v=1110"></script>
+<script src="js/core/store.js?v=1110"></script>
+<script src="js/core/cloud.js?v=1110"></script>
+<script src="js/ai/llm.js?v=1110"></script>
+<script src="js/ai/templates.js?v=1110"></script>
+<script src="js/ai/brain.js?v=1110"></script>
+<script src="js/core/schedule.js?v=1110"></script>
+<script src="js/core/rhythm.js?v=1110"></script>
+<script src="js/core/push.js?v=1110"></script>
+<script src="js/ui/icons.js?v=1110"></script>
+<script src="js/ui/wallpaper.js?v=1110"></script>
+<script src="js/ui/shell.js?v=1110"></script>
+<script src="js/ui/home.js?v=1110"></script>
+<script src="js/ui/wechat.js?v=1110"></script>
+<script src="js/ui/photos.js?v=1110"></script>
+<script src="js/ui/plans.js?v=1110"></script>
+<script src="js/ui/extra-apps.js?v=1110"></script>
+<script src="js/ui/clock.js?v=1110"></script>
+<script src="js/ui/simapps.js?v=1110"></script>
+<script src="js/ui/tasks.js?v=1110"></script>
+<script src="js/ui/voice.js?v=1110"></script>
+<script src="js/ui/settings.js?v=1110"></script>
+<script src="js/main.js?v=1110"></script>
 </body>
 </html>
