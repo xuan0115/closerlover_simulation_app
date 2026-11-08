@@ -173,11 +173,57 @@ function authFlow({ onDone, onOffline, prefill = '', compact = false } = {}) {
 
 /* 用户协议和隐私政策：从底部弹出一张卡片，里面是 privacy.html 里那块屏幕的内容（不带 iPhone 4 外壳），点「完成」收起。
  * 填了一半的注册表单不受影响；完整的页面（带外壳和两边的大字）在 app.knowwo.com/privacy.html */
+/* 卡片里放的是 privacy.html 手机屏幕里的那部分（标题栏 + 正文），直接拿来显示，不用 iframe：
+ * iPhone 上 iframe 里的页面常常是空白的。装在 Shadow DOM 里，privacy.html 的样式只管它自己，不会影响知己。
+ * 改 privacy.html 的文字、样式，这里自动跟着变。 */
+let policyHTML = null;
+const loadPolicy = () => policyHTML || (policyHTML = fetch('privacy.html').then(r => r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status)))
+  .catch(err => { policyHTML = null; throw err; }));
+const POLICY_CSS = `:host{display:block;background:#fff;color:#111113;-webkit-text-size-adjust:100%;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Helvetica Neue",sans-serif}
+.screen-nav{position:sticky;top:0;z-index:5;padding:10px 16px;flex-wrap:wrap;gap:8px}
+.tab-home{display:none!important}
+.screen-content{overflow:visible;padding:18px 16px 40px}
+.policy-wait{padding:48px 16px;text-align:center;color:#8e8e93;font-size:14px;line-height:1.6}`;
 function policySheet(which) {
   openSheet((p, close) => {
     p.classList.add('tall');
-    p.append(sheetHead('', el('span'), el('button', { class: 'sheet-done', onclick: close }, '完成')),   // 标题就用页面里的「隐私政策与用户协议」
-      el('iframe', { class: 'policy-frame', src: `privacy.html?embed=1#${which}`, title: '用户协议与隐私政策' }));
+    const box = el('div', { class: 'policy-box', role: 'document', 'aria-label': '用户协议与隐私政策' });
+    p.append(sheetHead('', el('span'), el('button', { class: 'sheet-done', onclick: close }, '完成')), box);   // 标题就用页面里的「隐私政策与用户协议」
+    const root = box.attachShadow ? box.attachShadow({ mode: 'open' }) : box;
+    const wait = text => { root.innerHTML = ''; const s = document.createElement('style'); s.textContent = POLICY_CSS; root.append(s, el('div', { class: 'policy-wait' }, text)); };
+    wait('正在打开…');
+    loadPolicy().then(html => {
+      if (!box.isConnected) return;
+      const d = new DOMParser().parseFromString(html, 'text/html');
+      const nav = d.querySelector('.screen-nav'), body = d.querySelector('.screen-content');
+      if (!body) throw new Error('privacy.html 里没有 .screen-content');
+      const css = document.createElement('style');
+      css.textContent = [...d.querySelectorAll('style')].map(s => s.textContent).join('\n').replace(/:root\b/g, ':host') + '\n' + POLICY_CSS;
+      root.innerHTML = '';
+      root.append(css, ...[nav, body].filter(Boolean).map(n => document.importNode(n, true)));
+      const q = id => root.querySelector('#' + id), tabs = [...root.querySelectorAll('.tab-btn[data-target]')];
+      const navH = () => { const n = root.querySelector('.screen-nav'); return n ? n.offsetHeight : 0; };
+      const jump = (id, smooth) => {
+        const t = q(id); if (!t) return;
+        const top = box.scrollTop + t.getBoundingClientRect().top - box.getBoundingClientRect().top - navH() - 6;
+        box.scrollTo ? box.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' }) : (box.scrollTop = top);
+      };
+      const mark = () => {
+        const terms = q('terms'); if (!terms || tabs.length < 2) return;
+        const on = terms.getBoundingClientRect().top - box.getBoundingClientRect().top < 160;
+        tabs.forEach(b => b.classList.toggle('active', (b.dataset.target === 'terms') === on));
+      };
+      root.addEventListener('click', ev => {   // 页面里的链接：#xxx 在卡片里跳；别的网址在新页面打开
+        const a = ev.target.closest && ev.target.closest('a[href]'); if (!a) return;
+        const href = a.getAttribute('href');
+        if (href.startsWith('#')) { ev.preventDefault(); jump(a.dataset.target || href.slice(1), true); }
+        else if (/^https?:/i.test(href)) a.target = '_blank';
+        else if (!/^mailto:/i.test(href)) ev.preventDefault();
+      });
+      box.addEventListener('scroll', mark, { passive: true });
+      requestAnimationFrame(() => { jump(which, false); mark(); });
+    }).catch(err => { console.warn('隐私政策没打开', err); if (box.isConnected) wait('暂时打不开，联网后再点一次试试。'); });
   });
 }
 
