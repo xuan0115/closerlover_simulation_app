@@ -80,7 +80,9 @@ supabase/               不上传到网页也行，是给 Supabase 后台用的
   setup.sql             在 SQL Editor 里运行：存档表的权限（每人只能读写自己的）、内置 AI 用量表
   ai-proxy.ts           Edge Function「ai-proxy」的代码：只给登录的人用，每人每天限量，转给 DeepSeek
   push-setup.sql        锁屏通知要的表和每分钟一次的定时任务（先运行过 setup.sql）
-  email-templates.md    注册、忘记密码、换邮箱三封邮件的模板（贴进 Supabase 后台）
+  email-templates.md    注册、重设密码两封邮件怎么贴进 Supabase 后台
+  email-signup.html     注册验证码邮件（iPhone 4 小手机样式）
+  email-reset.html      重设密码验证码邮件
   push-tick.ts          Edge Function「push-tick」的代码：网页关着时到点替她写消息、推到锁屏
 ```
 
@@ -148,15 +150,15 @@ git push -u origin main
 - 账户在「设置」最上面的卡片里（照 iPhone 的 Apple 账户做）：我的资料、邮箱和密码、云同步状态、数据与备份、退出登录。
 - 登录后，聊天记录、设定、朋友圈会自动备份到云端（改动后 3 秒上传一次），换手机登录同一个账户就能接着聊。照片和墙纸只在本机。打开时先只问云端那份的时间，比这台手机上的新才下载。
 - 隔一阵再打开时，要联网换一张新的登录通行证。连不上（网络慢、服务器在国外）就照常用，记录先存在手机里，连上后自动同步；不会在聊天中途弹登录框。登录真的失效了（很少见），设置最上面和桌面上的「设置」会出现红点，点进去重新登录。
-- 以前只起了账号名的老账户（`名字@zhiji.app`，这个域名不是我们的）照样能登录，在「知己账户 → 邮箱」里绑定真实邮箱。
+- 账户页里的邮箱只显示、不能改（不做换绑邮箱）。以前只起了账号名的老账户（`名字@zhiji.app`，这个域名不是我们的）照样能登录；想换成邮箱登录，就登录老账户、退出、再用邮箱注册，这台手机上的记录会带到新账户。
 - 手机里已经有别的账户的记录、云端也有一份时，会问你用哪一份。
 - API Key 不会上传到云端。
 - Supabase 的设置：
   1. 后台 → SQL Editor，把 `supabase/setup.sql` 整段粘贴运行（可以重复运行）。它会让每个账号只能读写自己的存档。
   2. 后台 → Edge Functions → ai-proxy，用 `supabase/ai-proxy.ts` 替换代码；DeepSeek 的 Key 放在 Secrets 里，名字 `MY_SECRET_API_KEY`，不要写进代码。
   3. 发邮件：在 Resend 验证 `knowwo.com`，Supabase → Authentication → Emails → SMTP Settings 填 Resend 的发信设置（发件人 `no-reply@knowwo.com`）。不接自己的发信服务，Supabase 只能发给自己团队的人，每小时 2 封。
-  4. Authentication → Sign In / Providers → Email：「Confirm email」打开；「Secure email change」关掉（老账户绑定邮箱时，旧地址 `@zhiji.app` 收不到信）。
-  5. Authentication → Emails → Templates：照 `supabase/email-templates.md` 改三封邮件（注册、忘记密码、换邮箱），里面放的是验证码 `{{ .Token }}`。
+  4. Authentication → Sign In / Providers → Email：「Confirm email」打开；Email OTP Expiration 填 `600`（验证码 10 分钟有效）。
+  5. Authentication → Emails → Templates：照 `supabase/email-templates.md` 改两封邮件（注册、重设密码），内容是 `email-signup.html`、`email-reset.html`，里面放的是验证码 `{{ .Token }}`。
   6. Authentication → URL Configuration → Site URL 填 `https://app.knowwo.com`。
 - 你是数据库的管理员，技术上能看到所有人的云端存档。发给朋友用之前，要跟她们说清楚。
 - 用云端存档覆盖这台手机之前，这台手机上云端没有的聊天会自动在本机备份一份（最多 3 份），在「数据与备份 → 找回被覆盖的记录」里能恢复。
@@ -196,7 +198,7 @@ git push -u origin main
 - **其他兼容接口**（通义、Kimi 等）：填接口地址、Key、模型名即可。个别服务不允许浏览器直接访问，会提示「连不上接口」。
 - 「测试连接」用的是真正聊天时的设定，测通了聊天也就能用。聊天时出的错，会显示在「回复方式」页面最下面。
 - 「AI 连不上时用模板顶上」默认打开：接口出错时 TA 用模板回你，不会冷场。
-- 更新文件后，把 `index.html` 里所有的 `?v=1111` 改个数字（比如 `1112`），手机就会下载新文件，存着的旧版自动删掉。只改文件不改版本号，手机会一直用存着的旧文件。
+- 更新文件后，把 `index.html` 里所有的 `?v=1112` 改个数字（比如 `1113`），手机就会下载新文件，存着的旧版自动删掉。只改文件不改版本号，手机会一直用存着的旧文件。
 - AI 生成照片每张要几十秒、按次收费。
 
 ## 现在做不到的
