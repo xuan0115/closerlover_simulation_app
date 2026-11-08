@@ -49,3 +49,26 @@
 .ios-alert-btns button.bold{font-weight:600}
 .ios-alert-btns.col{flex-direction:column}
 .ios-alert-btns.col button+button{border-left:0;border-top:.5px solid var(--sys-sep)}
+
+/* 第一次打开：你好 → 登录知己账户（js/ui/account.js），盖在锁屏上 */
+.setup{position:absolute;inset:0;z-index:52;background:var(--sys-bg);color:var(--sys-ink);opacity:0;transition:opacity .45s ease;overflow:hidden}
+.setup.on{opacity:1}
+.setup-hello{position:absolute;inset:0;display:grid;place-items:center;width:100%;background:var(--sys-card);transition:opacity .45s ease}
+.setup-hello.out{opacity:0;pointer-events:none}
+.hello-word{grid-area:1/1;font-size:58px;font-weight:200;letter-spacing:.5px;opacity:0;transform:translateY(8px);transition:opacity 1s ease,transform 1s ease}
+.hello-word.on{opacity:1;transform:none}
+.setup-go{position:absolute;left:0;right:0;bottom:calc(var(--bottom) + 56px);text-align:center;font-size:15px;color:var(--sys-ink2);animation:setupPulse 2.4s ease-in-out infinite}
+@keyframes setupPulse{50%{opacity:.35}}
+.setup-auth{position:absolute;inset:0;overflow-y:auto;padding:calc(var(--top) + 34px) 22px calc(var(--bottom) + 28px);opacity:0;transform:translateX(30px);transition:opacity .4s ease,transform .4s ease}
+.setup-auth.on{opacity:1;transform:none}
+.setup-auth .app-mark{width:76px;height:76px;border-radius:18px;display:block;margin:0 auto 18px;box-shadow:0 4px 14px rgba(0,0,0,.12)}
+.in-setup .homebar{visibility:hidden}
+.in-setup .statusbar{color:var(--sys-ink)!important}
+.sheet-panel .acc-msg.bad{color:var(--sys-red)}
+.sheet-panel .code-input{font-size:24px;letter-spacing:6px}
+@media (prefers-reduced-motion:reduce){.hello-word,.setup-auth{transition:none}.setup-go{animation:none}}
+/* 用户协议 / 隐私政策的卡片（js/ui/account.js 的 policySheet） */
+.sheet-panel.tall{height:92%;display:flex;flex-direction:column;overflow:hidden;padding-bottom:0}
+.sheet-panel.tall .sheet-head{flex:none}
+.sheet-done{color:var(--sys-blue);font-weight:600}
+.policy-frame{flex:1;width:calc(100% + 32px);margin:0 -16px;border:0;background:#fff;display:block}

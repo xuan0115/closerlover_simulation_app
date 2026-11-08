@@ -192,7 +192,7 @@ async function pushEnable() {
   const sup = pushSupport();
   if (sup === 'need-home') { pushHowSheet(); return false; }
   if (sup !== 'ok') { toast('这个浏览器收不了锁屏通知'); return false; }
-  if (!currentUser) { toast('先登录知己账号（设置 → chatwe聊我 → 数据与备份）'); return false; }
+  if (!currentUser) { toast('先登录知己账户（设置 → 最上面的知己账户）'); return false; }
   let perm = Notification.permission;
   if (perm !== 'granted') perm = await Notification.requestPermission();   // 要在点按钮的那一下里问
   if (perm !== 'granted') {
@@ -292,7 +292,7 @@ function pushAllowGroup(re) {
   if (sup === 'need-home') return iosGroup('', [sw(false, c => { c.checked = false; pushHowSheet(); }), iosLink({ label: '怎么开启', onclick: pushHowSheet })],
     `iPhone 上要先把知己「添加到主屏幕」，从主屏幕打开才能开。开了以后网页关着，${herName()}的消息也会弹到锁屏上。`);
   if (sup === 'no') return iosGroup('', [sw(false, null, true)], '这个浏览器收不了锁屏通知。可以用 iPhone 的 Safari（先添加到主屏幕），或者电脑上的 Safari、Chrome。');
-  if (!currentUser) return iosGroup('', [sw(false, null, true)], '登录知己账号以后才能开：设置 → chatwe聊我 → 数据与备份。');
+  if (!currentUser) return iosGroup('', [sw(false, null, true)], '登录知己账户以后才能开：设置 → 最上面的知己账户。');
   const on = PUSH.on && Notification.permission === 'granted';
   const rows = [sw(on, async c => {
     c.disabled = true;
@@ -309,7 +309,7 @@ function pushAllowGroup(re) {
 /* 第一次进到手机里（注册、登录以后）：问一次要不要开通知。只问一次，以后在「设置 → 通知」里开 */
 let pushAsking = false;
 function pushMaybeAsk() {
-  if (pushAsking || PUSH.on || !ST.started || !currentUser || !cloudReady || LS.get('pushAsked', false)) return;   // 设好陪伴对象、进到手机里以后才问
+  if (pushAsking || PUSH.on || !ST.started || !currentUser || !cloudReady || LS.get('pushAsked', false) || setupOpen()) return;   // 设好陪伴对象、进到手机里以后才问
   const sup = pushSupport();
   if (sup !== 'ok' && sup !== 'need-home') return;
   pushAsking = true;

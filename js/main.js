@@ -40,4 +40,4 @@ show('lock');
 tick();                     // 补上错过的消息
 setInterval(tick, 20000);   // 之后每 20 秒看一眼日程
 setInterval(trackUsage, 30000);
-cloudStart();               // 账号：已登录就同步存档，没登录弹出登录面板（js/core/cloud.js）
+cloudStart();               // 账号：有登录就在后台同步存档；这台手机没登录过就显示「你好」（js/core/cloud.js、js/ui/account.js）

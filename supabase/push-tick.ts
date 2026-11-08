@@ -19,7 +19,7 @@ const MAX_TOKENS = 4000;
 const DAILY_LIMIT = 200;            // 和 ai-proxy 共用每天的次数
 const MAX_PRO = 3;                  // 主动找你几次没回就不再追发
 const STALE = 30 * 60e3;            // 过了 30 分钟还没发出去的就不发了（下次打开网页时网页自己补）
-const SUBJECT = 'mailto:push@zhiji.app';
+const SUBJECT = 'https://app.knowwo.com';   // 推送服务要的联系方式（VAPID），写网站地址就行
 
 const cors: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',

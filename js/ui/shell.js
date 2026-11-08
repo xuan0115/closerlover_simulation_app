@@ -14,7 +14,7 @@ let sheetLock = false;
 function openSheet(build) {
   if (sheetLock) return;
   const s = $('#sheet'), p = $('.sheet-panel', s);
-  p.textContent = ''; p.scrollTop = 0; build(p, closeSheet); s.classList.add('on');
+  p.textContent = ''; p.scrollTop = 0; p.className = 'sheet-panel'; build(p, closeSheet); s.classList.add('on');
 }
 function closeSheet() { if (sheetLock) return; $('#sheet').classList.remove('on'); }
 function lockSheet(on) { sheetLock = !!on; $('#sheet').classList.toggle('locked', sheetLock); }
@@ -220,6 +220,7 @@ const zoomK = () => { const p = $('#phone'); return (p.getBoundingClientRect().w
 /* 键盘：Esc 返回上一级，已经在 App 首页就回桌面 */
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
+  if (setupOpen() && !sheetOpen()) return;   // 第一次打开的「你好」页面：要先登录
   const a = document.activeElement;
   if (viewerOpen()) { $('#viewer').classList.remove('on'); return; }
   if (sheetOpen()) { closeSheet(); return; }
@@ -234,7 +235,7 @@ document.addEventListener('keydown', e => {
 /* 电脑上让整台手机按比例缩放到窗口里 */
 function fitPhone() {
   const mobile = matchMedia('(max-width:520px),(display-mode:standalone)').matches;
-  const d = $('#device');
+  const d = document.documentElement;   // 放在 <html> 上：手机两边的「知己」「Knowwo.」也按手机的实际宽度排
   if (mobile) { d.style.removeProperty('--z'); return; }
   const z = Math.min(1, (innerHeight - 64) / 876, (innerWidth - 32) / 417);
   d.style.setProperty('--z', Math.max(.45, z).toFixed(3));

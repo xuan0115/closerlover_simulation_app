@@ -246,3 +246,19 @@ button:disabled{cursor:default}
 .widget.small.add{background:rgba(255,255,255,.12)}
 /* 手机上：网页底色用黑色（在 Safari 里打开时，工具栏后面不会露出一块灰） */
 @media (max-width:520px),(display-mode:standalone){html,body{background:#000}}
+
+/* 电脑上：手机两边的「知己」「Knowwo.」，照 privacy.html 的样子；开屏动画结束后淡入。手机上、窗口窄的时候不显示 */
+:root{--brand-ink:#111113;--brand-sub:#8e8e93;--brand-dot:#10b981}
+.desk-brand{display:none}
+@media (min-width:1080px){
+  :root{--desk:#ffffff}
+  .desk-brand{display:block;position:fixed;inset:0;pointer-events:none;-webkit-user-select:none;user-select:none;color:var(--brand-ink);opacity:0;transition:opacity .9s ease}
+  .splash-done .desk-brand{opacity:1}
+  .db-left,.db-right{position:absolute;font-weight:800;line-height:1;white-space:nowrap}
+  .db-left{top:10vh;right:calc(50% + 208.5px * var(--z,1) + 56px);font-size:min(clamp(60px,7.5vw,108px),calc((50vw - 208.5px * var(--z,1) - 88px) / 2.1));letter-spacing:-.03em}
+  .db-left small{display:block;margin-top:14px;font-size:13.8px;font-weight:600;letter-spacing:.16em;color:var(--brand-sub)}
+  .db-right{top:52vh;left:calc(50% + 208.5px * var(--z,1) + 56px);font-size:min(clamp(55px,7vw,104px),calc((50vw - 208.5px * var(--z,1) - 88px) / 4.3));letter-spacing:-.04em}
+  .db-right i{display:inline-block;width:14px;height:14px;margin-left:6px;border-radius:50%;background:var(--brand-dot)}
+}
+@media (min-width:1080px) and (prefers-color-scheme:dark){:root{--desk:#0b0b0d;--brand-ink:#f5f5f7;--brand-sub:#8e8e93}}
+@media (display-mode:standalone){.desk-brand{display:none!important}}

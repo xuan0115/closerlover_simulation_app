@@ -62,7 +62,7 @@ function appButton(id) {
   const d = appDef(id);
   const b = el('button', { class: 'app-ic', 'data-app': id, 'data-item': id, 'aria-label': d.label, title: d.label }, appIcon(id), el('span', { class: 'lbl' }, d.label));
   if (id === 'wx') b.append(el('span', { class: 'badge wxbadge', hidden: true }));
-  if (id === 'settings' && !ST.started) b.append(el('span', { class: 'badge' }, '1'));
+  if (id === 'settings' && (!ST.started || cloudNeedsLogin())) b.append(el('span', { class: 'badge' }, '1'));   // 还没开始 / 登录过期了
   if (editing && canDelete(id)) b.append(delBadge(id, d.label));
   return b;
 }

@@ -61,7 +61,7 @@ async function callLLM(system, msgs) {
   if (builtin) {   // 知己内置 AI：拿登录凭证去调 Supabase 上的中转，中转再转给 DeepSeek
     if (!sb) throw new Error('内置 AI 连不上账号服务，检查网络，或者在「设置 → 回复方式」换成自己的 Key');
     c.key = await cloudToken();
-    if (!c.key) throw new Error('先登录知己账号才能用内置 AI（设置 → chatwe聊我 → 数据与备份）');
+    if (!c.key) throw new Error('先登录知己账户才能用内置 AI（设置 → 最上面的知己账户）');
   }
   if (!c.key) throw new Error('还没填 API Key，去「设置 → 回复方式」填一下，或者改用固定模板');
   if (!c.base) throw new Error('还没填接口地址');

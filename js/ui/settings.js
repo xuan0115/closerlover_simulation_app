@@ -83,10 +83,7 @@ function settingsRoot(pg, app) {
     if (!ST.started) body.append(el('div', { class: 'intro' },
       el('p', {}, `先到下面的「${zx()}」里，设定${TA()}是谁、你们是什么关系。回复方式默认是知己内置 AI，登录后就能用，不用填 Key。`),
       el('button', { class: 'btn primary wide', onclick: start }, '设好了，开始')));
-    const av = el('img', { alt: '' }); setMyAvatar(av);
-    body.append(el('div', { class: 'ios-card', style: 'margin-top:14px' }, el('button', { class: 'profile-card', onclick: go(settingsMePage) }, av,
-      el('div', { style: 'flex:1;min-width:0' }, el('b', {}, myName() || '我'), el('small', {}, '我的资料、性别与星座')),
-      el('span', { style: 'color:var(--sys-ink3)' }, icon('chevron', 18, 2.2)))));
+    body.append(accountCard(go));   // 知己账户：我的资料、账号、云同步、数据与备份（js/ui/account.js）
     body.append(iosGroup('', [iosLink({ ic: 'checklist', color: '#FF9500', label: '督促清单', value: S.tasks.length ? `${S.tasks.length} 项` : '', onclick: go(tasksPage) }),
       el('button', { class: 'ios-row has-ic', onclick: go(settingsZxPage) }, appIcon('wx', 30), el('span', { class: 'lbl' }, zx()),
         el('span', { class: 'val' }, herName()), el('span', { class: 'chev' }, icon('chevron', 18, 2.2)))]));
@@ -135,7 +132,6 @@ function settingsZxPage(pg, app) {
       iosLink({ ic: 'sparkle', color: '#AF52DE', label: '回复方式', value: (REPLY_MODES[S.reply.mode] || REPLY_MODES.template).label, onclick: go(settingsReplyPage) }),
       iosLink({ ic: 'camera', color: '#8E8E93', label: 'AI 生成照片', value: { pool: '关闭', pool_then_gen: '照片池用完时', gen: '每次' }[S.photo.mode], onclick: go(settingsPhotoPage) })]));
     b.append(iosGroup('', [iosLink({ ic: 'globe', color: '#007AFF', label: '语言', value: isEN() ? 'English' : '中文', onclick: go(settingsLangPage) })]));
-    b.append(iosGroup('', [iosLink({ ic: 'box', color: '#8E8E93', label: '数据与备份', onclick: go(settingsDataPage) })]));
   }, APPS.settings.label);
 }
 
@@ -248,7 +244,7 @@ function settingsRelPage(pg, app) {
     const seg = el('div', { class: 'seg' + (locked ? ' locked' : ''), role: 'group', 'aria-label': '关系类型' }, ...Object.entries(REL_TYPES).map(([k, v]) =>
       el('button', { 'aria-pressed': String(cur === k), disabled: locked && cur !== k, onclick: () => { if (!locked && k !== cur) { switchRelType(k); re(); } } }, v.label)));
     b.append(iosGroup('关系类型', [el('div', { class: 'ios-field' }, seg)], locked
-      ? `开始聊天以后就不能换了，免得${TA()}的人设前后冲突。想换的话：设置 → 通用 → 数据与备份 → 全部恢复默认。`
+      ? `开始聊天以后就不能换了，免得${TA()}的人设前后冲突。想换的话：设置 → 最上面的知己账户 → 数据与备份 → 全部恢复默认。`
       : `恋人会说想你、会撒娇；挚友不说情话，是损友式的关心。开始聊天以后就不能换了。`));
     b.append(iosGroup('', [fArea('her.relationship', '你们是什么关系', '认识多久、怎么认识的、平时怎么相处')], `AI 模式会按这段话决定${TA()}跟你说话的分寸。`),
       iosGroup('', [fText('her.callMe', `${TA()}平时怎么叫你`, { ph: cur === 'friend' ? '名字或外号，留空就叫你的名字' : '一个短称呼，比如：宝贝、小宝、亲爱的' })], '模板里的 {称呼} 就是它。'));
@@ -427,9 +423,7 @@ async function onNotifyToggle(on) {
 function settingsGeneralPage(pg, app) {
   subPage(pg, app, '通用', b => {
     const go = fn => () => Nav.push(app, p => fn(p, app));
-    b.append(iosGroup('', [
-      iosLink({ label: '关于本机', onclick: go(settingsAboutPage) }),
-      iosLink({ label: '数据与备份', onclick: go(settingsDataPage) })]));
+    b.append(iosGroup('', [iosLink({ label: '关于本机', onclick: go(settingsAboutPage) })]));
   });
 }
 function settingsAboutPage(pg, app) {
@@ -504,10 +498,7 @@ function settingsBatteryPage(pg, app) {
 /* ---------- 数据与备份 ---------- */
 function settingsDataPage(pg, app) {
   subPage(pg, app, '数据与备份', (b, re) => {
-    /* ---- 账号与云同步（js/core/cloud.js） ---- */
-    b.append(cloudAccountGroup(re));
-
-    /* ---- 原有的本地文件导入导出 ---- */
+    /* 账号和云同步在上一页「知己账户」里（js/ui/account.js） */
     b.append(iosGroup('本地文件备份', [
       iosLink({ label: '导出备份文件', onclick: exportData, chevron: false, cls: 'blue' }),
       iosLink({ label: '导入备份文件', onclick: importData, chevron: false, cls: 'blue' })],

@@ -169,3 +169,37 @@
 .nf-lbl{font-size:13px}
 .nf-check{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--sys-ink3);display:grid;place-items:center;box-sizing:border-box}
 .nf-check.on{background:var(--sys-blue);border-color:var(--sys-blue);color:#fff}
+
+/* 知己账户（js/ui/account.js） */
+.profile-card small.bad{color:var(--sys-red)}
+.profile-card .dot-badge{flex:none;min-width:22px;height:22px;border-radius:11px;background:var(--sys-red);color:#fff;font-size:13px;font-weight:600;display:grid;place-items:center;padding:0 6px}
+.acct-head{display:flex;flex-direction:column;align-items:center;padding:20px 16px 10px;text-align:center}
+.acct-head img{width:88px;height:88px;border-radius:50%;object-fit:cover;margin-bottom:10px}
+.acct-head b{font-size:24px;font-weight:600;line-height:1.25}
+.acct-head small{font-size:15px;color:var(--sys-ink2);margin-top:3px;word-break:break-all}
+.acct-warn{margin:4px 16px 12px;padding:12px 14px;border-radius:12px;background:rgba(255,59,48,.1);color:var(--sys-red);font-size:14px;line-height:1.5}
+.acct-login{background:var(--sys-card);border-radius:12px;padding:16px}
+.ios-row .val.warn,.ios-row.warn .val{color:#FF9500}
+.auth h2{font-size:28px;font-weight:700;text-align:center;line-height:1.25;margin-bottom:8px}
+.auth h3{font-size:17px;font-weight:600;margin-bottom:10px}
+.auth-sub{font-size:15px;color:var(--sys-ink2);text-align:center;line-height:1.5;margin-bottom:18px}
+.auth.compact .auth-sub{text-align:left;font-size:13px;margin-bottom:10px}
+.auth .ios-group{margin:0}
+.auth.compact .ios-card{background:var(--sys-bg)}
+.auth .code-input{font-size:26px!important;letter-spacing:6px;font-variant-numeric:tabular-nums}
+.code-input:placeholder-shown{letter-spacing:normal;font-size:17px!important}
+.auth-msg{font-size:14px;text-align:center;color:var(--sys-ink2);margin:12px 4px 0;line-height:1.5}
+.auth-msg.bad{color:var(--sys-red)}
+.auth .btn.wide{display:block;margin-top:16px}
+.auth .btn.wide+.btn.wide{margin-top:10px}
+.auth .btn:disabled{opacity:.6}
+.auth-links{display:flex;justify-content:space-between;gap:12px;margin-top:12px;font-size:15px}
+.auth-links button{color:var(--sys-blue);padding:6px 2px}
+.auth-links button:disabled{color:var(--sys-ink3)}
+/* 注册：我已阅读并同意《用户协议》和《隐私政策》 */
+.agree{display:flex;align-items:flex-start;justify-content:center;gap:7px;margin-top:14px;font-size:13px;line-height:1.5;color:var(--sys-ink2);cursor:pointer;-webkit-user-select:none;user-select:none}
+.agree-dot{flex:none;width:16px;height:16px;margin-top:1.5px;border-radius:50%;border:1.5px solid var(--sys-ink3);display:grid;place-items:center;transition:background .15s,border-color .15s}
+.agree.on .agree-dot{background:var(--sys-blue);border-color:var(--sys-blue)}
+.agree.on .agree-dot::after{content:"";width:7px;height:4px;border:solid #fff;border-width:0 0 1.6px 1.6px;transform:translateY(-1px) rotate(-45deg)}
+.agree a{color:var(--sys-blue);text-decoration:none}
+.auth.compact .agree{justify-content:flex-start}

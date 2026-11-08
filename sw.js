@@ -3,7 +3,8 @@
  *
  * 存文件是为了打开快、不白屏（GitHub 在国内有时慢）：
  *   打开知己（index.html）：先上网拿最新的；2.5 秒还没拿到，就先用手机里存的那份，最新的在后台下载，下次打开就是新版。
- *   带版本号的文件（js、css 后面的 ?v=1110）：手机里有这个版本就直接用；index.html 里版本号一改，就会下载新的。
+ *   别的页面（隐私政策 privacy.html）：一样先上网拿、拿不到用存的，按各自的地址存，不会和知己首页混在一起。
+ *   带版本号的文件（js、css 后面的 ?v=1111）：手机里有这个版本就直接用；index.html 里版本号一改，就会下载新的。
  *   其他自己网站的文件（图标、清单）：先用存的，同时在后台更新。
  *   Supabase、DeepSeek、天气这些别的网站：不经过这里。
  */
@@ -42,21 +43,23 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;              // 别的网站：不管
   if (url.pathname.endsWith('/sw.js')) return;
-  if (req.mode === 'navigate') { e.respondWith(page(req, e)); return; }
+  if (req.mode === 'navigate') { e.respondWith(page(req, e, isApp(url) ? PAGE : url.origin + url.pathname + url.search)); return; }
   if (/[?&]v=/.test(url.search)) { e.respondWith(versioned(req)); return; }
   e.respondWith(fresh(req, e));
 });
 
-/* 打开知己：先上网拿，2.5 秒拿不到（或者没网、GitHub 出错）就用存的 */
-async function page(req, e) {
+/* 是不是知己首页（不管后面带什么参数）；隐私政策这类别的页面各存各的，不能存成首页 */
+const isApp = url => { const p = new URL(PAGE).pathname; return url.pathname === p || url.pathname === p + 'index.html'; };
+/* 打开页面：先上网拿，2.5 秒拿不到（或者没网、GitHub 出错）就用存的 */
+async function page(req, e, key) {
   const c = await caches.open(CACHE);
   const net = fetch(req);
-  e.waitUntil(net.then(res => res.ok ? c.put(PAGE, res.clone()) : null).catch(() => {}));   // 拿到了就存起来，下次用
+  e.waitUntil(net.then(res => res.ok ? c.put(key, res.clone()) : null).catch(() => {}));   // 拿到了就存起来，下次用
   const good = net.then(res => res.ok ? res : Promise.reject(new Error('HTTP ' + res.status)));
   const timer = new Promise((_, rej) => setTimeout(() => rej(new Error('slow')), PAGE_WAIT));
   try { return await Promise.race([good, timer]); }
   catch (err) {
-    const hit = await c.match(PAGE);
+    const hit = await c.match(key);
     return hit || net;   // 手机里还没有（第一次打开）：只能等网络
   }
 }
