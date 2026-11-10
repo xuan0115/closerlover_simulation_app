@@ -9,6 +9,12 @@
 function homeLayout() {
   if (!S.layout || !Array.isArray(S.layout.pages)) S.layout = { pages: clone(HOME_LAYOUT.pages), dock: clone(HOME_LAYOUT.dock), folders: clone(FOLDERS) };
   if (!S.layout.folders) S.layout.folders = clone(FOLDERS);
+  if (!S.layout.diary) {                    // 2026-11-10 新加的「Ta的日记」：放进 Dock（满了就放桌面最后一页）
+    S.layout.diary = 1;
+    const L = S.layout, has = [...L.pages.flat(), ...L.dock, ...Object.values(L.folders).flatMap(f => f.apps || [])].includes('diary');
+    if (!has) { if (L.dock.length < 4) L.dock.splice(Math.min(1, L.dock.length), 0, 'diary'); else placeNew('diary'); }
+    saveS();
+  }
   return S.layout;
 }
 const canDelete = it => it.startsWith('widget:') || (APPS[it] && !NO_DELETE.includes(it));
@@ -62,6 +68,7 @@ function appButton(id) {
   const d = appDef(id);
   const b = el('button', { class: 'app-ic', 'data-app': id, 'data-item': id, 'aria-label': d.label, title: d.label }, appIcon(id), el('span', { class: 'lbl' }, d.label));
   if (id === 'wx') b.append(el('span', { class: 'badge wxbadge', hidden: true }));
+  if (id === 'diary') { const n = diaryUnseen(); b.append(el('span', { class: 'badge dybadge', hidden: !n }, n)); }
   if (id === 'settings' && (!ST.started || cloudNeedsLogin())) b.append(el('span', { class: 'badge' }, '1'));   // 还没开始 / 登录过期了
   if (editing && canDelete(id)) b.append(delBadge(id, d.label));
   return b;

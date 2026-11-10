@@ -6,6 +6,8 @@
  *   网页切走：把「接下来 36 小时她什么时候找你、你刚发的消息她什么时候回」连同设定、最近聊天传给服务器
  *            （push_plans 表）。服务器每分钟看一次，到点就替她写好、推到锁屏（supabase/push-tick.ts）。
  *   再打开：先取回服务器替她发的消息（push_inbox 表），放进聊天里，再照旧补发剩下错过的。
+ *            服务器发的消息在云端留 7 天，每台设备各取各的（取过的记在 ST.inbox），不会被一台取走就没了；
+ *            服务器正在写的（state = claim），这台设备先不自己另写，等它写完再取。
  * 云端要先做的设置见 supabase/push-setup.sql。
  */
 'use strict';
@@ -16,7 +18,7 @@ const PUSH_MIN_GAP = 15e3;               // 网页开着时，最快多久传一
 const PUSH = {
   on: !!LS.get('pushOn', false),
   pulled: !LS.get('pushOn', false),      // 开着锁屏通知时，打开网页后要先取回服务器发的，才轮到网页自己补发
-  timer: null, beat: null, sentAt: 0, dirty: true, busy: null, openChat: false
+  timer: null, beat: null, sentAt: 0, dirty: true, busy: null, openChat: false, inflightUntil: 0, repull: null
 };
 
 if (!sb) PUSH.pulled = true;   // 账号服务没加载：只能网页自己发
@@ -28,8 +30,8 @@ function pushSupport() {
   if (isIOS() && !isStandalone()) return 'need-home';
   return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window ? 'ok' : 'no';
 }
-/* 网页自己先别发：锁屏通知开着，并且网页在后台（交给服务器），或刚打开还没把服务器发的取回来 */
-const pushHold = () => PUSH.on && (!PUSH.pulled || (document.hidden && !!currentUser));
+/* 网页自己先别发：锁屏通知开着，并且网页在后台（交给服务器），或刚打开还没把服务器发的取回来，或服务器正在写 */
+const pushHold = () => PUSH.on && (!PUSH.pulled || (document.hidden && !!currentUser) || PUSH.inflightUntil > Date.now());
 
 const b64uBytes = s => { const t = String(s).replace(/-/g, '+').replace(/_/g, '/'); const bin = atob(t + '==='.slice((t.length + 3) % 4)); return Uint8Array.from(bin, c => c.charCodeAt(0)); };
 const isoIn = ms => new Date(Date.now() + ms).toISOString();
@@ -44,7 +46,7 @@ function buildPushPlan(now = Date.now()) {
         const p = ST.pending, waited = p.due - p.since, text = pendingText();
         const crisis = [...REPLY_RULES, ...REPLY_RULES_EN].some(r => r.reply === 'crisis' && r.match.test(text));
         const count = crisis ? 0 : drawCount(text);
-        const note = [p.status === 'woken' ? PROMPTS.woken(ta) : waited > 2 * 60e3 ? PROMPTS.waited({ ta, gap: ago(waited), doing: doingText(p) }) : '', p.status === 'night' ? PROMPTS.night : '', count ? PROMPTS.count(count) : ''].filter(Boolean).join('\n');
+        const note = [p.pat ? PROMPTS.patted(ta) : '', p.status === 'woken' ? PROMPTS.woken(ta) : waited > 2 * 60e3 ? PROMPTS.waited({ ta, gap: ago(waited), doing: doingText(p) }) : '', p.status === 'night' ? PROMPTS.night : '', count ? PROMPTS.count(count) : ''].filter(Boolean).join('\n');
         const t = templateFor({ kind: 'reply' });
         const back = waited > 3 * 60e3 || p.status === 'woken' ? tplBack(p.status, p.what) : [];
         items.push({ key: 'reply@' + p.since, kind: 'reply', at: Math.max(p.due, now), now: nowSection(p.due, note), count, tpl: [...back, ...t.messages], tplDone: t.done || [] });
@@ -53,7 +55,7 @@ function buildPushPlan(now = Date.now()) {
         if (ev.to === 'moments' || (ev.to === 'call' && FEATURES.voice)) continue;   // 发朋友圈、打电话：等打开网页再说
         const count = drawCount('');
         items.push({
-          key: firedKey(ev, t), kind: 'event', at: t, now: nowSection(t, PROMPTS.count(count)), count, exempt: !!ev.alarm,
+          key: firedKey(ev, t), kind: 'event', at: t, day: dkey(t), now: nowSection(t, PROMPTS.count(count)), count, exempt: isExempt(ev),
           instruction: PROMPTS.event({ time: fmtFull(t), prompt: ev.prompt || '', photo: false, note: '' }),
           tpl: templateFor({ kind: 'event', ev, unreplied: false }).messages
         });
@@ -66,8 +68,9 @@ function buildPushPlan(now = Date.now()) {
   const ai = usesAI() && S.api.provider === 'builtin';   // 用自己的 Key 时，服务器拿不到 Key：用模板
   return {
     v: 1, at: now, title: wxName(), ta, mode: ai ? 'ai' : 'tpl', fallback: S.reply.fallback !== false,
-    base: ai ? buildSystem(now, '', { nowSlot: true, noPhoto: true }) : '', history: ai ? histCore() : [],
-    items, pro: proTurns(), lastFrom: last ? last.from : '', lastTs: last ? last.ts : 0,
+    base: ai ? buildSystem(now, { noPhoto: true }) : '', history: ai ? histCore() : [],
+    items, pro: proTurns(now), proDay: dkey(now), tz: -new Date(now).getTimezoneOffset(), maxPro: MAX_PRO,   // 今天她已经连着找了你几回没回；按你这边的日期算
+    lastFrom: last ? last.from : '', lastTs: last ? last.ts : 0,
     unread: unreadList().length, quiet: !!(S.zx.mute || S.notify.focus), off: !!S.notify.airplane,
     badge: S.notify.badge !== false, hidden: S.notify.preview === 'never' ? HIDDEN_TEXT() : '',   // 设置 → 通知：标记、显示预览
     gifts: giftsFor().map(g => g.name), carryOn: PROMPTS.carryOn
@@ -114,34 +117,53 @@ async function setActive(ms) {
 }
 
 /* ---------- 取回网页关着时她发的消息 ---------- */
+const exemptKey = k => /^(task|alarm):/.test(String(k));   // 你自己定的提醒：不算「她主动找你」
 function applyInbox(r) {
   const o = r.data || {}, msgs = (o.messages || []).map(String).filter(Boolean);
   if (r.kind === 'reply') {
-    if (!ST.pending || 'reply@' + ST.pending.since !== r.key) return;   // 网页自己已经回过了
-    delete ST.pending; armReply();
+    const mine = ST.pending && 'reply@' + ST.pending.since === r.key;
+    const since = Number(String(r.key).split('@')[1]) || 0;
+    // 别的设备上发的消息、这台没在等：那条消息在、而且她还没回过，才放进来
+    const asked = M.some(m => m.from === 'me' && m.ts >= since - 2000) && !M.some(m => m.from === 'her' && m.ts > since);
+    if (!mine && !asked) return;
+    if (mine) { delete ST.pending; armReply(); }
   } else {
     if (ST.fired[r.key]) return;
     ST.fired[r.key] = 1;
   }
-  absorbTurn(o);
-  const pro = r.kind === 'event' ? r.key : '';
-  msgs.forEach((text, i) => addMsg(Object.assign({ id: uid('m'), from: 'her', type: 'text', text, ts: r.ts + i * 3000 }, pro ? { pro } : {})));
+  const reminders = absorbTurn(o);
+  const pro = r.kind === 'event' && !exemptKey(r.key) ? r.key : '';
+  const tag = Object.assign({ ev: r.key, turn: uid('u') }, pro ? { pro } : {});
+  msgs.forEach((text, i) => addMsg(Object.assign({ id: uid('m'), from: 'her', type: 'text', text, ts: r.ts + i * 3000 }, tag)));
   const g = o.gift && GIFTS.find(x => x.name === o.gift);
-  if (g) addMsg(Object.assign({ id: uid('m'), from: 'her', type: 'gift', name: g.name, emoji: g.emoji, note: '', ts: r.ts + msgs.length * 3000 }, pro ? { pro } : {}));
+  if (g) addMsg(Object.assign({ id: uid('m'), from: 'her', type: 'gift', name: g.name, emoji: g.emoji, note: '', ts: r.ts + msgs.length * 3000 }, tag));
+  for (const a of reminders) addMsg(Object.assign(remindTip(a, r.ts + (msgs.length + 1) * 3000), tag, { pro: undefined }));
 }
 async function pushPull() {
   if (!sb || !currentUser) return 0;
-  const me = currentUser.id;
+  const me = currentUser.id, now = Date.now();
   const [inbox, plan] = await Promise.all([
-    sb.from('push_inbox').select('id, key, kind, ts, data').eq('user_id', me).eq('state', 'ready').order('ts'),
+    sb.from('push_inbox').select('key, kind, ts, data, state, created_at').eq('user_id', me).in('state', ['ready', 'claim'])
+      .gte('created_at', new Date(now - 3 * 864e5).toISOString()).order('ts'),
     sb.from('push_plans').select('done').eq('user_id', me).maybeSingle()]);
   if (inbox.error) throw inbox.error;
-  const rows = inbox.data || [];
-  for (const r of rows) applyInbox(r);
+  ST.inbox = ST.inbox || {};
+  let n = 0, writing = 0;
+  for (const r of inbox.data || []) {
+    if (ST.inbox[r.key]) continue;
+    if (r.state === 'claim') {   // 服务器正在写：先别自己另写，过几秒再来取
+      if (now - Date.parse(r.created_at) < 3 * 60e3) writing++;
+      continue;
+    }
+    ST.inbox[r.key] = now; applyInbox(r); n++;
+  }
   for (const k of (plan.data && plan.data.done) || []) if (!String(k).startsWith('reply@')) ST.fired[k] = 1;   // 你没回、服务器就没发的那几次
+  for (const [k, t] of Object.entries(ST.inbox)) if (now - t > 4 * 864e5) delete ST.inbox[k];
   saveST();
-  if (rows.length) await sb.from('push_inbox').delete().in('id', rows.map(r => r.id));
-  return rows.length;
+  PUSH.inflightUntil = writing ? now + 15e3 : 0;
+  clearTimeout(PUSH.repull);
+  if (writing) PUSH.repull = setTimeout(() => pushPull().catch(() => {}).finally(() => { if (!pushHold()) { tick(); checkPending(); } }), 5e3);
+  return n;
 }
 
 /* ---------- 网页切走 / 回来 ---------- */
@@ -155,8 +177,12 @@ function pushOnVisible() {
   if (!PUSH.on || !sb || !currentUser) { PUSH.pulled = true; return Promise.resolve(); }
   if (PUSH.busy) return PUSH.busy;
   PUSH.busy = (async () => {
-    try { await setActive(150e3); await pushPull(); }
-    catch (e) { console.warn('锁屏通知：取回消息失败', e); }
+    try {   // 取不回来（网络不好）先多试两次，免得这台设备自己另写一条、和锁屏上看到的对不上
+      for (let i = 0; i < 3; i++) {
+        try { await setActive(150e3); await pushPull(); break; }
+        catch (e) { console.warn('锁屏通知：取回消息失败', e); if (i < 2) await sleep(2000 * (i + 1)); }
+      }
+    }
     finally { PUSH.pulled = true; PUSH.busy = null; startBeat(); pushDirty(); updateBadges(); }
   })();
   return PUSH.busy;

@@ -541,7 +541,7 @@ async function exportData() {
   const imgs = {};
   try { for (const k of await IDB.keys()) imgs[k] = await IDB.get(k); } catch (e) {}
   const s = clone(S); s.api.key = ''; s.photo.key = '';
-  const blob = new Blob([JSON.stringify({ app: 'zaoan', v: 3, at: Date.now(), settings: s, msgs: M, posts: POSTS, state: ST, pool: POOL, notes: NOTES, favs: FAVS, images: imgs })], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ app: 'zaoan', v: 3, at: Date.now(), settings: s, msgs: M, posts: POSTS, state: ST, pool: POOL, notes: NOTES, favs: FAVS, diary: DIARY, images: imgs })], { type: 'application/json' });
   const a = el('a', { href: URL.createObjectURL(blob), download: `${APP_TITLE}备份-${dkey(Date.now())}.json` });
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
@@ -561,14 +561,15 @@ async function importData() {
   POOL = Array.isArray(d.pool) ? d.pool : [];
   NOTES = Array.isArray(d.notes) ? d.notes : [];
   FAVS = Array.isArray(d.favs) ? d.favs : [];
+  DIARY = Array.isArray(d.diary) ? d.diary : [];
   ST = Object.assign(freshState(), { started: true }, d.state || {}); ST.lastTick = Date.now();
   try { await IDB.clear(); for (const [k, v] of Object.entries(d.images || {})) await IDB.put(k, v); } catch (e) { toast('有些照片没导入成功'); }
-  imgCache.clear(); saveS(); saveM(); savePosts(); saveST(); savePool(); saveNotes(); saveFavs();
+  imgCache.clear(); saveS(); saveM(); savePosts(); saveST(); savePool(); saveNotes(); saveFavs(); saveDiary();
   for (const k of Object.keys(Nav.stacks)) delete Nav.stacks[k];
   WXT = null; show('home'); toast('导入好了');
 }
 async function clearChat() {
-  if (!(await confirmSheet('清空所有聊天记录？', `聊天里的照片和语音也会删掉。朋友圈、照片池、设定和${TA()}记得的事都保留。`, '清空', true))) return;
+  if (!(await confirmSheet('清空所有聊天记录？', `聊天里的照片和语音也会删掉。朋友圈、照片池、设定、${TA()}的日记和记得的事都保留。`, '清空', true))) return;
   const keep = new Set([...POOL.map(x => x.imageId), ...POSTS.flatMap(p => p.imageIds || [])]);
   for (const m of M) { if (m.imageId && !keep.has(m.imageId)) IDB.del(m.imageId).catch(() => {}); if (m.audioId) IDB.del(m.audioId).catch(() => {}); }
   M = []; ST.lastRead = 0; saveM(); saveST();

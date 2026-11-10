@@ -112,7 +112,7 @@
 
 /* 朋友圈 */
 .page.moments{background:var(--wx-card)}
-.mo-cover{position:relative;height:320px;background:linear-gradient(160deg,#2d2468,#7B6BB5 60%,#F4B183);background-size:cover;background-position:center;flex:none;margin-bottom:46px}
+.mo-cover{display:block;width:100%;border:0;padding:0;text-align:left;cursor:pointer;position:relative;height:320px;background:linear-gradient(160deg,#2d2468,#7B6BB5 60%,#F4B183);background-size:cover;background-position:center;flex:none;margin-bottom:46px}
 .mo-cover::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.28),rgba(0,0,0,0) 30%)}
 .mo-owner{position:absolute;right:16px;bottom:-30px;display:flex;align-items:flex-end;gap:14px;z-index:1}
 .mo-owner b{color:#fff;font-size:18px;font-weight:600;margin-bottom:38px;text-shadow:0 1px 3px rgba(0,0,0,.4)}
@@ -240,3 +240,33 @@
 .wx-cell .wx-flbl{flex:none;width:4.5em}
 .wx-field{flex:1;min-width:0;border:0;background:transparent;font:inherit;font-size:17px;color:var(--wx-ink);outline:none;padding:15px 0}
 .wx-field::placeholder{color:var(--wx-ink3)}
+
+/* 朋友圈：封面大图和换封面、签名、新消息、回复评论（2026-11-10） */
+.mo-cover-view{position:absolute;inset:0;z-index:85;background:#000;display:grid;place-items:center;animation:mofade .18s ease}
+@keyframes mofade{from{opacity:0}}
+.mo-cover-view img{max-width:100%;max-height:100%;object-fit:contain}
+.mo-cover-none{color:#8e8e93;font-size:15px}
+.mo-cover-change{position:absolute;right:16px;bottom:calc(var(--bottom) + 24px);display:flex;align-items:center;gap:6px;padding:9px 14px;border-radius:8px;background:rgba(255,255,255,.16);color:#fff;font-size:15px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.mo-sign{margin:-6px 16px 6px 110px;text-align:right;color:var(--wx-ink3);font-size:13px;line-height:1.45;word-break:break-word}
+.mo-news-row{display:flex;justify-content:center;padding:6px 0 14px}
+.mo-news{display:flex;align-items:center;gap:10px;padding:5px 16px 5px 5px;border-radius:6px;background:#4C4C4C;color:#fff;font-size:15px}
+.mo-news img{width:32px;height:32px;border-radius:4px;object-fit:cover}
+.mo-cm.tap{display:block;width:100%;text-align:left;font:inherit;color:inherit;padding:2px 0 0;border-radius:2px}
+.mo-cm.tap:active{background:rgba(0,0,0,.08)}
+.mo-cell-val{display:flex;align-items:center;gap:10px;margin-left:auto}
+.mo-cell-val .wx-dot{position:static}
+.mo-nt{display:flex;gap:11px;align-items:flex-start;width:100%;padding:12px 16px;text-align:left;border-bottom:.5px solid var(--wx-sep);color:inherit}
+.mo-nt>img{width:42px;height:42px;border-radius:5px;object-fit:cover;flex:none}
+.mo-nt-main{flex:1;min-width:0}
+.mo-nt-main b{display:block;color:var(--wx-link);font-size:15px;font-weight:600}
+.mo-nt-main p{font-size:15px;margin-top:3px;line-height:1.4}
+.mo-nt-main small{display:block;color:var(--wx-ink3);font-size:12px;margin-top:5px}
+.mo-nt-like{display:inline-flex;color:var(--wx-link);margin-top:4px}
+.mo-nt-pic img,.mo-nt-text{width:58px;height:58px;flex:none;object-fit:cover;display:block}
+.mo-nt-text{font-size:12px;color:var(--wx-ink2);overflow:hidden;line-height:1.35;background:var(--wx-bg);padding:4px}
+/* 我 → 个人资料 */
+button.wx-me-head{border:0;font:inherit;color:inherit;cursor:pointer}
+.wx-me-chev{display:flex;align-items:center;gap:8px;color:var(--wx-ink3);align-self:center}
+.wx-info-av img{width:56px;height:56px;border-radius:6px;object-fit:cover;display:block}
+.wx-done{margin-right:10px;padding:6px 12px;border-radius:5px;background:var(--wx-green);color:#fff;font-size:15px;font-weight:500}
+.wx-check{color:var(--wx-green);display:flex}

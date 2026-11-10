@@ -5,7 +5,8 @@
 //   · 定时任务（pg_cron，见 push-setup.sql）每分钟叫一次这里：到点的那条，用 DeepSeek 当场写好，
 //     存进 push_inbox，再推到这个人开了通知的每台手机上。下次打开网页，这些消息会出现在聊天里。
 //   · 网页开着的时候不发（网页自己会发），免得重复。
-//   · 她连着主动找你 3 次你都没回，就不再追发（你让她提醒的闹钟除外）。
+//   · 她当天连着主动找你 2 回你都没回，就不再追发，第二天重新算（你自己定的提醒照发，也不算在里面）。
+//   · 发出去的消息在 push_inbox 里留 7 天，你的每台设备打开时各自取回，不会被一台取走就没了。
 //
 // 部署：Supabase 后台 → Edge Functions → 新建 push-tick → 粘贴这整个文件 → Deploy，
 //      然后在这个函数的设置里把「Verify JWT」关掉（定时任务不带登录凭证，这里自己检查）。
@@ -17,7 +18,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.118.0';
 const MODEL = 'deepseek-v4-pro';    // 和 ai-proxy 一样
 const MAX_TOKENS = 4000;
 const DAILY_LIMIT = 200;            // 和 ai-proxy 共用每天的次数
-const MAX_PRO = 3;                  // 主动找你几次没回就不再追发
+const MAX_PRO = 2;                  // 当天主动找你几回没回就不再追发（网页传来的 plan.maxPro 优先）
 const STALE = 30 * 60e3;            // 过了 30 分钟还没发出去的就不发了（下次打开网页时网页自己补）
 const SUBJECT = 'https://app.knowwo.com';   // 推送服务要的联系方式（VAPID），写网站地址就行
 
@@ -134,14 +135,14 @@ export async function vapidKeys(db: Db): Promise<Vapid> {
 }
 
 /* ---------- 让她说话 ---------- */
-type Item = { key: string; kind: 'event' | 'reply'; at: number; now?: string; instruction?: string; count?: number; exempt?: boolean; tpl?: string[]; tplDone?: string[] };
+type Item = { key: string; kind: 'event' | 'reply'; at: number; day?: string; now?: string; instruction?: string; count?: number; exempt?: boolean; tpl?: string[]; tplDone?: string[] };
 type Plan = {
   v?: number; title?: string; ta?: string; mode?: 'ai' | 'tpl'; fallback?: boolean; base?: string;
-  history?: { role: string; text: string }[]; items?: Item[]; pro?: number; lastFrom?: string; lastTs?: number;
+  history?: { role: string; text: string }[]; items?: Item[]; pro?: number; proDay?: string; tz?: number; maxPro?: number; at?: number; lastFrom?: string; lastTs?: number;
   unread?: number; quiet?: boolean; off?: boolean; gifts?: string[]; carryOn?: string;
   badge?: boolean; hidden?: string;   // 设置 → 通知：图标上要不要红色数字；「显示预览：从不」时通知上只写这句
 };
-type Out = { messages: string[]; remember: string[]; done: string[]; gift: string | null };
+type Out = { messages: string[]; remember: string[]; done: string[]; gift: string | null; remind?: { at: string; what: string }[] };
 type Ready = { key: string; kind: string; ts: number; data: Out | null };
 
 export function parseReply(t: string, gifts: string[] = []): Out {
@@ -157,7 +158,11 @@ export function parseReply(t: string, gifts: string[] = []): Out {
     .filter((x: string) => x && !isAction(x)).slice(0, 6);
   const gift = typeof o.gift === 'string' && gifts.includes(o.gift.trim()) ? o.gift.trim() : null;
   const arr = (v: unknown) => (Array.isArray(v) ? v : v ? [v] : []).map((x) => String(x).trim()).filter(Boolean);
-  return { messages, remember: arr(o.remember), done: arr(o.done), gift };
+  // deno-lint-ignore no-explicit-any
+  const remind = (Array.isArray(o.remind) ? o.remind : o.remind ? [o.remind] : []).filter((x: any) => x && typeof x === 'object')
+    // deno-lint-ignore no-explicit-any
+    .map((x: any) => ({ at: String(x.at || x.time || '').trim(), what: String(x.what || x.text || '').trim() })).filter((x: { at: string }) => x.at).slice(0, 3);
+  return { messages, remember: arr(o.remember), done: arr(o.done), gift, remind };
 }
 
 export function buildMessages(plan: Plan, it: Item, prior: Ready[], note: string) {
@@ -170,11 +175,17 @@ export function buildMessages(plan: Plan, it: Item, prior: Ready[], note: string
   for (const h of plan.history || []) push(h.role === 'user' ? 'user' : 'assistant', String(h.text || ''));
   for (const r of prior) for (const m of (r.data && r.data.messages) || []) push('assistant', m);
   if (it.kind === 'event') push('user', (it.instruction || '') + note);
+  // 新版网页：「此刻」放在最后（前面不变的部分能命中 DeepSeek 的缓存）；旧版网页的设定里留着 {{NOW}}，照旧填进去
+  const base = String(plan.base || '');
+  const old = base.includes('{{NOW}}');
+  if (!old && it.now) push('user', it.now);
   if (!out.length || out[out.length - 1].role !== 'user') push('user', plan.carryOn || '【系统提示】继续聊。');
   const chat = out.map((m) => ({ role: m.role, content: m.text }));
   if (chat[0] && chat[0].role === 'assistant') chat.unshift({ role: 'user', content: '【系统提示】聊天开始。' });
-  return [{ role: 'system', content: String(plan.base || '').replace('{{NOW}}', it.now || '') }, ...chat];
+  return [{ role: 'system', content: old ? base.replace('{{NOW}}', it.now || '') : base }, ...chat];
 }
+/* 按你那边的日期（网页传来时区）：2026-11-09 */
+const dayOf = (ts: number, tz = 0) => new Date(ts + tz * 60e3).toISOString().slice(0, 10);
 
 export let AI_URL = 'https://api.deepseek.com/chat/completions';
 export function setAiUrl(u: string) { AI_URL = u; }
@@ -201,12 +212,12 @@ async function callAI(messages: unknown[]) {
 }
 
 /* ---------- 数据库（换成测试用的假数据库也能跑） ---------- */
-export type PlanRow = { user_id: string; plan: Plan; sent_pro: number | null; done: string[] | null; updated_at: string };
+export type PlanRow = { user_id: string; plan: Plan; sent_pro: number | null; done: string[] | null; updated_at: string; last_sent_at?: string | null };
 export type Db = {
   plans(now: number): Promise<PlanRow[]>;
   claim(uid: string, key: string, kind: string, ts: number): Promise<boolean>;
   unclaim(uid: string, key: string): Promise<void>;
-  ready(uid: string): Promise<Ready[]>;
+  ready(uid: string, since: number): Promise<Ready[]>;
   finish(uid: string, key: string, ts: number, data: Out & { by: string }): Promise<void>;
   markPlan(uid: string, updatedAt: string, patch: Record<string, unknown>): Promise<void>;
   subs(uid: string): Promise<Sub[]>;
@@ -227,7 +238,7 @@ function supabaseDb(): Db {
   const must = <T>(r: { data: T; error: { message: string } | null }) => { if (r.error) throw new Error(r.error.message); return r.data; };
   return {
     async plans(now) {
-      return must(await a.from('push_plans').select('user_id, plan, sent_pro, done, updated_at')
+      return must(await a.from('push_plans').select('user_id, plan, sent_pro, done, updated_at, last_sent_at')
         .or(`active_until.is.null,active_until.lt."${iso(now)}"`).gt('updated_at', iso(now - 3 * 864e5))) as PlanRow[];
     },
     async claim(uid, key, kind, ts) {
@@ -236,7 +247,7 @@ function supabaseDb(): Db {
       return true;
     },
     async unclaim(uid, key) { must(await a.from('push_inbox').delete().eq('user_id', uid).eq('key', key).eq('state', 'claim')); },
-    async ready(uid) { return must(await a.from('push_inbox').select('key, kind, ts, data').eq('user_id', uid).eq('state', 'ready').order('ts')) as Ready[]; },
+    async ready(uid, since) { return must(await a.from('push_inbox').select('key, kind, ts, data').eq('user_id', uid).eq('state', 'ready').gt('ts', since).order('ts')) as Ready[]; },
     async finish(uid, key, ts, data) { must(await a.from('push_inbox').update({ state: 'ready', ts, data }).eq('user_id', uid).eq('key', key)); },
     async markPlan(uid, updatedAt, patch) { must(await a.from('push_plans').update(patch).eq('user_id', uid).eq('updated_at', updatedAt)); },
     async subs(uid) { return must(await a.from('push_subs').select('id, endpoint, p256dh, auth').eq('user_id', uid)) as Sub[]; },
@@ -260,11 +271,14 @@ export async function tickUser(db: Db, row: PlanRow, now: number, getVapid: () =
   const mark = (patch: Record<string, unknown>) => db.markPlan(uid, row.updated_at, { done: [...done], ...patch });
 
   if (!(await db.claim(uid, it.key, it.kind, it.at))) { done.add(it.key); await mark({}); return; }   // 别的运行已经在发这条
-  const sentPro = row.sent_pro || 0;
-  if (it.kind === 'event' && !it.exempt && (plan.pro || 0) + sentPro >= MAX_PRO) {                  // 上三次你都没回：不再追发
+  // 今天她已经连着找了你几回没回：网页传上来时的回数（按那天算）+ 之后服务器替她发的（过了一天重新算）
+  const tz = plan.tz || 0, day = it.day || dayOf(it.at, tz);
+  const sentToday = row.last_sent_at && dayOf(Date.parse(row.last_sent_at), tz) === day ? row.sent_pro || 0 : 0;
+  const counts = it.kind === 'event' && !it.exempt;
+  if (counts && ((plan.proDay || day) === day ? plan.pro || 0 : 0) + sentToday >= (plan.maxPro || MAX_PRO)) {   // 今天找了你两回你都没回：不再追发
     await db.unclaim(uid, it.key); done.add(it.key); await mark({}); return;
   }
-  const prior = await db.ready(uid);   // 网页关着这段时间她已经发过的
+  const prior = await db.ready(uid, plan.at || 0);   // 网页关着这段时间她已经发过的（这份计划之后的）
   let lastFrom = plan.lastFrom, lastTs = plan.lastTs || 0;
   const lp = prior[prior.length - 1];
   if (lp && lp.ts >= lastTs) { lastFrom = 'her'; lastTs = lp.ts; }
@@ -288,7 +302,7 @@ export async function tickUser(db: Db, row: PlanRow, now: number, getVapid: () =
   const ts = Math.max(now, lastTs + 1000);
   await db.finish(uid, it.key, ts, { ...out, by });
   done.add(it.key);
-  await mark({ sent_pro: sentPro + (it.kind === 'event' ? 1 : 0), last_sent_at: new Date(ts).toISOString() });
+  await mark({ sent_pro: sentToday + (counts ? 1 : 0), last_sent_at: new Date(ts).toISOString() });
 
   if (plan.quiet) return;   // 免打扰、专注模式：消息照发，不弹通知
   const subs = await db.subs(uid);

@@ -44,7 +44,7 @@ const DEFAULTS = {
   her: DEFAULT_HER,
   me: DEFAULT_ME,
   memory: [],
-  ver: 3,                                                          // 设定的版本号，迁移旧数据用
+  ver: 4,                                                          // 设定的版本号，迁移旧数据用
   reply: { mode: 'ai', fallback: true, aiOk: false },          // aiOk：看过「AI 会把聊天发给哪里」的说明
   api: { provider: 'builtin', base: '', key: '', model: '', json: true },          // builtin = 知己内置 AI（登录后可用，不用填 Key）
   photo: { mode: 'pool_then_gen', provider: 'openai', key: '', base: '', model: '' },
@@ -124,6 +124,13 @@ function migrate(raw, s) {
     };
     for (const [k, olds] of Object.entries(OLD3)) if (olds.includes(s.her[k])) s.her[k] = DEFAULT_HER[k];
   }
+  if (raw && !(raw.ver >= 4)) {                                           // v4（2026-11-09）：关系设定不写「交往一年多」、人称统一，免得她以为有一段看不见的过去去编；没自己改过的跟着换
+    const OLD4 = {
+      '交往一年多的恋人。她在上海工作，对方在杭州读书，周末偶尔见面。她支持对方的学业，也会管着对方别偷懒。认真的时候会叫对方的名字。': REL_TYPES.lover.relationship,
+      '认识七年的挚友，高中同桌。她毕业后留在上海工作，对方在杭州读书，放假会约着见面。她嘴上爱损对方，心里很护着对方，会盯着对方别偷懒。认真的时候会叫对方的全名。': REL_TYPES.friend.relationship
+    };
+    if (OLD4[s.her.relationship]) s.her.relationship = OLD4[s.her.relationship];
+  }
   if (raw && !(raw.ver >= 2)) {                                           // v2：默认值改了的，没自己改过就跟着换
     if (raw.me && raw.me.zodiac === '摩羯座') s.me.zodiac = DEFAULT_ME.zodiac;
     if (raw.her && raw.her.callMe === '笨蛋') s.her.callMe = DEFAULT_HER.callMe;
@@ -150,6 +157,7 @@ let ST = Object.assign(freshState(), LS.get('state', {}));     // 运行状态
 let POOL = LS.get('pool', []);                                  // 照片池清单
 let NOTES = LS.get('notes', []);                                // 备忘录
 let FAVS = LS.get('favs', []);                                  // 著信「收藏」
+let DIARY = LS.get('diary', []);                                // Ta的日记：{ date, title, mood, text, ts 写到几点, at 最后改的时间, early, more, del }（js/ui/diary.js）
 
 let sTimer;
 /* 存本地的同时告诉云同步「有改动」（js/core/cloud.js，登录了才会上传）。
@@ -163,6 +171,7 @@ const saveST = () => LS.set('state', ST);
 const savePool = () => { LS.set('pool', POOL); dirty(); };
 const saveNotes = () => { LS.set('notes', NOTES); dirty(); };
 const saveFavs = () => { LS.set('favs', FAVS); dirty(); };
+const saveDiary = () => { LS.set('diary', DIARY); dirty(); };
 
 const pron = () => S.me.gender === '女' ? '她' : S.me.gender === '男' ? '他' : 'TA';   // 提到「我」时用的字
 

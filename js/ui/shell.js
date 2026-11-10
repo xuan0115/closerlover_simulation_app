@@ -94,7 +94,7 @@ function iosLink({ ic, color, label, sub, value, onclick, chevron = true, cls = 
 /* ---------- 切换屏幕 ---------- */
 let cur = 'lock';
 /* 网页里有仿真界面的 App；其余点开是一个说明页 */
-const appRoots = () => ({ wx: wxRoot, settings: settingsRoot, camera: cameraRoot, calc: calcRoot, photos: photosRoot, calendar: calendarRoot, notes: notesRoot, clock: clockRoot, appstore: appStoreRoot, weather: weatherRoot, voicememos: voiceMemosRoot });
+const appRoots = () => ({ wx: wxRoot, diary: diaryRoot, settings: settingsRoot, camera: cameraRoot, calc: calcRoot, photos: photosRoot, calendar: calendarRoot, notes: notesRoot, clock: clockRoot, appstore: appStoreRoot, weather: weatherRoot, voicememos: voiceMemosRoot });
 const secOf = name => appRoots()[name] ? name : 'shell';
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 function show(name) {

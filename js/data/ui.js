@@ -17,6 +17,7 @@ const FEATURES = { voice: false };   // 语音消息、语音通话
 const APPS = {
   /* 这个项目自己做的聊天 App。label 是桌面图标下的名字，short 用在 App 里的标题和「聊我号」 */
   wx:         { label: 'chatwe聊我', short: '聊我' },
+  diary:      { label: 'Ta的日记' },                                   // 她每天睡前写的日记、她记得的事（js/ui/diary.js）
   settings:   { label: '设置' },
   camera:     { label: '相机' },                                       // iPhone 没有能跳转的地址，用仿真相机
   calc:       { label: '计算器' },                                     // 同上
@@ -72,8 +73,8 @@ const APPS = {
   qq:         { label: 'QQ',       open: 'mqq://',            art: ['#45B4FF', '#1C8BF0', 'person'] }
 };
 
-/* 删不掉的 App（和 iPhone 一样，系统自带的几个删不掉；chatwe聊我 也删不掉） */
-const NO_DELETE = ['wx', 'settings', 'appstore', 'camera', 'photos', 'messages', 'wallet', 'health', 'findmy'];
+/* 删不掉的 App（和 iPhone 一样，系统自带的几个删不掉；chatwe聊我、Ta的日记 也删不掉） */
+const NO_DELETE = ['wx', 'diary', 'settings', 'appstore', 'camera', 'photos', 'messages', 'wallet', 'health', 'findmy'];
 
 /* App Store 里能下载的东西：分类和一句话介绍。没列在这里的 App 不会出现在商店里 */
 const STORE = {
@@ -111,7 +112,7 @@ const HOME_LAYOUT = {
      'xiaoyuzhou', 'wxwork', 'folder:tools',
      'widget:checkin']
   ],
-  dock: ['wx', 'messages', 'music']
+  dock: ['wx', 'diary', 'messages', 'music']
 };
 
 /* 精选墙纸：draw 是用代码画的，css 是一段 CSS background。自己的照片在「设置 → 墙纸」里选 */

@@ -3,6 +3,8 @@
 
 const ICONS = {
   back: '<path d="M15 4.5 7.5 12l7.5 7.5"/>',
+  qr: '<rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><path d="M13.5 13.5h2.5v2.5h-2.5zM18 18h2v2h-2zM13.5 20h2.5M20 13.5v2.5"/>',
+  diary: '<path d="M6.5 3.5h11a1.5 1.5 0 0 1 1.5 1.5v14a1.5 1.5 0 0 1-1.5 1.5h-11z"/><path d="M6.5 3.5v17M9.5 3.5v17"/><path d="M14.3 9.2c-.7-1.2-2.8-.9-2.8.7 0 1.4 2.8 3.1 2.8 3.1s2.8-1.7 2.8-3.1c0-1.6-2.1-1.9-2.8-.7z"/>',
   chevron: '<path d="M9.5 5.5 16 12l-6.5 6.5"/>',
   more: '<circle cx="5" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.7" fill="currentColor" stroke="none"/>',
   search: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
@@ -134,6 +136,8 @@ function calendarArt() {
 const APP_ART = {
   wx:        { bg: 'linear-gradient(180deg,#5EE07F 0%,#12B84E 100%)',   // 一个笑脸泡泡
                svg: '<path d="M50 19c-19.5 0-35 13-35 29.5 0 9.4 5 17.7 12.8 23.1L24.5 82l12-6.2c4.2 1.4 8.7 2.1 13.5 2.1 19.5 0 35-13 35-29.4S69.5 19 50 19z" fill="#fff"/><circle cx="38.5" cy="44" r="4.6" fill="#12B84E"/><circle cx="61.5" cy="44" r="4.6" fill="#12B84E"/><path d="M37 55.5c3.4 5.2 8 7.8 13 7.8s9.6-2.6 13-7.8" stroke="#12B84E" stroke-width="4.4" fill="none" stroke-linecap="round"/>' },
+  diary:     { bg: 'linear-gradient(180deg,#FFC9A3 0%,#F28A6A 100%)',   // 一本带书签的本子，封面上一颗心
+               svg: '<rect x="24" y="17" width="52" height="66" rx="7" fill="#FFF8EF"/><rect x="24" y="17" width="12" height="66" rx="6" fill="#F3DFC6"/><path d="M36 17v66" stroke="#E2C7A5" stroke-width="1.6"/><path d="M58 40.5c-2.6-4.6-10-3.4-10 2.4 0 5.4 10 11.6 10 11.6s10-6.2 10-11.6c0-5.8-7.4-7-10-2.4z" fill="#F0644E"/><rect x="47" y="63" width="22" height="3.2" rx="1.6" fill="#E9D3B6"/><rect x="47" y="70" width="15" height="3.2" rx="1.6" fill="#E9D3B6"/><path d="M66 17h7v15l-3.5-3-3.5 3z" fill="#F0644E"/>' },
   messages:  { bg: 'linear-gradient(180deg,#6BF08A 0%,#17C445 100%)',
                svg: '<path d="M50 20c-20 0-36 13-36 29 0 9 5 17 13 22-1 5-4 9-8 12 7 0 13-3 17-6 4 1 9 2 14 2 20 0 36-13 36-30S70 20 50 20z" fill="#fff"/>' },
   photos:    { bg: '#fff', light: true,

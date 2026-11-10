@@ -161,3 +161,48 @@ span.cam-tb{background:none}
 .tp-cat{font-size:13px!important;margin-top:-8px}
 .shell-body .btn.primary{margin-top:10px;padding:13px 22px}
 .ar-btns button{text-align:center}
+
+/* Ta的日记（2026-11-10）：暖色纸张，正文用宋体，像本子上写的 */
+.diary-app{--dy-paper:#FBF6EE;--dy-card:#FFFDF9;--dy-ink:#3A322B;--dy-ink2:#8C7F72;--dy-accent:#E0654F;--dy-rule:rgba(140,110,80,.13);--dy-chip:#F6E6DA;background:var(--dy-paper)}
+@media (prefers-color-scheme:dark){.diary-app{--dy-paper:#17130F;--dy-card:#221C17;--dy-ink:#EDE3D8;--dy-ink2:#9E9184;--dy-accent:#F08670;--dy-rule:rgba(237,227,216,.08);--dy-chip:#3A2A22}}
+.diary-app .ios-nav{background:var(--dy-paper)}
+.diary-app .ios-nav h2{color:var(--dy-ink)}
+.diary-app .ios-back,.diary-app .ios-act{color:var(--dy-accent)}
+.dy-segwrap{flex:none;padding:2px 16px 8px;background:var(--dy-paper)}
+.dy-seg{max-width:360px;margin:0 auto}
+.dy-body{color:var(--dy-ink)}
+.diary-app .ios-card{background:var(--dy-card)}
+.diary-app .ios-group>h3{color:var(--dy-ink2)}
+.diary-app .empty{white-space:pre-line;color:var(--dy-ink2)}
+.dy-status{margin-top:10px;padding:14px 16px;border-radius:12px;background:var(--dy-card);border:1px dashed var(--dy-rule);color:var(--dy-ink2);font-size:15px;line-height:1.55}
+.dy-status small{display:block;margin-top:8px;font-size:12px}
+.dy-now{display:block;margin-top:12px;padding:9px 16px;border-radius:999px;background:var(--dy-accent);color:#fff;font-size:15px;font-weight:600}
+.dy-now:disabled{opacity:.55}
+.dy-row{display:flex;gap:14px;align-items:flex-start;width:100%;padding:13px 16px;text-align:left;position:relative;color:var(--dy-ink)}
+.dy-row+.dy-row::before{content:"";position:absolute;top:0;right:0;left:66px;height:.5px;background:var(--sys-sep)}
+.dy-row:active{background:var(--dy-rule)}
+.dy-day{flex:none;width:36px;text-align:center;padding-top:1px}
+.dy-day b{display:block;font-size:24px;font-weight:600;line-height:1.05;font-variant-numeric:tabular-nums}
+.dy-day small{display:block;font-size:12px;color:var(--dy-ink2);margin-top:3px}
+.dy-main{flex:1;min-width:0}
+.dy-line{display:flex;align-items:center;gap:8px}
+.dy-line b{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.dy-mood{flex:none;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--dy-chip);color:var(--dy-accent);line-height:1.6}
+.dy-ex{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:4px;font-size:14px;line-height:1.5;color:var(--dy-ink2)}
+/* 一篇日记 */
+.dy-paper{padding-top:8px}
+.dy-page{margin-top:6px;padding:22px 20px 18px;border-radius:14px;background:var(--dy-card);box-shadow:0 1px 2px rgba(80,50,20,.06),0 8px 24px rgba(80,50,20,.06);color:var(--dy-ink);font-family:"Songti SC","STSong","Noto Serif SC","Source Han Serif SC",serif}
+.dy-head{display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;font-size:13px;color:var(--dy-ink2)}
+.dy-title{font-size:22px;font-weight:700;line-height:1.35;margin:14px 0 12px;letter-spacing:.5px}
+.dy-page p{font-size:17px;line-height:2;text-indent:2em;margin:0 0 .4em;background-image:linear-gradient(transparent calc(100% - 1px),var(--dy-rule) 0);background-size:100% 2em;word-break:break-word}
+.dy-sign{margin-top:16px;text-align:right;font-size:14px;color:var(--dy-ink2)}
+.dy-pager{display:flex;justify-content:space-between;margin:14px 2px 0}
+.dy-pager button{display:flex;align-items:center;gap:2px;color:var(--dy-accent);font-size:15px;padding:8px 4px}
+/* 她记得的事 */
+.dy-intro{margin:12px 4px 0;font-size:14px;line-height:1.6;color:var(--dy-ink2)}
+.dy-mem{align-items:flex-start}
+.dy-mem .lbl{text-align:left;font-size:16px;line-height:1.45;color:var(--dy-ink)}
+.dy-del{flex:none;color:var(--dy-ink2);padding:12px 0 12px 8px}
+.diary-app .ios-row.blue .lbl{color:var(--dy-accent)}
+.dy-editbox{background:var(--sys-card);border-radius:12px;margin-top:6px}
+.dy-edit{font-size:17px;line-height:1.5}

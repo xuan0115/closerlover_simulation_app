@@ -53,7 +53,7 @@
 /* 第一次打开：你好 → 登录知己账户（js/ui/account.js），盖在锁屏上 */
 .setup{position:absolute;inset:0;z-index:52;background:var(--sys-bg);color:var(--sys-ink);opacity:0;transition:opacity .45s ease;overflow:hidden}
 .setup.on{opacity:1}
-.setup-hello{position:absolute;inset:0;display:grid;place-items:center;width:100%;background:var(--sys-card);transition:opacity .45s ease}
+.setup-hello{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;display:grid;place-items:center;background:var(--sys-card);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .45s ease}
 .setup-hello.out{opacity:0;pointer-events:none}
 .hello-word{grid-area:1/1;font-size:58px;font-weight:200;letter-spacing:.5px;opacity:0;transform:translateY(8px);transition:opacity 1s ease,transform 1s ease}
 .hello-word.on{opacity:1;transform:none}
@@ -71,4 +71,4 @@
 .sheet-panel.tall{height:92%;display:flex;flex-direction:column;overflow:hidden;padding-bottom:0}
 .sheet-panel.tall .sheet-head{flex:none}
 .sheet-done{color:var(--sys-blue);font-weight:600}
-.policy-frame{flex:1;width:calc(100% + 32px);margin:0 -16px;border:0;background:#fff;display:block}
+.policy-box{flex:1;min-height:0;margin:0 -16px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;background:#fff}

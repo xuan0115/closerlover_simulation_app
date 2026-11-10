@@ -161,7 +161,7 @@ function authFlow({ onDone, onOffline, prefill = '', compact = false } = {}) {
       onDone && onDone(reset ? 'reset' : 'signup');
     }) }, reset ? '设好新密码' : '验证');
     enter(p ? [c, p] : [c], btn);
-    box.append(...head('输入验证码', `验证码发到了 ${st.email}，1 小时内有效。没收到的话，看看垃圾邮件。`),
+    box.append(...head('输入验证码', `验证码发到了 ${st.email}，10 分钟内有效。没收到的话，看看垃圾邮件。`),
       iosGroup('', rows), msg, btn, offBtn,
       el('div', { class: 'auth-links' }, link('换个邮箱', () => go(reset ? 'forgot' : 'signup')), again));
     cooldown(again);
@@ -173,11 +173,57 @@ function authFlow({ onDone, onOffline, prefill = '', compact = false } = {}) {
 
 /* 用户协议和隐私政策：从底部弹出一张卡片，里面是 privacy.html 里那块屏幕的内容（不带 iPhone 4 外壳），点「完成」收起。
  * 填了一半的注册表单不受影响；完整的页面（带外壳和两边的大字）在 app.knowwo.com/privacy.html */
+/* 卡片里放的是 privacy.html 手机屏幕里的那部分（标题栏 + 正文），直接拿来显示，不用 iframe：
+ * iPhone 上 iframe 里的页面常常是空白的。装在 Shadow DOM 里，privacy.html 的样式只管它自己，不会影响知己。
+ * 改 privacy.html 的文字、样式，这里自动跟着变。 */
+let policyHTML = null;
+const loadPolicy = () => policyHTML || (policyHTML = fetch('privacy.html').then(r => r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status)))
+  .catch(err => { policyHTML = null; throw err; }));
+const POLICY_CSS = `:host{display:block;background:#fff;color:#111113;-webkit-text-size-adjust:100%;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Helvetica Neue",sans-serif}
+.screen-nav{position:sticky;top:0;z-index:5;padding:10px 16px;flex-wrap:wrap;gap:8px}
+.tab-home{display:none!important}
+.screen-content{overflow:visible;padding:18px 16px 40px}
+.policy-wait{padding:48px 16px;text-align:center;color:#8e8e93;font-size:14px;line-height:1.6}`;
 function policySheet(which) {
   openSheet((p, close) => {
     p.classList.add('tall');
-    p.append(sheetHead('', el('span'), el('button', { class: 'sheet-done', onclick: close }, '完成')),   // 标题就用页面里的「隐私政策与用户协议」
-      el('iframe', { class: 'policy-frame', src: `privacy.html?embed=1#${which}`, title: '用户协议与隐私政策' }));
+    const box = el('div', { class: 'policy-box', role: 'document', 'aria-label': '用户协议与隐私政策' });
+    p.append(sheetHead('', el('span'), el('button', { class: 'sheet-done', onclick: close }, '完成')), box);   // 标题就用页面里的「隐私政策与用户协议」
+    const root = box.attachShadow ? box.attachShadow({ mode: 'open' }) : box;
+    const wait = text => { root.innerHTML = ''; const s = document.createElement('style'); s.textContent = POLICY_CSS; root.append(s, el('div', { class: 'policy-wait' }, text)); };
+    wait('正在打开…');
+    loadPolicy().then(html => {
+      if (!box.isConnected) return;
+      const d = new DOMParser().parseFromString(html, 'text/html');
+      const nav = d.querySelector('.screen-nav'), body = d.querySelector('.screen-content');
+      if (!body) throw new Error('privacy.html 里没有 .screen-content');
+      const css = document.createElement('style');
+      css.textContent = [...d.querySelectorAll('style')].map(s => s.textContent).join('\n').replace(/:root\b/g, ':host') + '\n' + POLICY_CSS;
+      root.innerHTML = '';
+      root.append(css, ...[nav, body].filter(Boolean).map(n => document.importNode(n, true)));
+      const q = id => root.querySelector('#' + id), tabs = [...root.querySelectorAll('.tab-btn[data-target]')];
+      const navH = () => { const n = root.querySelector('.screen-nav'); return n ? n.offsetHeight : 0; };
+      const jump = (id, smooth) => {
+        const t = q(id); if (!t) return;
+        const top = box.scrollTop + t.getBoundingClientRect().top - box.getBoundingClientRect().top - navH() - 6;
+        box.scrollTo ? box.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' }) : (box.scrollTop = top);
+      };
+      const mark = () => {
+        const terms = q('terms'); if (!terms || tabs.length < 2) return;
+        const on = terms.getBoundingClientRect().top - box.getBoundingClientRect().top < 160;
+        tabs.forEach(b => b.classList.toggle('active', (b.dataset.target === 'terms') === on));
+      };
+      root.addEventListener('click', ev => {   // 页面里的链接：#xxx 在卡片里跳；别的网址在新页面打开
+        const a = ev.target.closest && ev.target.closest('a[href]'); if (!a) return;
+        const href = a.getAttribute('href');
+        if (href.startsWith('#')) { ev.preventDefault(); jump(a.dataset.target || href.slice(1), true); }
+        else if (/^https?:/i.test(href)) a.target = '_blank';
+        else if (!/^mailto:/i.test(href)) ev.preventDefault();
+      });
+      box.addEventListener('scroll', mark, { passive: true });
+      requestAnimationFrame(() => { jump(which, false); mark(); });
+    }).catch(err => { console.warn('隐私政策没打开', err); if (box.isConnected) wait('暂时打不开，联网后再点一次试试。'); });
   });
 }
 
@@ -189,7 +235,9 @@ function showWelcome() {
   const wrap = el('section', { class: 'setup', id: 'setup', 'aria-label': '欢迎使用知己' });
   const words = HELLOS.map(w => el('span', { class: 'hello-word' }, w));
   let i = 0, helloT = null;
-  const hello = el('button', { class: 'setup-hello', 'aria-label': '开始', onclick: () => toAuth() }, ...words,
+  /* 用 div 不用 button：iPhone 的 Safari 里 button 不会被撑满整个屏幕，「你好」会缩在最上面、整页看着是白的 */
+  const hello = el('div', { class: 'setup-hello', role: 'button', tabindex: '0', 'aria-label': '开始', onclick: () => toAuth(),
+    onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toAuth(); } } }, ...words,
     el('span', { class: 'setup-go' }, '轻点以开始'));
   const cycle = () => { words.forEach((w, k) => w.classList.toggle('on', k === i)); i = (i + 1) % words.length; };
   cycle(); helloT = setInterval(cycle, 1800);
@@ -248,9 +296,9 @@ function settingsAccountPage(pg, app) {
     if (u) {
       const legacy = isLegacyEmail(u.email);
       b.append(iosGroup('账户', [
-        iosLink({ label: '邮箱', value: legacy ? '还没绑定' : u.email, cls: legacy ? 'warn' : '', onclick: () => emailSheet(re, legacy) }),
-        iosLink({ label: '修改密码', onclick: passwordSheet })],
-        legacy ? `这是以前用账号名「${accountName(u)}」注册的老账户。绑定邮箱以后用邮箱登录，忘记密码也能用验证码找回。` : ''));
+        el('div', { class: 'ios-row' }, el('span', { class: 'lbl' }, '邮箱'), el('span', { class: 'val' }, legacy ? '没有（老账户）' : u.email)),   // 只显示，不能改
+        ...(legacy ? [] : [iosLink({ label: '修改密码', onclick: passwordSheet })])],
+        legacy ? `这是以前用账号名「${accountName(u)}」注册的老账户，没有邮箱。想换成邮箱登录：先退出登录，再用邮箱注册新账户，这台手机上的记录会带到新账户里。` : ''));
       const backups = LS.get('backups', []);
       b.append(iosGroup('云同步', [
         el('div', { class: 'ios-row' }, el('span', { class: 'lbl' }, '状态'), el('span', { class: 'val' + (st === 'offline' ? ' warn' : '') }, cloudStatusText())),
@@ -276,73 +324,57 @@ function settingsAccountPage(pg, app) {
   });
 }
 
-/* 换邮箱（老账户绑定邮箱也是这里）：填新邮箱 → 输发到新邮箱的验证码 */
-function emailSheet(rerender, legacy) {
-  let email = '', coolUntil = 0;
+/* 修改密码：和「忘记密码」一样，发验证码到注册邮箱，填验证码和新密码（不用记得旧密码；别人拿着你解锁的手机也改不了） */
+function passwordSheet() {
+  const u = currentUser;
+  if (!u || isLegacyEmail(u.email)) return;
+  const email = u.email;
+  let coolUntil = 0, coolT = null;
   openSheet((p, close) => {
-    const draw = step => {
-      p.textContent = '';
-      const msg = el('p', { class: 'sub acc-msg', hidden: true });
-      const say = (t, bad = true) => { msg.hidden = !t; msg.textContent = t; msg.classList.toggle('bad', bad); };
-      if (step === 'email') {
-        const i = el('input', { type: 'email', inputmode: 'email', placeholder: '你的邮箱', autocapitalize: 'off', spellcheck: 'false', 'aria-label': '新邮箱' });
-        const btn = el('button', { class: 'btn primary', onclick: async () => {
-          const a = i.value.trim().toLowerCase();
-          if (!validEmail(a)) { say('邮箱格式不对'); return; }
-          btn.disabled = true;
-          const r = await authChangeEmail(a);
-          btn.disabled = false;
-          if (r.error) { say(/已经注册过/.test(r.error) ? '这个邮箱已经被别的账户用了' : r.error); return; }
-          email = a; coolUntil = Date.now() + CODE_WAIT * 1000; draw('code');
-        } }, '发验证码');
-        p.append(sheetHead(legacy ? '绑定邮箱' : '换邮箱', el('button', { onclick: close }, '取消')),
-          el('p', { class: 'sub' }, '验证码会发到新邮箱。验证以后，用新邮箱和原来的密码登录。'),
-          iosGroup('', [el('label', { class: 'ios-field' }, el('span', {}, '新邮箱'), i)]), msg, el('div', { class: 'btnrow' }, btn));
-        setTimeout(() => i.focus(), 300);
-        return;
-      }
-      const c = el('input', { type: 'text', inputmode: 'numeric', autocomplete: 'one-time-code', maxlength: '10', placeholder: '邮件里的数字', class: 'code-input', 'aria-label': '验证码' });
+    const msg = el('p', { class: 'sub acc-msg bad', hidden: true });
+    const say = (t, bad = true) => { msg.hidden = !t; msg.textContent = t; msg.classList.toggle('bad', bad); };
+    const body = el('div');
+    p.append(sheetHead('修改密码', el('button', { onclick: () => { clearInterval(coolT); close(); } }, '取消')), body);
+    const send = async btn => {
+      btn.disabled = true;
+      const r = await authSendReset(email);
+      btn.disabled = false;
+      if (r.error) { say(r.error); return false; }
+      coolUntil = Date.now() + CODE_WAIT * 1000; return true;
+    };
+    function step1() {
+      body.textContent = ''; say('');
+      const btn = el('button', { class: 'btn primary wide', onclick: async () => { if (await send(btn)) step2(); } }, '发验证码');
+      body.append(el('p', { class: 'sub' }, `验证码会发到 ${email}，10 分钟内有效。`), msg, el('div', { class: 'btnrow' }, btn));
+    }
+    function step2() {
+      body.textContent = ''; say('');
+      const c = el('input', { type: 'text', inputmode: 'numeric', autocomplete: 'one-time-code', maxlength: '10', placeholder: '邮件里的数字', 'aria-label': '验证码', class: 'code-input' });
+      const a = el('input', { type: 'password', autocomplete: 'new-password', placeholder: '至少 6 位', 'aria-label': '新密码' });
+      const b2 = el('input', { type: 'password', autocomplete: 'new-password', placeholder: '再输一次', 'aria-label': '确认新密码' });
       c.addEventListener('input', () => { c.value = c.value.replace(/\D/g, '').slice(0, 10); });
+      const again = el('button', { type: 'button', class: 'link', onclick: async () => { if (Date.now() >= coolUntil && await send(again)) { say('又发了一次，看看邮箱', false); tickCool(); } } }, '重新发送');
+      const tickCool = () => {
+        clearInterval(coolT);
+        const f = () => { const left = Math.ceil((coolUntil - Date.now()) / 1000); if (!again.isConnected) { clearInterval(coolT); return; } again.disabled = left > 0; again.textContent = left > 0 ? `重新发送（${left}）` : '重新发送'; if (left <= 0) clearInterval(coolT); };
+        f(); coolT = setInterval(f, 1000);
+      };
       const btn = el('button', { class: 'btn primary', onclick: async () => {
-        if (c.value.length < 6) { say('验证码是邮件里的那串数字'); return; }
+        if (c.value.trim().length < 6) { say('验证码是邮件里的那串数字'); c.focus(); return; }
+        if (a.value.length < 6) { say('新密码至少 6 位'); a.focus(); return; }
+        if (a.value !== b2.value) { say('两次输的不一样'); b2.focus(); return; }
         btn.disabled = true;
-        const r = await authVerify(email, c.value, 'email_change');
+        const r = await authReset(email, c.value.trim(), a.value);
         btn.disabled = false;
         if (r.error) { say(r.error); return; }
-        close(); toast(legacy ? '邮箱绑好了，以后用邮箱登录' : '邮箱换好了'); rerender();
-      } }, '验证');
-      const again = el('button', { class: 'btn', onclick: async () => {
-        if (Date.now() < coolUntil) { say(`等 ${Math.ceil((coolUntil - Date.now()) / 1000)} 秒再发`); return; }
-        const r = await authChangeEmail(email);
-        if (r.error) { say(r.error); return; }
-        coolUntil = Date.now() + CODE_WAIT * 1000; say('又发了一次，看看邮箱', false);
-      } }, '重新发送');
-      p.append(sheetHead('输入验证码', el('button', { onclick: close }, '取消')),
-        el('p', { class: 'sub' }, `验证码发到了 ${email}，1 小时内有效。没收到的话，看看垃圾邮件。`),
-        iosGroup('', [el('label', { class: 'ios-field' }, el('span', {}, '验证码'), c)]), msg, el('div', { class: 'btnrow' }, again, btn));
+        clearInterval(coolT); close(); toast(r.warn || '密码改好了', r.warn ? 5000 : 2500);
+      } }, '设好新密码');
+      body.append(el('p', { class: 'sub' }, `验证码发到了 ${email}，10 分钟内有效。没收到的话，看看垃圾邮件。`),
+        iosGroup('', [el('label', { class: 'ios-field' }, el('span', {}, '验证码'), c), el('label', { class: 'ios-field' }, el('span', {}, '新密码'), a), el('label', { class: 'ios-field' }, el('span', {}, '确认新密码'), b2)]),
+        msg, el('div', { class: 'btnrow' }, again, btn));
+      tickCool();
       setTimeout(() => c.focus(), 300);
-    };
-    draw('email');
-  });
-}
-function passwordSheet() {
-  openSheet((p, close) => {
-    const a = el('input', { type: 'password', autocomplete: 'new-password', placeholder: '至少 6 位', 'aria-label': '新密码' });
-    const b2 = el('input', { type: 'password', autocomplete: 'new-password', placeholder: '再输一次', 'aria-label': '确认新密码' });
-    const msg = el('p', { class: 'sub acc-msg bad', hidden: true });
-    const say = t => { msg.hidden = !t; msg.textContent = t; };
-    const btn = el('button', { class: 'btn primary', onclick: async () => {
-      if (a.value.length < 6) { say('新密码至少 6 位'); return; }
-      if (a.value !== b2.value) { say('两次输的不一样'); return; }
-      btn.disabled = true;
-      const r = await authChangePassword(a.value);
-      btn.disabled = false;
-      if (r.error) { say(r.error); return; }
-      close(); toast('密码改好了');
-    } }, '修改');
-    p.append(sheetHead('修改密码', el('button', { onclick: close }, '取消')),
-      iosGroup('', [el('label', { class: 'ios-field' }, el('span', {}, '新密码'), a), el('label', { class: 'ios-field' }, el('span', {}, '确认新密码'), b2)]),
-      msg, el('div', { class: 'btnrow' }, btn));
-    setTimeout(() => a.focus(), 300);
+    }
+    step1();
   });
 }

@@ -60,10 +60,10 @@ function clockRoot(pg, app) {
       const lead = alarmEditing ? (a.locked ? el('span', { class: 'al-lock', 'aria-label': '预设闹钟，不能删' }, icon('lock', 16, 2))
         : el('button', { class: 'al-del', 'aria-label': '删除', onclick: async e => { e.stopPropagation(); if (await confirmSheet('删除这个闹钟？', a.label || '', '删除', true)) { S.alarms = S.alarms.filter(x => x !== a); saveS(); render(); } } }, icon('minus', 14, 3))) : '';
       return el('div', { class: 'alarm' + (a.on ? '' : ' off'), role: 'button', tabindex: '0', onclick: () => a.locked ? toast('这个闹钟只能关闭，不能修改') : alarmSheet(a, render) }, lead,
-        el('div', { class: 'al-main' }, el('time', {}, a.time), el('div', { class: 'lbl' }, a.label || '闹钟', el('small', {}, '，' + alarmDays(a.days) + (a.ta ? `，${TA()}提醒` : '')),
+        el('div', { class: 'al-main' }, el('time', {}, a.time), el('div', { class: 'lbl' }, a.label || '闹钟', el('small', {}, '，' + (a.date && !a.days.length ? whenText(a.date, a.time).split(' ')[0] : alarmDays(a.days)) + (a.byHer ? `，聊天里让${TA()}提醒的` : a.ta ? `，${TA()}提醒` : '')),
           a.locked ? el('span', { class: 'al-pin' }, icon('lock', 12, 2.2)) : '')), alarmEditing ? el('span', { class: 'chev' }, icon('chevron', 18, 2.2)) : sw);
     };
-    const mine = [...S.alarms].sort((a, b) => a.time.localeCompare(b.time));
+    const mine = [...S.alarms].sort((a, b) => ((a.date || '') + a.time).localeCompare((b.date || '') + b.time));
     body.append(iosGroup('', mine.map(row), `到点只响铃。想让${herName()}来提醒，编辑闹钟时打开「让${TA()}提醒我」。`));
     // 督促清单里设了提醒时间的：到点 TA 在聊天里提醒
     const tasks = S.tasks.filter(t => t.remind).sort((a, b) => a.remind.localeCompare(b.remind));
@@ -116,6 +116,11 @@ function alarmSheet(a, after) {
     const snooze = el('input', { type: 'checkbox', class: 'sw', 'aria-label': '稍后提醒' }); snooze.checked = x.snooze !== false;
     const save = () => {
       x.time = time.value || x.time; x.label = label.value.trim(); x.ta = ta.checked; x.snooze = snooze.checked; x.on = true;
+      if (x.ta && !x.days.length) {   // 只响一次、由她提醒：记下是哪一天（锁屏通知的服务器只发那一天的）
+        const [h, m] = x.time.split(':').map(Number), t = new Date(); t.setHours(h, m, 0, 0);
+        if (t.getTime() <= Date.now()) t.setDate(t.getDate() + 1);
+        x.date = dkey(t);
+      } else delete x.date;
       const i = S.alarms.findIndex(y => y.id === x.id);
       if (i >= 0) S.alarms[i] = x; else S.alarms.push(x);
       saveS(); close(); after && after();

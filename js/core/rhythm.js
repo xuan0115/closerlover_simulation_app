@@ -4,7 +4,10 @@
  *   陪伴方式（S.zx.company，见 js/data/persona.js 的 COMPANY）：
  *     真人作息（默认）：按她的作息（S.her.sched：几点起、几点睡、工作日忙的时候）决定多久回。
  *       睡着了醒来才回；你连发 7 条能把她吵醒；忙的时候过几分钟回；看不了手机的时候忙完才回。
- *     24 小时陪伴：什么时候都在几分钟内回。
+ *     24 小时陪伴：什么时候都很快回（聊得正热 2–10 秒，平时 10–45 秒）。
+ *   拍一拍：24 小时陪伴下 3–8 秒就回；真人作息下她有空、在忙但能看手机时，等待缩短到一两分钟以内；
+ *          睡着、看不了手机时不会马上醒，但拍一下算一条，和消息一起凑够 7 条照样能吵醒她。她回之前连拍几下也只回一次。
+ *   边等边想（AI 模式）：快到她回的时候提前开始想，等待结束时回复已经想好，只演打字；想的时候你又发了，就带上新的重想。
  *   不管哪种：你说出想伤害自己这类话，她马上回。
  *   时间表只决定倾向：你们正聊得热的时候，她忙着也会回（「取决于对话者」）。
  *   起床、睡觉的时间可以每天早晚差半小时左右（按日期算，同一天总是同一个结果）。
@@ -81,7 +84,7 @@ function replyDelay(now = Date.now()) {
   if (crisisNow()) return { delay: rnd(2e3, 6e3), status: 'free' };                               // 说出想伤害自己这类话：马上回
   const st = herStatus(now), said = sleepSaidUntil(now);
   if (S.zx.company === 'always')                                                                   // 24 小时陪伴
-    return { delay: chatIsHot(now) ? rnd(3e3, 25e3) : rnd(15e3, 120e3), status: st.status === 'sleep' || said ? 'night' : 'free' };
+    return { delay: chatIsHot(now) ? rnd(2e3, 10e3) : rnd(10e3, 45e3), status: st.status === 'sleep' || said ? 'night' : 'free' };
   if (said) return { delay: said - now + rnd(5, 30) * 60e3, status: 'sleep' };                    // 她刚说了晚安 / 眯一会儿：睡着了
   if (chatIsHot(now)) return { delay: rnd(3e3, 25e3), status: 'free' };                           // 聊得正热：忙也会回
   if (st.status !== 'sleep' && st.status !== 'away' && Math.random() < .1) return { delay: rnd(500, 3e3), status: 'free' };   // 刚好拿着手机
@@ -90,6 +93,16 @@ function replyDelay(now = Date.now()) {
   if (st.status === 'away') return { delay: st.until - now + rnd(1, 5) * 60e3, status: 'away', what: st.what };   // 看不了手机：忙完才回
   return { delay: st.until - now + rnd(5, 40) * 60e3, status: 'sleep' };                          // 睡着了：醒来以后才看到
 }
+
+/* 拍一拍以后最多再等多久；null = 这会儿拍了也不会马上看（睡着、看不了手机） */
+function patDelay(status) {
+  if (S.zx.company === 'always') return rnd(3e3, 8e3);
+  if (status === 'free') return rnd(5e3, 40e3);
+  if (status === 'busy') return rnd(30e3, 100e3);
+  return null;
+}
+/* 算「吵醒她」的条数：消息和拍一拍都算 */
+const wakeCount = () => pendingMine().filter(m => m.from === 'me' || m.kind === 'pat').length;
 
 /* 这次回几条：1 条 45%，2 条 35%，3 条 15%，4 条 5%；你只回了「嗯」或一个表情，最多 1 条 */
 function drawCount(text = '') {
@@ -109,17 +122,22 @@ function typingMs(it) {
 
 /* ---------- 你发完消息：排一个回复 ---------- */
 let replyTimer = null;
-function queueReply() {
+/* pat：这次是拍了拍她（js/ui/wechat.js 的 patHer） */
+function queueReply({ pat = false } = {}) {
   const now = Date.now();
   const p = ST.pending;
   if (p && p.due > now) {   // 已经在等了：她看到时会一起看到
+    const q = pat ? patDelay(p.status) : null;
     if (crisisNow()) { p.due = Math.min(p.due, now + rnd(2e3, 6e3)); p.status = 'free'; delete p.what; }   // 想伤害自己这类话：马上回
-    else if (p.status === 'sleep' && S.zx.company !== 'always' && pendingMine().filter(m => m.from === 'me').length >= WAKE_N) {
+    else if (p.status === 'sleep' && S.zx.company !== 'always' && wakeCount() >= WAKE_N) {
       p.due = Math.min(p.due, now + rnd(20e3, 90e3)); p.status = 'woken';                                // 连发 7 条：被吵醒了
-    } else p.due = Math.max(p.due, now + 2e3);
+    } else if (q != null) { if (!p.pat && now + q < p.due) p.due = now + q; p.pat = true; }             // 拍了拍：快点回（已经拍过就不变，连拍不会更快）
+    else p.due = Math.max(p.due, now + 2e3);
   } else {
-    const { delay, status, what } = replyDelay(now);
-    ST.pending = Object.assign({ due: now + Math.max(2e3, delay), since: now, status }, what ? { what } : {});
+    let { delay, status, what } = replyDelay(now);
+    const q = pat ? patDelay(status) : null;
+    if (q != null) delay = Math.min(delay, q);
+    ST.pending = Object.assign({ due: now + Math.max(2e3, delay), since: now, status }, what ? { what } : {}, q != null ? { pat: true } : {});
   }
   saveST(); armReply();
   pushDirty(true);   // 你马上关网页的话，到时间由服务器替她回（js/core/push.js）
@@ -128,6 +146,38 @@ function armReply() {
   clearTimeout(replyTimer);
   if (!ST.pending) return;
   replyTimer = setTimeout(checkPending, Math.max(0, Math.min(ST.pending.due - Date.now(), 2 ** 31 - 1)) + 50);
+  armPrefetch();
+}
+
+/* ---------- 边等边想：快到点时先把回复想好（只在 AI 模式、网页在前台时） ---------- */
+const PREFETCH = 20e3;   // 提前多久开始想
+const IDLE = 2500;       // 你停下来多久才开始想（还在连着发就再等等）
+let PRE = null, preTimer = null;
+/* 这一份提前想的回复对应的是哪几条消息：之后你又发了，就对不上了，要重想 */
+function preSig() {
+  const mine = pendingMine(), l = mine[mine.length - 1];
+  return [ST.pending ? ST.pending.since : 0, mine.length, l ? l.id : ''].join(':');
+}
+function armPrefetch() {
+  clearTimeout(preTimer);
+  const p = ST.pending;
+  if (!p || !usesAI()) return;
+  const last = pendingMine().slice(-1)[0];
+  const at = Math.max(p.due - PREFETCH, (last ? last.ts : 0) + IDLE, Date.now());
+  preTimer = setTimeout(startPrefetch, Math.max(0, Math.min(at - Date.now(), 2 ** 31 - 1)));
+}
+function startPrefetch() {
+  const p = ST.pending, now = Date.now();
+  if (!p || !usesAI() || document.hidden || pushHold() || S.notify.airplane || replyBusy) return;
+  if (p.due - now > PREFETCH + 1000) { armPrefetch(); return; }
+  const last = pendingMine().slice(-1)[0];
+  if (last && now - last.ts < IDLE) { armPrefetch(); return; }
+  const sig = preSig();
+  if (PRE && PRE.sig === sig) return;
+  const count = crisisNow() ? 0 : drawCount(pendingText());
+  const promise = compose({ kind: 'reply', at: Math.max(now, p.due), waited: p.due - p.since, status: p.status, what: p.what || '', count, pat: !!p.pat });
+  promise.catch(() => {});
+  PRE = { sig, promise, count };
 }
 let replyBusy = false;
 /* 到点了就让她回；飞行模式下先不回，关掉后再回 */
@@ -135,11 +185,13 @@ function checkPending() {
   const p = ST.pending, now = Date.now();
   if (pushHold()) return;   // 网页在后台：服务器替她回；回到前台时再看（js/core/push.js）
   if (!p || p.due > now || replyBusy || S.notify.airplane) { if (p && !replyBusy) armReply(); return; }
+  const pre = PRE && PRE.sig === preSig() ? PRE : null;   // 提前想好的还对得上：直接用
+  PRE = null; clearTimeout(preTimer);
   delete ST.pending; saveST();
   const live = now - p.due < 60e3 && !document.hidden;   // 网页关着时错过的：按预定时间补上，不演打字
   replyBusy = true;
   enqueue(async () => {
-    try { await herTurn({ kind: 'reply', at: live ? Date.now() : p.due, live, waited: p.due - p.since, status: p.status, what: p.what || '', retry: { kind: 'reply' } }); }
+    try { await herTurn({ kind: 'reply', at: live ? Date.now() : p.due, live, waited: p.due - p.since, status: p.status, what: p.what || '', retry: { kind: 'reply' }, pat: !!p.pat, pre: pre && pre.promise, count: pre ? pre.count : 0 }); }
     finally { replyBusy = false; if (ST.pending) armReply(); }
   });
 }

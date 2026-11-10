@@ -18,7 +18,12 @@ const WX_TABS = [['chats', zxName, 'chat'], ['contacts', () => L('通讯录', 'C
 const EMOJI = ['😀', '😁', '😂', '🤣', '😊', '😍', '🥰', '😘', '😜', '🤪', '😎', '🥹', '😭', '😤', '😡', '🥱', '😴', '🤔', '🙄', '😳', '🫠', '🙃', '😇', '🤗', '👍', '👌', '🙏', '💪', '👏', '❤️', '💔', '🌹', '☕️', '🍜', '🍰', '🌙', '☀️', '🎉', '✨', '🐱'];
 
 const threadVisible = () => cur === 'wx' && !!WXT && Nav.top('wx') === WXT.pg;
-const newPostsCount = () => POSTS.filter(p => p.author === 'her' && p.ts > (ST.seenPosts || 0)).length + (ST.momentNews || 0);
+/* 朋友圈的新东西：她新发的（发现页显示她的头像和小红点），她给你的点赞、评论、回复（显示红色数字，朋友圈顶上「N 条新消息」） */
+const herNewPosts = () => POSTS.filter(p => p.author === 'her' && p.ts > (ST.seenPosts || 0)).length;
+const moNotices = () => (ST.moNotices || []).filter(n => POSTS.some(p => p.id === n.postId));
+const unseenNotices = () => moNotices().filter(n => n.ts > (ST.moNoticeSeen || 0));
+const newPostsCount = () => herNewPosts() + unseenNotices().length;
+const myWxId = () => (S.me.wxid || '').trim() || myZxId();
 function markRead() {
   if (!threadVisible() || document.hidden) return;
   const last = M[M.length - 1];
@@ -126,8 +131,9 @@ function wxContacts(body) {
     el('p', { class: 'wx-hint', style: 'text-align:center;padding-top:18px' }, L('1 个朋友', '1 friend')));
 }
 function wxDiscover(body) {
-  const np = newPostsCount();
-  const thumb = POSTS.length ? el('span', { class: 'thumb' }, herAv(), np ? el('i', { class: 'wx-dot tiny' }) : '') : '';
+  const nn = unseenNotices().length;
+  const thumb = el('span', { class: 'mo-cell-val' }, nn ? el('i', { class: 'wx-dot' }, nn > 99 ? '99+' : String(nn)) : '',
+    herNewPosts() ? el('span', { class: 'thumb' }, herAv(), el('i', { class: 'wx-dot tiny' })) : '');
   const blank = (ic, color, label) => wxCell({ ic, color, label, onclick: () => Nav.push('wx', wxBlank(label)) });
   body.append(
     el('div', { class: 'wx-group' }, wxCell({ ic: 'aperture', color: '#E8673D', label: L('朋友圈', 'Moments'), value: thumb, onclick: () => Nav.push('wx', wxMomentsPage) })),
@@ -137,9 +143,9 @@ function wxDiscover(body) {
     el('div', { class: 'wx-group' }, blank('grid', '#7D53D1', L('小程序', 'Mini programs'))));
 }
 function wxMe(body) {
-  body.append(el('div', { class: 'wx-me-head' }, myAv(),
-    el('div', { style: 'flex:1;min-width:0' }, el('b', {}, meName()), el('small', {}, L(`${zxName()}号：`, `${zxName()} ID: `) + myZxId()),
-      el('span', { class: 'wx-status' }, L('+ 状态', '+ Status')))));
+  body.append(el('button', { class: 'wx-me-head', 'aria-label': L('个人资料', 'My profile'), onclick: () => Nav.push('wx', wxMyInfoPage) }, myAv(),
+    el('div', { style: 'flex:1;min-width:0' }, el('b', {}, meName()), el('small', {}, L(`${zxName()}号：`, `${zxName()} ID: `) + myWxId()),
+      el('span', { class: 'wx-status' }, L('+ 状态', '+ Status'))), el('span', { class: 'wx-me-chev' }, icon('qr', 18, 1.8), icon('chevron', 16, 2))));
   body.append(
     el('div', { class: 'wx-group' }, wxCell({ ic: 'service', color: '#07C160', label: L('服务', 'Services'), onclick: () => Nav.push('wx', wxBlank(L('服务', 'Services'), L('这里什么都没有。', 'Nothing here.'))) })),
     el('div', { class: 'wx-group' },
@@ -152,7 +158,7 @@ function wxAddFriend(pg) {
   pg.classList.add('wx');
   pg.append(wxNav(L('添加朋友', 'Add friends')), el('div', { class: 'wx-scroll' },
     el('div', { class: 'wx-search', style: 'justify-content:flex-start;padding-left:14px' }, icon('search', 17, 2), L(`${zxName()}号/手机号`, `${zxName()} ID / phone`)),
-    el('p', { class: 'wx-hint', style: 'text-align:center' }, L(`我的${zxName()}号：`, `My ${zxName()} ID: `) + myZxId()),
+    el('p', { class: 'wx-hint', style: 'text-align:center' }, L(`我的${zxName()}号：`, `My ${zxName()} ID: `) + myWxId()),
     el('div', { class: 'wx-group' },
       wxCell({ ic: 'scan', color: '#2782D7', label: L('扫一扫', 'Scan'), onclick: () => openApp('camera') }),
       wxCell({ ic: 'contacts', color: '#07C160', label: L('手机联系人', 'Phone contacts'), onclick: () => Nav.push('wx', wxBlank(L('手机联系人', 'Phone contacts'), L('没有可以添加的联系人', 'No contacts to add'))) }))));
@@ -182,14 +188,20 @@ function wxThreadPage(pg) {
   const scroller = el('div', { class: 'wx-msgs' }, list);
   const compose = buildCompose();
   pg.append(nav, scroller, compose);
-  WXT = { pg, list, scroller, title, compose };
+  WXT = { pg, list, scroller, title, compose, stick: true };
   applyChatBg();
-  scroller.addEventListener('scroll', closeMsgMenu);
+  /* 停在最下面：页面刚拼好时还没放到屏幕上，那时滚动不起作用；所以「贴着底」记成状态，
+     页面上屏、图片加载完、键盘弹起，只要你没往上翻，就一直贴着最新的消息 */
+  const mine = () => WXT && WXT.scroller === scroller;
+  scroller.addEventListener('scroll', () => { closeMsgMenu(); if (mine()) WXT.stick = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 160; });
+  const ro = window.ResizeObserver ? new ResizeObserver(() => { if (mine() && WXT.stick) scroller.scrollTop = scroller.scrollHeight; }) : null;
+  if (ro) { ro.observe(list); ro.observe(scroller); }
   pg.addEventListener('pointerdown', e => { if (!e.target.closest('.wx-pop')) closeMsgMenu(); });
-  pg.onclose = () => { if (WXT && WXT.pg === pg) WXT = null; };
+  pg.onclose = () => { if (ro) ro.disconnect(); if (WXT && WXT.pg === pg) WXT = null; };
   pg.refresh = () => { title.textContent = typingOn ? L('对方正在输入...', 'typing...') : wxName(); renderThread(); markRead(); };
   pg.closeMenu = () => { if ($('.wx-pop', pg)) { closeMsgMenu(); return true; } return false; };
   renderThread();
+  requestAnimationFrame(() => scrollBottom(true));
 }
 function applyChatBg() {
   if (!WXT) return;
@@ -252,7 +264,8 @@ function appendMsg(m, prev) {
 function scrollBottom(force) {
   if (!WXT) return;
   const box = WXT.scroller;
-  if (force || box.scrollHeight - box.scrollTop - box.clientHeight < 160) box.scrollTop = box.scrollHeight;
+  if (force) WXT.stick = true;
+  if (WXT.stick || box.scrollHeight - box.scrollTop - box.clientHeight < 160) box.scrollTop = box.scrollHeight;
 }
 function setTyping(on) {
   typingOn = on;
@@ -267,10 +280,11 @@ function bindAvatarTaps(av) {
     t = setTimeout(() => { t = null; Nav.push('wx', wxProfilePage); }, 280);
   });
 }
+/* 拍一拍：她会快点回（js/core/rhythm.js 的 patDelay）。她还没回之前连拍几下，也只回一次 */
 function patHer() {
   addMsg({ id: uid('t'), from: 'tip', who: 'me', kind: 'pat', text: L(`我拍了拍「${wxName()}」`, `You nudged ${wxName()}`), ts: Date.now() });
   const row = WXT && WXT.list.lastElementChild; if (row) row.classList.add('shake');
-  queueReply();
+  queueReply({ pat: true });
 }
 
 /* ---------- 长按 / 右键菜单 ---------- */
@@ -560,36 +574,149 @@ function wxMoreInfoPage(pg) {
     wxCell({ label: L('来源', 'Source'), value: L(`通过搜索${zxName()}号添加`, `Added by searching ${zxName()} ID`) }))));
 }
 
+/* ---------- 我的个人资料（照微信「我 → 个人资料」）----------
+ * 头像、名字、性别和「设置 → 我的资料」是同一份（S.me），哪边改都一样；地区、chatwe号、拍一拍、签名只在这里改。
+ * 地区和签名也会告诉她（js/ai/brain.js 的【关于 TA】）；拍一拍是她拍你时显示的那句：「林夏」拍了拍我的小脑袋。 */
+function wxMyInfoPage(pg) {
+  pg.classList.add('wx');
+  const body = el('div', { class: 'wx-scroll' });
+  pg.append(wxNav(L('个人资料', 'My profile')), body);
+  pg.refresh = render; render();
+  function render() {
+    body.textContent = '';
+    const g = S.me.gender === '自己填写' ? (S.me.genderText || '').trim() || L('未填写', 'Not set') : S.me.gender;
+    const none = L('未填写', 'Not set');
+    const edit = (key, title, opts) => () => Nav.push('wx', wxEditPage(key, title, opts));
+    body.append(
+      el('div', { class: 'wx-group' },
+        wxCell({ label: L('头像', 'Photo'), right: el('span', { class: 'wx-info-av' }, myAv()), onclick: async () => {
+          const [f] = await pickFile('image/*'); if (!f) return;
+          try { S.me.avatar = await compress(await fileToDataURL(f), 240, .85, true); saveS(); render(); renderHome(); } catch (e) { toast(e.message); }
+        } }),
+        wxCell({ label: L('名字', 'Name'), value: myName() || none, onclick: edit('name', L('更改名字', 'Change name'), { max: 20, ph: L('你的名字或昵称', 'Your name or nickname') }) }),
+        wxCell({ label: L('性别', 'Gender'), value: g, onclick: () => Nav.push('wx', wxGenderPage) }),
+        wxCell({ label: L('地区', 'Region'), value: S.me.region || none, onclick: edit('region', L('设置地区', 'Region'), { max: 30, ph: L('比如：上海 杨浦', 'e.g. Shanghai'), hint: L(`${herName()}会知道你在哪，聊天气、见面时对得上。`, `${herName()} will know where you are.`) }) }),
+        wxCell({ label: L(`${zxName()}号`, `${zxName()} ID`), value: myWxId(), onclick: edit('wxid', L(`设置${zxName()}号`, `${zxName()} ID`), { max: 20, ph: myZxId(), hint: L('只是显示用，随便起。', 'Just for show.') }) }),
+        wxCell({ label: L('我的二维码', 'My QR code'), right: icon('qr', 18, 1.8), onclick: () => Nav.push('wx', wxBlank(L('我的二维码', 'My QR code'), L(`你只有${herName()}一个朋友，${TA()}早就加过你啦。`, `${herName()} already has you.`))) }),
+        wxCell({ label: L('拍一拍', 'Nudge'), value: S.me.pat ? L('拍了拍我', 'nudged me ') + S.me.pat : none, onclick: edit('pat', L('拍一拍', 'Nudge'), { max: 16, ph: L('比如：的小脑袋', 'e.g. on the head'), hint: L(`${herName()}拍你的时候会显示：「${wxName()}」拍了拍我${S.me.pat || '的小脑袋'}`, `Shown when ${herName()} nudges you.`) }) }),
+        wxCell({ label: L('签名', 'Bio'), value: S.me.signature || none, onclick: edit('signature', L('设置个性签名', 'Bio'), { max: 30, ph: L('一句话介绍自己', 'A line about you'), hint: L(`显示在朋友圈封面下面，${herName()}也看得到。`, `Shown under your Moments cover; ${herName()} sees it too.`) }) })));
+  }
+}
+/* 改一项文字资料：照微信，一个输入框，右上角「完成」 */
+const wxEditPage = (key, title, { max = 30, ph = '', hint = '' } = {}) => pg => {
+  pg.classList.add('wx');
+  const inp = el('input', { class: 'wx-field', type: 'text', maxlength: String(max), placeholder: ph, value: S.me[key] || '', 'aria-label': title });
+  const done = () => { S.me[key] = inp.value.trim(); saveS(); Nav.pop('wx'); renderHome(); };
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') done(); });
+  pg.append(el('header', { class: 'wx-nav' }, wxBack('wx'), el('h1', { class: 'wx-title' }, title), el('button', { class: 'wx-done', onclick: done }, L('完成', 'Done'))),
+    el('div', { class: 'wx-scroll' }, el('div', { class: 'wx-group', style: 'margin-top:12px' }, el('label', { class: 'wx-cell noic' }, inp)), hint ? el('p', { class: 'wx-hint' }, hint) : ''));
+  setTimeout(() => inp.focus(), 350);
+};
+function wxGenderPage(pg) {
+  pg.classList.add('wx');
+  const body = el('div', { class: 'wx-scroll' });
+  pg.append(wxNav(L('设置性别', 'Gender')), body);
+  const render = () => {
+    body.textContent = '';
+    body.append(el('div', { class: 'wx-group', style: 'margin-top:12px' }, ...MY_GENDERS.map(([v, label]) =>
+      wxCell({ label, chev: false, right: S.me.gender === v ? el('span', { class: 'wx-check' }, icon('check', 18, 2.4)) : '', onclick: () => { S.me.gender = v; saveS(); render(); } }))),
+      S.me.gender === '自己填写' ? el('div', { class: 'wx-group' }, (() => {
+        const inp = el('input', { class: 'wx-field', type: 'text', maxlength: '12', placeholder: L('写你认同的说法', 'How you describe yourself'), value: S.me.genderText || '', 'aria-label': L('我的性别', 'My gender') });
+        inp.addEventListener('change', () => { S.me.genderText = inp.value.trim(); saveS(); });
+        return el('label', { class: 'wx-cell noic' }, inp);
+      })()) : '',
+      el('p', { class: 'wx-hint' }, L(`${herName()}提到你时会用「${pron()}」：女用「她」，男用「他」，其余用「TA」。`, '')));
+  };
+  pg.refresh = render; render();
+}
+
 /* ---------- 朋友圈 ---------- */
-function wxMomentsPage(pg) {
-  pg.classList.add('wx', 'moments', 'ink-light');
-  ST.seenPosts = Date.now(); ST.momentNews = 0; saveST(); updateBadges();
-  const scroll = el('div', { class: 'wx-scroll' });
+/* 封面：自己换的（S.zx.cover，存在 IndexedDB），没换过就用相册里最新的一张 */
+const coverId = () => S.zx.cover || latestPhotoId();
+function coverViewer(onChange) {
+  const v = el('div', { class: 'mo-cover-view', role: 'dialog', 'aria-label': L('朋友圈封面', 'Cover') });
+  const im = el('img', { alt: '' });
+  const id = coverId(); if (id) setImg(im, id);
+  const close = () => v.remove();
+  const change = el('button', { class: 'mo-cover-change', onclick: async e => {
+    e.stopPropagation();
+    const [f] = await pickFile('image/*'); if (!f) return;
+    try {
+      const d = await compress(await fileToDataURL(f), 1600, .86), nid = uid('cv');
+      await IDB.put(nid, d); imgCache.set(nid, d);
+      const old = S.zx.cover; S.zx.cover = nid; saveS();
+      if (old && old.startsWith('cv')) IDB.del(old).catch(() => {});
+      close(); onChange && onChange();
+    } catch (err) { toast(err.message); }
+  } }, icon('photo', 18, 1.8), L('换封面', 'Change cover'));
+  v.append(id ? im : el('p', { class: 'mo-cover-none' }, L('还没有封面', 'No cover yet')), change);
+  v.addEventListener('click', close);
+  $('#viewer').parentNode.append(v);   // 和看大图同一层，盖住整个手机屏幕
+}
+/* 评论框：p 是哪条朋友圈；reply 是要回复的那条评论（她的） */
+function momentBar(pg) {
   const bar = el('form', { class: 'mo-bar', hidden: true });
   const inp = el('input', { 'aria-label': L('评论', 'Comment'), placeholder: L('评论', 'Comment') });
   bar.append(inp, el('button', { class: 'wx-send' }, L('发送', 'Send')));
-  let target = null;
-  bar.addEventListener('submit', e => { e.preventDefault(); const t = inp.value.trim(); if (!t || !target) return; inp.value = ''; bar.hidden = true; addComment(target, t); target = null; });
+  let target = null, reply = null;
+  bar.addEventListener('submit', e => { e.preventDefault(); const t = inp.value.trim(); if (!t || !target) return; inp.value = ''; bar.hidden = true; addComment(target, t, reply); target = reply = null; });
+  pg.comment = (p, c = null) => { target = p; reply = c; bar.hidden = false; inp.placeholder = c ? L(`回复${wxName()}：`, `Reply to ${wxName()}:`) : L('评论', 'Comment'); inp.focus(); };
+  pg.closeBar = () => { if (bar.hidden) return false; bar.hidden = true; return true; };
+  return bar;
+}
+function wxMomentsPage(pg) {
+  pg.classList.add('wx', 'moments', 'ink-light');
+  ST.seenPosts = Date.now(); delete ST.momentNews; saveST(); updateBadges();
+  const scroll = el('div', { class: 'wx-scroll' });
+  const bar = momentBar(pg);
   pg.append(scroll, el('header', { class: 'wx-nav clear' }, wxBack('wx'), el('span'),
     el('button', { class: 'wx-navbtn r', 'aria-label': L('发表', 'Post'), onclick: postMineSheet }, icon('camera', 24, 1.8))), bar);
   pg.refresh = render; render();
-  pg.comment = p => { target = p; bar.hidden = false; inp.placeholder = L('评论', 'Comment'); inp.focus(); };
-  pg.closeMenu = () => { const pop = $('.mo-pop', pg); if (pop) { pop.remove(); return true; } if (!bar.hidden) { bar.hidden = true; return true; } return false; };
+  pg.closeMenu = () => { const pop = $('.mo-pop', pg); if (pop) { pop.remove(); return true; } return pg.closeBar(); };
   pg.addEventListener('pointerdown', e => { if (!e.target.closest('.mo-pop,.mo-more')) $$('.mo-pop', pg).forEach(x => x.remove()); });
   function render() {
     const y = scroll.scrollTop;
     scroll.textContent = '';
-    const cover = el('div', { class: 'mo-cover' });
-    const pid = latestPhotoId();
+    const cover = el('button', { class: 'mo-cover', 'aria-label': L('朋友圈封面', 'Cover'), onclick: () => coverViewer(render) });
+    const pid = coverId();
     if (pid) imgSrc(pid).then(s => { if (s) cover.style.backgroundImage = `url("${s}")`; });
-    cover.append(el('div', { class: 'mo-owner' }, el('b', {}, meName()), myAv()));
+    cover.append(el('span', { class: 'mo-owner' }, el('b', {}, meName()), myAv()));
     scroll.append(cover);
+    if (S.me.signature) scroll.append(el('p', { class: 'mo-sign' }, S.me.signature));
+    const nn = unseenNotices();
+    if (nn.length) scroll.append(el('div', { class: 'mo-news-row' }, el('button', { class: 'mo-news', onclick: () => Nav.push('wx', wxMoNoticesPage) }, herAv(), L(`${nn.length}条新消息`, `${nn.length} new`))));
     const posts = [...POSTS].sort((a, b) => b.ts - a.ts);
     if (!posts.length) scroll.append(el('p', { class: 'mo-empty' }, L(`还没有朋友圈。${herName()}会按日程发；你也可以点右上角发一条。`, `No Moments yet. ${herName()} posts from time to time, and you can post one from the top right.`)));
     for (const p of posts) scroll.append(momentPost(p, pg));
     scroll.scrollTop = y;
   }
 }
+/* 她给你的点赞、评论、回复：点进来就算看过了 */
+function wxMoNoticesPage(pg) {
+  pg.classList.add('wx');
+  ST.moNoticeSeen = Date.now(); saveST(); updateBadges();
+  const body = el('div', { class: 'wx-scroll', style: 'background:var(--wx-card)' });
+  pg.append(wxNav(L('消息', 'Notifications')), body);
+  const list = [...moNotices()].sort((a, b) => b.ts - a.ts);
+  if (!list.length) body.append(el('p', { class: 'mo-empty' }, L('没有新消息', 'Nothing new')));
+  for (const n of list) {
+    const p = POSTS.find(x => x.id === n.postId); if (!p) continue;
+    const c = n.cid && (p.comments || []).find(x => x.id === n.cid);
+    const side = p.imageIds && p.imageIds[0] ? (() => { const im = el('img', { alt: '' }); setImg(im, p.imageIds[0]); return el('span', { class: 'mo-nt-pic' }, im); })() : el('span', { class: 'mo-nt-text' }, p.text || '');
+    body.append(el('button', { class: 'mo-nt', onclick: () => Nav.push('wx', wxPostPage(p.id)) }, herAv(),
+      el('div', { class: 'mo-nt-main' }, el('b', {}, wxName()), n.kind === 'like' ? el('span', { class: 'mo-nt-like' }, icon('heart', 15, 2)) : el('p', {}, c ? c.text : ''), el('small', {}, relTime(n.ts, isEN()).replace('现在', '刚刚'))),
+      side));
+  }
+}
+/* 单独看一条朋友圈（从消息列表点进来） */
+const wxPostPage = id => pg => {
+  pg.classList.add('wx', 'moments');
+  const body = el('div', { class: 'wx-scroll', style: 'background:var(--wx-card)' });
+  pg.append(wxNav(L('详情', 'Details')), body, momentBar(pg));
+  pg.closeMenu = () => { const pop = $('.mo-pop', pg); if (pop) { pop.remove(); return true; } return pg.closeBar(); };
+  const render = () => { body.textContent = ''; const p = POSTS.find(x => x.id === id); body.append(p ? momentPost(p, pg) : el('p', { class: 'mo-empty' }, L('这条朋友圈已经不在了', 'This post is gone'))); };
+  pg.refresh = render; render();
+};
 function momentPost(p, pg) {
   const byMe = p.author === 'me';
   const name = byMe ? meName() : wxName();
@@ -608,11 +735,14 @@ function momentPost(p, pg) {
     for (const c of cm) {
       const who = c.from === 'me' ? meName() : wxName();
       const to = c.to ? (c.to === 'me' ? meName() : wxName()) : '';
-      box.append(el('div', { class: 'mo-cm' }, el('b', {}, who), to ? [L(' 回复 ', ' → '), el('b', {}, to)] : '', L('：', ': ') + c.text));
+      const line = [el('b', {}, who), to ? [L(' 回复 ', ' → '), el('b', {}, to)] : '', L('：', ': ') + c.text];
+      box.append(c.from === 'her'   // 点她的评论：回复她
+        ? el('button', { class: 'mo-cm tap', 'aria-label': L(`回复${who}`, `Reply to ${who}`), onclick: () => pg.comment && pg.comment(p, c) }, ...line)
+        : el('div', { class: 'mo-cm' }, ...line));
     }
     main.append(box);
   }
-  const node = el('div', { class: 'mo-post' }, byMe ? myAv() : herAv(), main);
+  const node = el('div', { class: 'mo-post', 'data-post': p.id }, byMe ? myAv() : herAv(), main);
   more.addEventListener('click', () => {
     $$('.mo-pop', pg).forEach(x => x.remove());
     const liked = p.likes && p.likes.me;
@@ -623,22 +753,30 @@ function momentPost(p, pg) {
   });
   return node;
 }
-function addComment(p, text) {
+/* 你评论：在她的朋友圈下评论，或者回复她的评论（包括她在你朋友圈下的），她会回你一句。一条朋友圈下她最多回 6 次 */
+function addComment(p, text, reply = null) {
   p.comments = p.comments || [];
-  p.comments.push({ id: uid('c'), from: 'me', to: null, text, ts: Date.now() });
+  p.comments.push({ id: uid('c'), from: 'me', to: reply ? 'her' : null, text, ts: Date.now(), replyTo: reply ? reply.id : undefined });
   savePosts(); Nav.refresh('wx');
+  const herCount = p.comments.filter(c => c.from === 'her').length;
+  if ((p.author !== 'her' && !reply) || herCount >= 6) return;   // 你在自己朋友圈下随手评论：她不一定回
   enqueue(async () => {
     await sleep(2500 + Math.random() * 4000);
-    const lines = await herSays('moment-comment', { post: p.text, comment: text }).catch(() => tplPick('momentReply'));
+    const lines = await herSays('moment-comment', { post: p.text, comment: text, mine: p.author === 'me', her: reply ? reply.text : '' }).catch(() => tplPick('momentReply'));
     if (!lines[0]) return;
-    p.comments.push({ id: uid('c'), from: 'her', to: 'me', text: lines[0], ts: Date.now() });
-    savePosts(); momentNews();
+    const c = { id: uid('c'), from: 'her', to: 'me', text: lines[0], ts: Date.now() };
+    p.comments.push(c); savePosts(); moNotice('comment', p, c);
   });
+}
+/* 她点赞、评论、回复了你：记一条「新消息」 */
+function moNotice(kind, p, c) {
+  ST.moNotices = [...(ST.moNotices || []), { id: uid('n'), kind, postId: p.id, cid: c ? c.id : '', ts: Date.now() }].slice(-60);
+  saveST(); momentNews();
 }
 function momentNews() {
   const top = Nav.top('wx');
-  if (cur === 'wx' && top && top.classList.contains('moments')) Nav.refresh('wx');
-  else { ST.momentNews = (ST.momentNews || 0) + 1; saveST(); updateBadges(); if (cur === 'wx') Nav.refresh('wx'); }
+  if (cur === 'wx' && top && top.classList.contains('moments')) { ST.moNoticeSeen = Date.now(); saveST(); Nav.refresh('wx'); }   // 正看着朋友圈：直接看到了
+  else { updateBadges(); if (cur === 'wx') Nav.refresh('wx'); }
 }
 function postMineSheet() {
   openSheet((p, close) => {
@@ -657,9 +795,9 @@ function postMineSheet() {
       enqueue(async () => {
         await sleep(4000 + Math.random() * 8000);
         post.likes = Object.assign({}, post.likes, { her: true });
+        savePosts(); moNotice('like', post);
         const lines = await herSays('my-moment', { post: text, photo: !!imageId }).catch(() => tplPick('myMoment'));
-        if (lines[0]) post.comments.push({ id: uid('c'), from: 'her', text: lines[0], ts: Date.now() });
-        savePosts(); momentNews();
+        if (lines[0]) { const c = { id: uid('c'), from: 'her', text: lines[0], ts: Date.now() }; post.comments.push(c); savePosts(); moNotice('comment', post, c); }
       });
     } }, L('发表', 'Post'))), iosGroup('', [el('label', { class: 'ios-field' }, ta), el('div', { class: 'pic-row' }, thumb)]));
   });

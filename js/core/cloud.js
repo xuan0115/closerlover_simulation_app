@@ -8,12 +8,13 @@
  *   钥匙被服务器作废了（很少见）→ 设置最上面的「知己账户」出现红点，点进去重新登录。不会在聊天中途弹登录框。
  *   这台手机从没登录过 → 第一次打开时，在解锁前的「你好」页面登录或注册。
  *
- * 账号用邮箱：注册时给邮箱发一个验证码确认，之后用邮箱和密码登录；忘记密码也用验证码重设。
+ * 账号用邮箱：注册时给邮箱发一个验证码确认，之后用邮箱和密码登录；忘记密码、修改密码都用验证码重设。
  * 以前只起了账号名的老账号，账号会拼成 账号@zhiji.app（这个域名不是我们的，收不到信），
- * 登录照样能用，在「知己账户 → 邮箱」里换成真实邮箱。
+ * 登录照样能用；想换成邮箱登录，就退出后用邮箱注册新账户（这台手机上的记录会带过去）。没有「换邮箱」。
  *
  * 同步：改了设定、聊天、朋友圈……停 3 秒上传一份完整存档（不带 API Key；照片存在 IndexedDB 里，不上传）。
- * 打开时先只问云端那份的时间，比这台手机上的新才下载。
+ * 打开时、上传前先只问云端那份的时间（cloudSeenAt 记着上次对上的是哪一版）：别的设备在这之间传过，
+ * 才下载，并且是合并（mergeLocalInto）—— 两边新加的都留下，不会一台盖掉另一台。
  *
  * 云端要先做好的设置（RLS、内置 AI 中转、发邮件）见 supabase/ 文件夹里的说明。
  */
@@ -83,7 +84,7 @@ function cloudDirty() {
 function cloudPayload() {
   const s = clone(S);
   s.api.key = ''; s.photo.key = '';
-  return { app: 'zhiji', v: 1, at: Number(LS.get('cloudLocalAt', 0)) || Date.now(), settings: s, msgs: M, posts: POSTS, state: ST, pool: POOL, notes: NOTES, favs: FAVS };
+  return { app: 'zhiji', v: 1, at: Number(LS.get('cloudLocalAt', 0)) || Date.now(), settings: s, msgs: M, posts: POSTS, state: ST, pool: POOL, notes: NOTES, favs: FAVS, diary: DIARY };
 }
 function markSynced() { CLOUD.syncedAt = Date.now(); LS.set('cloudSyncedAt', CLOUD.syncedAt); if (typeof onCloudChange === 'function') onCloudChange(); }
 /* force：登录时的首次合并才用。平时（自动上传、手动备份）只往「这台手机上的数据所属的账号」里传 */
@@ -91,9 +92,15 @@ async function pushCloud(silent = false, force = false) {
   if (!sb || !currentUser) return false;
   if (!force && (!cloudReady || LS.get('cloudUser', '') !== currentUser.id)) return false;
   clearTimeout(cloudTimer); cloudTimer = null;
-  const payload = cloudPayload();
   let error = null;
-  try {
+  if (!force) {   // 别的设备在这之间传过：先把云端那份合进来，再传，免得盖掉那台的新消息
+    try {
+      const seen = Number(LS.get('cloudSeenAt', 0)) || 0, meta = await fetchCloudMeta();
+      if (meta && seen && meta.at !== seen) { const d = await fetchCloud(); if (d) await applyCloud(d, { combine: true }); }
+    } catch (e) { error = e; }
+  }
+  const payload = cloudPayload();
+  if (!error) try {
     ({ error } = await sb.from('user_backups').upsert(
       { user_id: currentUser.id, data: payload, updated_at: new Date().toISOString() }, { onConflict: 'user_id' }));
   } catch (e) { error = e; }
@@ -103,6 +110,7 @@ async function pushCloud(silent = false, force = false) {
     return false;
   }
   LS.set('cloudUser', currentUser.id);
+  LS.set('syncBase', syncBaseOf(payload)); LS.set('cloudSeenAt', payload.at);
   markSynced();
   if (!silent) toast('已同步到云端');
   return true;
@@ -133,10 +141,71 @@ async function backupBeforeOverwrite(d) {
     for (const b of old.slice(2)) IDB.del('bk:' + b.at).catch(() => {});
   } catch (e) { console.warn('覆盖前的本机备份没存上', e); }
 }
-/* 用云端存档替换这台手机上的数据（API Key 用本机的） */
-async function applyCloud(d) {
-  await backupBeforeOverwrite(d);
+/*
+ * 几台设备合并（2026-11-09）：云端比这台新时，不再整份替换，而是把这台上「上次同步之后新加的」合进去——
+ * 聊天、朋友圈和评论、她记得的事、聊天里让她定的提醒。syncBase 记着上次和云端对上时这台有哪些，
+ * 用来分清「别的设备上删掉的」（不要再加回去）和「这台新加的」（要留下）。
+ * 同一次主动消息、服务器替她发的同一条（ev 一样），两台设备各放了一份的，只留先出现的那份。
+ */
+function syncBaseOf(d) {
+  const st = d.settings || {};
+  return { msgs: (d.msgs || []).map(m => m.id), posts: (d.posts || []).map(p => p.id), mem: st.memory || [], alarms: (st.alarms || []).map(a => a.id) };
+}
+function dedupeTurns(list) {
+  const keep = new Map();
+  return list.filter(m => {
+    if (!m.ev) return true;
+    const g = m.turn || m.pro || m.id;
+    if (!keep.has(m.ev)) { keep.set(m.ev, g); return true; }
+    return keep.get(m.ev) === g;
+  });
+}
+function mergeLocalInto(d) {
+  const base = LS.get('syncBase', null), B = k => new Set(base && Array.isArray(base[k]) ? base[k] : []);
+  let added = 0;
+  const cm = Array.isArray(d.msgs) ? d.msgs : [], have = new Set(cm.map(m => m.id)), bm = B('msgs');
+  const extra = M.filter(m => m && m.id && m.from !== 'sys' && !have.has(m.id) && !bm.has(m.id));
+  added += extra.length;
+  d.msgs = dedupeTurns(extra.length ? [...cm, ...extra].sort((a, b) => a.ts - b.ts) : cm);
+  const cp = Array.isArray(d.posts) ? d.posts : [], byId = new Map(cp.map(p => [p.id, p])), bp = B('posts');
+  for (const lp of POSTS) {
+    const c = byId.get(lp.id);
+    if (!c) { if (!bp.has(lp.id)) { cp.push(lp); added++; } continue; }
+    const ids = new Set((c.comments || []).map(x => x.id)), more = (lp.comments || []).filter(x => x && x.id && !ids.has(x.id));
+    if (more.length) { c.comments = [...(c.comments || []), ...more].sort((a, b) => a.ts - b.ts); added += more.length; }
+  }
+  d.posts = cp.sort((a, b) => a.ts - b.ts);
+  d.settings = d.settings || {};
+  const cmem = Array.isArray(d.settings.memory) ? d.settings.memory : [], bmem = B('mem');
+  const newMem = (S.memory || []).filter(x => !cmem.includes(x) && !bmem.has(x));
+  if (newMem.length) { d.settings.memory = [...cmem, ...newMem].slice(-80); added += newMem.length; }
+  const cal = Array.isArray(d.settings.alarms) ? d.settings.alarms : null, bal = B('alarms');
+  if (cal) for (const a of S.alarms || []) {
+    if (!a.byHer || bal.has(a.id) || cal.some(x => x.id === a.id || (x.byHer && x.date === a.date && x.time === a.time))) continue;
+    cal.push(a); added++;
+  }
+  const cd = Array.isArray(d.diary) ? d.diary : [];             // 日记：一天一篇，同一天两边都有就留后改的那份（删了也算改）
+  for (const x of DIARY) {
+    const i = cd.findIndex(y => y.date === x.date);
+    if (i < 0) { cd.push(x); added++; }
+    else if ((x.at || 0) > (cd[i].at || 0)) { cd[i] = x; added++; }
+  }
+  d.diary = cd.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  d.state = d.state || {};
+  d.state.fired = Object.assign({}, ST.fired || {}, d.state.fired || {});
+  d.state.inbox = Object.assign({}, ST.inbox || {}, d.state.inbox || {});
+  d.state.lastRead = Math.max(ST.lastRead || 0, d.state.lastRead || 0);
+  return added;
+}
+/* 用云端存档替换这台手机上的数据（API Key 用本机的）。combine：先把这台上新加的合进去（平时同步都合并；
+ * 「用云端存档覆盖这台手机」和换了账户时选「用云端的」才整份替换）。返回合进去了几样，有的话要再传上去 */
+async function applyCloud(d, { combine = false, seen = true } = {}) {
+  if (!combine) await backupBeforeOverwrite(d);   // 合并时这台上的都留着，不用另外备份
+  if (seen) LS.set('cloudSeenAt', Number(d.at) || 0);   // 云端现在是哪一版（backup 恢复的不是云端的）
   d = clone(d);
+  const draftEl = WXT && $('.wx-input', WXT.compose), draft = draftEl ? draftEl.value : '';   // 正在打的字，重画后放回去
+  const base = syncBaseOf(d), pending = ST.pending;
+  const added = combine ? mergeLocalInto(d) : 0;
   const keys = { a: S.api.key, p: S.photo.key };
   S = migrate(d.settings, merge(DEFAULTS, d.settings || {}));
   if (keys.a) S.api.key = keys.a;
@@ -146,13 +215,16 @@ async function applyCloud(d) {
   POOL = Array.isArray(d.pool) ? d.pool : [];
   NOTES = Array.isArray(d.notes) ? d.notes : [];
   FAVS = Array.isArray(d.favs) ? d.favs : [];
+  DIARY = Array.isArray(d.diary) ? d.diary : [];
   const resume = ST.resume;                                           // 解锁后回到哪：按这台手机上的
   ST = Object.assign(freshState(), d.state || {});
   ST.lastTick = Date.now(); delete ST.pending;
+  if (combine && pending && M.some(m => m.from === 'me' && m.ts >= pending.since - 2000)) ST.pending = pending;   // 这台上你刚发、她还没回的：接着等她回
   if (resume) ST.resume = resume; else delete ST.resume;
   LS.set('settings', S); LS.set('msgs', M); LS.set('posts', POSTS); LS.set('state', ST);
-  LS.set('pool', POOL); LS.set('notes', NOTES); LS.set('favs', FAVS);
-  LS.set('cloudLocalAt', d.at || Date.now()); if (currentUser) LS.set('cloudUser', currentUser.id);
+  LS.set('pool', POOL); LS.set('notes', NOTES); LS.set('favs', FAVS); LS.set('diary', DIARY);
+  LS.set('cloudLocalAt', added ? Date.now() : d.at || Date.now()); if (currentUser) LS.set('cloudUser', currentUser.id);
+  LS.set('syncBase', base);
   const was = { app: cur, chat: cur === 'wx' && typeof threadVisible === 'function' && threadVisible() };
   for (const k of Object.keys(Nav.stacks)) delete Nav.stacks[k];   // 各个 App 的页面按新数据重画
   WXT = null;
@@ -162,7 +234,10 @@ async function applyCloud(d) {
     show('home');
     if (was.app !== 'home' && was.app !== 'camera' && APPS[was.app]) { openApp(was.app, null, true); if (was.chat) openThread(true); }
   }
+  if (draft && WXT) { const t = $('.wx-input', WXT.compose); if (t) { t.value = draft; t.dispatchEvent(new Event('input')); } }
   updateBadges();
+  if (ST.pending && typeof armReply === 'function') armReply();
+  return added;
 }
 
 /* 登录后、打开时：云端和本机比一比，用新的那份；拿不准时问你。
@@ -178,13 +253,19 @@ async function syncOnLogin({ fresh = false } = {}) {
     const hasLocal = M.some(m => m.from === 'me' || m.from === 'her');
     const meta = await fetchCloudMeta();
     if (!meta) { ok = await pushCloud(true, true); return ok; }        // 云端还没有：上传本机
-    if (sameOwner && meta.at <= localAt) {                               // 这台手机上的不比云端旧：不用下载
+    const seen = Number(LS.get('cloudSeenAt', 0)) || 0;
+    if (sameOwner && (seen ? meta.at === seen : meta.at <= localAt)) {   // 云端在这台上次同步之后没变过：不用下载
       ok = meta.at < localAt ? await pushCloud(true, true) : true;
       return ok;
     }
     const d = await fetchCloud();
     if (!d) { ok = await pushCloud(true, true); return ok; }
-    if (sameOwner || !hasLocal) { await applyCloud(d); if (!sameOwner) toast('已从云端恢复存档'); ok = true; return ok; }
+    if (sameOwner || !hasLocal) {
+      const added = await applyCloud(d, { combine: sameOwner });   // 同一个账户：把这台上新加的合进去，再传上去
+      if (!sameOwner) toast('已从云端恢复存档');
+      ok = added ? await pushCloud(true, true) : true;
+      return ok;
+    }
     const useCloud = await chooseSheet('用哪一份记录？',
       `这台手机上有聊天记录，你的账户在云端也有一份存档（${fmtFull(d.at || Date.now())}）。用云端的，这台手机上的会被替换（替换前自动在本机备份一份，在「数据与备份」里能找回）；用这台手机的，云端那份会被覆盖。`,
       '用这台手机的', '用云端的');
@@ -295,18 +376,17 @@ async function authSignUp(email, pw) {
   if (u && Array.isArray(u.identities) && !u.identities.length) return { error: '这个邮箱已经注册过了，直接登录就行' };
   return { need: 'code' };
 }
-/* 输验证码：type = signup（注册）/ recovery（重设密码）/ email_change（换邮箱） */
+/* 输验证码：type = signup（注册）/ recovery（重设密码）。没有「换邮箱」：账户页里的邮箱只显示 */
 async function authVerify(email, code, type) {
   const r = await authCall(sb.auth.verifyOtp({ email: email.trim().toLowerCase(), token: String(code).trim(), type: type === 'signup' ? 'email' : type }));
   if (r.error) return r;
   if (type === 'signup') await signedIn(r.data.user || (r.data.session && r.data.session.user), true);
-  if (type === 'email_change' && r.data.user) { currentUser = r.data.user; rememberAcct(r.data.user); if (typeof onCloudChange === 'function') onCloudChange(); }
   return { ok: true, data: r.data };
 }
 async function authResend(email, type) {
   email = email.trim().toLowerCase();
   if (type === 'recovery') return authCall(sb.auth.resetPasswordForEmail(email));
-  return authCall(sb.auth.resend({ type: type === 'email_change' ? 'email_change' : 'signup', email }));
+  return authCall(sb.auth.resend({ type: 'signup', email }));
 }
 const authSendReset = email => authCall(sb.auth.resetPasswordForEmail(email.trim().toLowerCase()));
 /* 忘记密码：验证码对了就登录，再设新密码 */
@@ -318,9 +398,6 @@ async function authReset(email, code, pw) {
   await signedIn(user, false);
   return u.error ? { ok: true, warn: '登录了，但新密码没设上：' + u.error } : { ok: true };
 }
-const authChangePassword = pw => authCall(sb.auth.updateUser({ password: pw }));
-/* 换邮箱（老账号绑定真实邮箱也是这个）：验证码发到新邮箱 */
-const authChangeEmail = email => authCall(sb.auth.updateUser({ email: email.trim().toLowerCase() }));
 const withTimeout = (p, ms) => Promise.race([Promise.resolve(p).catch(() => {}), new Promise(r => setTimeout(r, ms))]);
 async function authSignOut() {
   await withTimeout(pushCloud(true), 6000);                       // 退出前把改动传上去（连不上就算了，记录还在这台手机上）
@@ -345,8 +422,8 @@ function backupSheet(rerender) {
         try {
           const d = await IDB.get('bk:' + b.at);
           if (!d) { toast('这份备份找不到了'); return; }
-          await applyCloud(d);
-          LS.set('cloudLocalAt', Date.now()); cloudDirty();
+          await applyCloud(d, { seen: false });
+          LS.set('cloudLocalAt', Date.now()); if (!(await pushCloud(true, true))) cloudDirty();
           toast('已恢复'); if (rerender) rerender();
         } catch (e) { toast('恢复失败：' + e.message, 5000); }
       } }, el('span', { class: 'lbl' }, fmtFull(b.at), el('small', {}, `当时有 ${b.lost} 条聊天云端没有，一共 ${b.total} 条`))))),
